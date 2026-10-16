@@ -56,9 +56,9 @@ watch(search, (value) => {
 const columns = computed<CaTableColumn[]>(() => [
   { key: 'occurred_at', label: t('admin.audit.columnTime'), width: '170px' },
   { key: 'severity', label: t('admin.audit.columnSeverity'), width: '110px' },
-  { key: 'event', label: t('admin.audit.columnEvent') },
-  { key: 'actor', label: t('admin.audit.columnActor'), width: '180px' },
-  { key: 'entity', label: t('admin.audit.columnEntity'), width: '180px' },
+  { key: 'event', label: t('admin.audit.columnEvent'), sortValue: (row) => row.event_key },
+  { key: 'actor', label: t('admin.audit.columnActor'), width: '180px', sortValue: (row) => row.actor_label },
+  { key: 'entity', label: t('admin.audit.columnEntity'), width: '180px', sortValue: (row) => row.entity_type },
 ]);
 
 function severityVariant(value: string): 'informative' | 'warning' | 'danger' | 'neutral' {
@@ -127,6 +127,7 @@ onMounted(load);
     <p v-if="error" class="admin-error">{{ error }}</p>
 
     <CaTable
+      table-key="admin-audit"
       :columns="columns"
       :rows="items"
       :row-key="(row) => row.id"

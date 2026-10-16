@@ -21,13 +21,13 @@ const { items, total, page, pageSize, loading, error, load, goPage } =
   usePagedList<AdminSessionRow>(listSessions, { pageSize: 25 });
 
 const columns = computed<CaTableColumn[]>(() => [
-  { key: 'user', label: t('admin.sessions.columnUser') },
+  { key: 'user', label: t('admin.sessions.columnUser'), sortValue: (row) => row.display_name },
   { key: 'ip', label: t('admin.sessions.columnIp'), width: '140px' },
   { key: 'user_agent', label: t('admin.sessions.columnAgent') },
   { key: 'created_at', label: t('admin.sessions.columnCreated'), width: '170px' },
   { key: 'last_seen_at', label: t('admin.sessions.columnLastSeen'), width: '170px' },
   { key: 'expires_at', label: t('admin.sessions.columnExpires'), width: '170px' },
-  { key: 'actions', label: '', width: '90px', align: 'end' as const },
+  { key: 'actions', label: '', width: '90px', align: 'end' as const, sortable: false },
 ]);
 
 function agentSummary(value: string | null): string {
@@ -72,6 +72,7 @@ onMounted(load);
     <p v-if="error" class="admin-error">{{ error }}</p>
 
     <CaTable
+      table-key="admin-sessions"
       :columns="columns"
       :rows="items"
       :row-key="(row) => row.id"

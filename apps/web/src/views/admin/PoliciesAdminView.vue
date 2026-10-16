@@ -57,12 +57,12 @@ const columns = computed<CaTableColumn[]>(() => {
   const base: CaTableColumn[] = [
     { key: 'name', label: t('admin.policies.columnName') },
     { key: 'effect', label: t('admin.policies.columnEffect'), width: '90px' },
-    { key: 'subject', label: t('admin.policies.columnSubject') },
+    { key: 'subject', label: t('admin.policies.columnSubject'), sortValue: (row) => row.subject_label },
     { key: 'permission_pattern', label: t('admin.policies.columnPattern') },
     { key: 'priority', label: t('admin.policies.columnPriority'), width: '90px' },
     { key: 'is_active', label: t('admin.policies.columnActive'), width: '100px' },
   ];
-  if (canManage.value) base.push({ key: 'actions', label: '', width: '150px', align: 'end' });
+  if (canManage.value) base.push({ key: 'actions', label: '', width: '150px', align: 'end', sortable: false });
   return base;
 });
 
@@ -262,7 +262,7 @@ onMounted(load);
 
     <p v-if="error" class="admin-error">{{ error }}</p>
 
-    <CaTable :columns="columns" :rows="rows" :row-key="(row) => row.id" :loading="loading">
+    <CaTable table-key="admin-policies" :columns="columns" :rows="rows" :row-key="(row) => row.id" :loading="loading">
       <template #cell-name="{ row }">
         <span class="pol-name">{{ row.name }}</span>
         <div v-if="row.resource_type" class="admin-cell__sub admin-mono">

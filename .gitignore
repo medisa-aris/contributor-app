@@ -16,3 +16,6 @@ Thumbs.db
 
 # TypeScript incremental
 *.tsbuildinfo
+
+# Qoder agent scratch
+.qoder/

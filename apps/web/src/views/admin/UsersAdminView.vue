@@ -64,11 +64,11 @@ const departments = ref<AdminDepartmentNode[]>([]);
 const departmentOptions = computed<CaSelectOption[]>(() => flattenDepartments(departments.value));
 
 const columns = computed<CaTableColumn[]>(() => [
-  { key: 'name', label: t('admin.users.columnName') },
-  { key: 'department', label: t('admin.users.columnDepartment') },
+  { key: 'name', label: t('admin.users.columnName'), sortValue: (row) => row.display_name },
+  { key: 'department', label: t('admin.users.columnDepartment'), sortValue: (row) => row.department_name },
   { key: 'status', label: t('admin.users.columnStatus') },
-  { key: 'lastLogin', label: t('admin.users.columnLastLogin') },
-  { key: 'created', label: t('admin.users.columnCreated') },
+  { key: 'lastLogin', label: t('admin.users.columnLastLogin'), sortValue: (row) => row.last_login_at },
+  { key: 'created', label: t('admin.users.columnCreated'), sortValue: (row) => row.created_at },
 ]);
 
 function applyFilters(): void {
@@ -177,6 +177,7 @@ function statusVariant(row: AdminUserRow): 'success' | 'neutral' {
     <p v-if="error" class="admin-error" role="alert">{{ error }}</p>
 
     <CaTable
+      table-key="admin-users"
       :columns="columns"
       :rows="items"
       :row-key="(row) => row.id"

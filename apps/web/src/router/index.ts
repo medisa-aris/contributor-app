@@ -11,6 +11,7 @@ declare module 'vue-router' {
     guestOnly?: boolean;
     titleKey?: string;
     permission?: string;
+    navPath?: string;
   }
 }
 
@@ -20,7 +21,8 @@ function admin(
   component: () => Promise<unknown>,
   permission: string,
 ) {
-  return { path, name, component, meta: { permission } };
+  const staticPath = path.includes(':') ? path.slice(0, path.indexOf(':')).replace(/\/$/, '') : path;
+  return { path, name, component, meta: { permission, navPath: `/${staticPath}` } };
 }
 
 export const router = createRouter({

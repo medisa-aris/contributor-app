@@ -8,6 +8,7 @@ export { default as CaDialog } from './CaDialog.vue';
 export { default as CaEmptyState } from './CaEmptyState.vue';
 export { default as CaField } from './CaField.vue';
 export { default as CaIconButton } from './CaIconButton.vue';
+export { default as CaIcon } from './CaIcon.vue';
 export { default as CaInput } from './CaInput.vue';
 export { default as CaMenu } from './CaMenu.vue';
 export { default as CaPageHeader } from './CaPageHeader.vue';

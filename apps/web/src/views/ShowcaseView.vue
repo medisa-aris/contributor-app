@@ -340,7 +340,7 @@ function submitDialog(): void {
         />
         <div class="showcase__tab-body">
           <template v-if="activeTab === 'anggota' || activeTab === 'ringkasan'">
-            <CaTable :columns="columns" :rows="people" :row-key="(row) => row.id" :loading="tableLoading">
+            <CaTable table-key="showcase" :columns="columns" :rows="people" :row-key="(row) => row.id" :loading="tableLoading">
               <template #cell-name="{ row }">
                 <span class="showcase__cell-user">
                   <CaAvatar :name="row.name" size="small" />

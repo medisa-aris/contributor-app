@@ -26,6 +26,7 @@
   --ca-color-brand-hover: var(--ca-brand-90);
   --ca-color-brand-pressed: var(--ca-brand-100);
   --ca-color-brand-selected: var(--ca-brand-100);
+  --ca-color-brand-soft: var(--ca-brand-70);
   --ca-color-brand-subtle: var(--ca-brand-10);
   --ca-color-brand-subtle-hover: var(--ca-brand-20);
   --ca-color-link: #115ea3;
@@ -84,6 +85,7 @@
 
   --ca-color-brand: #479ef5;
   --ca-color-brand-hover: #62abf5;
+  --ca-color-brand-soft: #62abf5;
   --ca-color-brand-pressed: #2886de;
   --ca-color-brand-selected: #2886de;
   --ca-color-brand-subtle: #0a2f49;

@@ -57,7 +57,7 @@ const columns = computed<CaTableColumn[]>(() => {
     { key: 'is_public', label: t('admin.config.columnPublic'), width: '120px' },
     { key: 'updated_at', label: t('admin.config.columnUpdated'), width: '170px' },
   ];
-  if (canManage.value) base.push({ key: 'actions', label: '', width: '90px', align: 'end' });
+  if (canManage.value) base.push({ key: 'actions', label: '', width: '90px', align: 'end', sortable: false });
   return base;
 });
 
@@ -155,6 +155,7 @@ onMounted(load);
     <p v-if="error" class="admin-error">{{ error }}</p>
 
     <CaTable
+      table-key="admin-config"
       :columns="columns"
       :rows="filtered"
       :row-key="(row) => row.key"

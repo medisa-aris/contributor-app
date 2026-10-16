@@ -52,7 +52,7 @@ const columns = computed<CaTableColumn[]>(() => {
     { key: 'role_count', label: t('admin.groups.columnRoles'), width: '110px' },
     { key: 'created_at', label: t('admin.groups.columnCreated'), width: '170px' },
   ];
-  if (canManage.value) base.push({ key: 'actions', label: '', width: '150px', align: 'end' });
+  if (canManage.value) base.push({ key: 'actions', label: '', width: '150px', align: 'end', sortable: false });
   return base;
 });
 
@@ -160,7 +160,7 @@ onMounted(load);
 
     <p v-if="error" class="admin-error">{{ error }}</p>
 
-    <CaTable :columns="columns" :rows="rows" :row-key="(row) => row.id" :loading="loading">
+    <CaTable table-key="admin-groups" :columns="columns" :rows="rows" :row-key="(row) => row.id" :loading="loading">
       <template #cell-name="{ row }">
         <RouterLink class="admin-name-link" :to="`/administration/groups/${row.id}`">
           {{ row.name }}

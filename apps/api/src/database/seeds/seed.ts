@@ -43,7 +43,7 @@ const NAV_TREE: readonly AppSeed[] = [
     identifier: 'ai-workspace',
     name: 'Ruang Kerja AI',
     description: 'Otak kedua, mitra berpikir, dan asisten eksekusi bertenaga AI',
-    icon: 'sparkle',
+    icon: 'desk',
     modules: [
       {
         identifier: 'workspace',

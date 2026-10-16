@@ -102,6 +102,7 @@ onMounted(load);
     <p v-if="error" class="admin-error">{{ error }}</p>
 
     <CaTable
+      table-key="admin-permissions"
       :columns="columns"
       :rows="filtered"
       :row-key="(row) => row.id"

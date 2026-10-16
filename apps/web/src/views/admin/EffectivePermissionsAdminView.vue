@@ -105,7 +105,7 @@ const filteredDecisions = computed<EffectiveDecision[]>(() => {
 
 const columns = computed<CaTableColumn[]>(() => [
   { key: 'permission', label: t('admin.effectivePermissions.columnPermission') },
-  { key: 'decision', label: t('admin.effectivePermissions.columnDecision'), width: '120px' },
+  { key: 'decision', label: t('admin.effectivePermissions.columnDecision'), width: '120px', sortValue: (row) => row.allowed },
   { key: 'reason', label: t('admin.effectivePermissions.columnReason'), width: '220px' },
   { key: 'scope', label: t('admin.effectivePermissions.columnScope'), width: '120px' },
 ]);
@@ -226,6 +226,7 @@ function chainEffectVariant(effect: EffectiveChainEntry['effect']): 'success' | 
           </div>
 
           <CaTable
+            table-key="admin-effective-permissions"
             :columns="columns"
             :rows="filteredDecisions"
             :row-key="(row) => row.permission"

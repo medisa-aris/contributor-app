@@ -120,3 +120,13 @@ Detail lengkap: [`rbac.md`](rbac.md). Kontrak HTTP: [`api-conventions.md`](api-c
 | Amplop respons seragam | Klien web menangani sukses/error dengan satu jalur kode |
 | `packages/shared` build ganda CJS+ESM | Satu sumber kebenaran kontrak untuk dua ekosistem (Nest CJS, Vite ESM) |
 | Migrasi SQL mentah, bukan `synchronize` | Terkontrol, dapat diaudit, aman untuk produksi |
+
+## 7. Pedoman UI: Visualisasi Dulu, Form CRUD Kemudian
+
+Sebelum membangun fitur input/CRUD apa pun, pertimbangkan dulu apakah ada pustaka visualisasi JS yang membuatnya lebih visual dan interaktif. Layar utama menampilkan visualisasi datanya; mode tambah/ubah/hapus tertanam di dalamnya, bukan layar form terpisah sebagai pintu utama.
+
+- **Contoh rujukan**: organisasi/departemen → diagram struktur organisasi (org chart) dengan mode penambahan node di dalam diagram; katalog agen → kartu/grid interaktif; alur persetujuan → diagram alur.
+- **Sudah diterapkan**: layar Departemen memakai `d3-org-chart` — kanvas org chart interaktif (zoom, seret, lipat cabang) dengan panel detail per node dan mode tambah/ubah/hapus tertanam (`DepartmentsAdminView.vue`).
+- **Kandidat pustaka**: `d3-org-chart`, `echarts`, `vue-flow`, `vis-network` (d3/canvas/SVG) — pilih satu per kasus, jangan campur tanpa alasan.
+- **Form tidak hilang**: mode sunting (panel/drawer/node inline) tetap ada, tapi sebagai pelengkap visualisasi, bukan pengganti.
+- **Bahasa**: seluruh label tetap Bahasa Indonesia via `locales/id.ts`; visualisasi memakai token `--ca-*`.

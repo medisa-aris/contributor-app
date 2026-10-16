@@ -54,7 +54,7 @@ const columns = computed<CaTableColumn[]>(() => {
     { key: 'is_system', label: t('admin.roles.columnType'), width: '110px' },
     { key: 'created_at', label: t('admin.roles.columnCreated'), width: '170px' },
   ];
-  if (canManage.value) base.push({ key: 'actions', label: '', width: '150px', align: 'end' });
+  if (canManage.value) base.push({ key: 'actions', label: '', width: '150px', align: 'end', sortable: false });
   return base;
 });
 
@@ -177,6 +177,7 @@ onMounted(load);
     <p v-if="error" class="admin-error">{{ error }}</p>
 
     <CaTable
+      table-key="admin-roles"
       :columns="columns"
       :rows="rows"
       :row-key="(row) => row.id"
