@@ -71,6 +71,16 @@ export const router = createRouter({
         admin('administration/sessions', 'admin-sessions', () => import('@/views/admin/SessionsAdminView.vue'), 'security.sessions.manage'),
         admin('administration/providers', 'admin-providers', () => import('@/views/admin/ProvidersAdminView.vue'), 'providers.health.read'),
         {
+          path: 'workspace',
+          name: 'workspace',
+          component: () => import('@/views/WorkspaceLandingView.vue'),
+          meta: { navPath: '/workspace' },
+        },
+        admin('workspace/second-brain', 'workspace-second-brain', () => import('@/views/SecondBrainView.vue'), 'ai.secondbrain.query'),
+        admin('workspace/counterpart', 'workspace-counterpart', () => import('@/views/CounterpartView.vue'), 'ai.counterpart.analyze'),
+        admin('workspace/subordinate', 'workspace-subordinate', () => import('@/views/SubordinateView.vue'), 'ai.subordinate.execute'),
+        admin('workspace/history', 'workspace-history', () => import('@/views/WorkspaceHistoryView.vue'), 'ai.workspace.history.read'),
+        {
           path: ':pathMatch(.*)*',
           name: 'coming-soon',
           component: () => import('@/views/ComingSoonView.vue'),

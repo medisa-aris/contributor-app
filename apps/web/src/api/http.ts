@@ -31,6 +31,11 @@ function buildUrl(path: string): string {
   return `${origin}${BASE_URL}${normalized}`;
 }
 
+/** URL lengkap untuk endpoint API — dipakai klien yang butuh respons mentah (mis. SSE). */
+export function apiUrl(path: string): string {
+  return buildUrl(path);
+}
+
 let csrfToken: string | null = null;
 
 export function setCsrfToken(token: string | null): void {

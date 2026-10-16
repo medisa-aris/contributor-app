@@ -544,6 +544,114 @@ export const id = {
       deleteAction: 'Hapus',
     },
   },
+  workspace: {
+    landing: {
+      title: 'Ruang Kerja AI',
+      subtitle:
+        'Tiga cara berpikir dengan AI: gali pengetahuan, uji gagasan, atau serahkan eksekusi. Pilih mode yang paling sesuai dengan kebutuhan Anda.',
+      open: 'Buka mode',
+      noAccess: 'Akun Anda belum memiliki izin ke mode AI mana pun. Hubungi administrator.',
+      secondBrain: {
+        name: 'Otak Kedua',
+        description:
+          'Tanya jawab pengetahuan perusahaan: kebijakan, proses, dan dokumen, dengan jawaban langsung dan runtut.',
+      },
+      counterpart: {
+        name: 'Mitra Berpikir',
+        description:
+          'Diskusi dua arah untuk menguji gagasan: dari pendamping suportif sampai penantang asumsi.',
+      },
+      subordinate: {
+        name: 'Asisten Eksekusi',
+        description:
+          'Serahkan tugas tertulis dan pantau statusnya dari antrean sampai selesai, lengkap dengan jejak eksekusi.',
+      },
+      history: {
+        name: 'Riwayat Percakapan & Tugas',
+        description: 'Buka kembali percakapan dan tugas yang pernah Anda buat.',
+        open: 'Lihat riwayat',
+      },
+    },
+    secondBrain: {
+      title: 'Otak Kedua',
+      description:
+        'Ajukan pertanyaan seputar pengetahuan perusahaan. Jawaban disusun langsung oleh AI dan tersimpan sebagai percakapan.',
+    },
+    counterpart: {
+      title: 'Mitra Berpikir',
+      description:
+        'Ajukan gagasan atau masalah untuk didiskusikan. Pilih gaya mitra di bawah ini — AI akan menyesuaikan cara berpikirnya.',
+    },
+    chat: {
+      sidebarTitle: 'Percakapan',
+      newChat: 'Baru',
+      historyEmpty: 'Belum ada percakapan pada mode ini.',
+      emptyTitle: 'Mulai percakapan',
+      emptyDescription:
+        'Tulis pertanyaan atau gagasan Anda pada kolom di bawah, lalu tekan Kirim.',
+      placeholder: 'Tulis pesan Anda di sini…',
+      composerHint: 'Enter untuk mengirim, Shift+Enter untuk baris baru.',
+      send: 'Kirim',
+      streaming: 'Mengetik…',
+      thinking: 'AI sedang menyusun jawaban…',
+      styleLabel: 'Gaya mitra berpikir',
+      conversationDeleted: 'Percakapan dihapus.',
+    },
+    subordinate: {
+      title: 'Asisten Eksekusi',
+      description:
+        'Buat tugas tertulis untuk dikerjakan AI, jalankan, lalu pantau status dan jejak eksekusinya sampai tuntas.',
+      addButton: 'Tambah tugas',
+      createTitle: 'Tambah tugas',
+      createSubtitle: 'Tugas baru berstatus "Dibuat" dan siap dijalankan kapan pun.',
+      formTitle: 'Judul tugas',
+      formInstruction: 'Instruksi untuk AI',
+      formInstructionHint:
+        'Jelaskan tugas secara spesifik: konteks, format keluaran, dan batasan yang perlu dipatuhi.',
+      create: 'Simpan tugas',
+      created: 'Tugas berhasil dibuat.',
+      titleRequired: 'Judul minimal 3 karakter.',
+      instructionRequired: 'Instruksi minimal 5 karakter.',
+      columnTitle: 'Judul',
+      columnStatus: 'Status',
+      columnCreated: 'Dibuat',
+      columnDuration: 'Durasi',
+      run: 'Jalankan',
+      cancel: 'Batalkan',
+      runStarted: 'Tugas dijalankan.',
+      cancelled: 'Tugas dibatalkan.',
+      status: {
+        created: 'Dibuat',
+        validating: 'Memvalidasi',
+        awaiting_approval: 'Menunggu persetujuan',
+        running: 'Berjalan',
+        completed: 'Selesai',
+        failed: 'Gagal',
+        cancelled: 'Dibatalkan',
+      },
+      instructionLabel: 'Instruksi',
+      metricsModel: 'Model',
+      metricsTokens: 'Token (masuk → keluar)',
+      metricsDuration: 'Durasi',
+      resultTitle: 'Hasil tugas',
+      errorTitle: 'Pesan kesalahan',
+      eventsTitle: 'Jejak eksekusi',
+    },
+    history: {
+      title: 'Riwayat',
+      description:
+        'Percakapan dan tugas yang pernah Anda buat di Ruang Kerja AI. Data hanya tampil milik Anda sendiri.',
+      tabConversations: 'Percakapan',
+      tabTasks: 'Tugas',
+      modeSecondBrain: 'Otak Kedua',
+      modeCounterpart: 'Mitra Berpikir',
+      columnTitle: 'Judul',
+      columnMode: 'Mode',
+      columnUpdated: 'Diperbarui',
+      columnStatus: 'Status',
+      columnCreated: 'Dibuat',
+    },
+  },
   errors: {
     forbidden: 'Anda tidak memiliki izin untuk membuka halaman tersebut.',
     loadFailed: 'Gagal memuat data. Coba lagi.',
