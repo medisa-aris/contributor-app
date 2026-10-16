@@ -1,0 +1,30 @@
+{
+  "name": "@contributor/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Contributor AI frontend (Vue 3 + Vite)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -p tsconfig.json --noEmit && vite build",
+    "typecheck": "vue-tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@contributor/shared": "0.1.0",
+    "pinia": "^3.0.3",
+    "vue": "^3.5.18",
+    "vue-i18n": "^11.1.11",
+    "vue-router": "^4.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "@vue/test-utils": "^2.4.6",
+    "jsdom": "^26.1.0",
+    "vite": "^7.1.3",
+    "vitest": "^3.2.4",
+    "vue-tsc": "^3.0.6"
+  }
+}
