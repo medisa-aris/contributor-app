@@ -22,5 +22,7 @@ export const ERROR_CODES = {
   notFound: 'NOT_FOUND',
   conflict: 'CONFLICT',
   validation: 'VALIDATION_ERROR',
+  aiProviderNotConfigured: 'AI_PROVIDER_NOT_CONFIGURED',
+  aiUpstreamError: 'AI_UPSTREAM_ERROR',
   internal: 'INTERNAL_ERROR',
 } as const;

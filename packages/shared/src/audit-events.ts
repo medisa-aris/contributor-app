@@ -53,6 +53,12 @@ export const AUDIT_EVENTS = {
   navMenuItemDeleted: 'nav.menu_item.deleted',
   navReordered: 'nav.reordered',
 
+  aiConversationCreated: 'ai.conversation.created',
+  aiTaskCreated: 'ai.task.created',
+  aiTaskCompleted: 'ai.task.completed',
+  aiTaskFailed: 'ai.task.failed',
+  aiTaskCancelled: 'ai.task.cancelled',
+
   configUpdated: 'config.updated',
 
   securityAuthorizationDenied: 'security.authorization.denied',

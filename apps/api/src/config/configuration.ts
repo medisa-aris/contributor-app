@@ -11,7 +11,11 @@ export interface AppConfig {
   aiProvider: string;
   aiModel: string;
   aiBaseUrl: string;
+  aiTimeoutMs: number;
   openrouterApiKey: string | null;
+  openaiApiKey: string | null;
+  anthropicApiKey: string | null;
+  ollamaBaseUrl: string | null;
 }
 
 function parseBoolean(value: string | undefined, fallback: boolean): boolean {
@@ -34,8 +38,12 @@ export default (): { app: AppConfig } => ({
     sessionCookieName: process.env.SESSION_COOKIE_NAME ?? 'ca_session',
     logLevel: process.env.LOG_LEVEL ?? 'info',
     aiProvider: process.env.AI_PROVIDER ?? 'openrouter',
-    aiModel: process.env.AI_MODEL ?? 'gemini/gemini-3.1-flash-lite',
+    aiModel: process.env.AI_MODEL ?? 'google/gemini-3.1-flash-lite',
     aiBaseUrl: process.env.AI_BASE_URL ?? 'https://openrouter.ai/api/v1',
+    aiTimeoutMs: Number(process.env.AI_TIMEOUT_MS ?? 60000),
     openrouterApiKey: process.env.OPENROUTER_API_KEY ?? null,
+    openaiApiKey: process.env.OPENAI_API_KEY ?? null,
+    anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? null,
+    ollamaBaseUrl: process.env.OLLAMA_BASE_URL ?? null,
   },
 });

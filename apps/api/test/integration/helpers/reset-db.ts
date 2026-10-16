@@ -5,6 +5,10 @@ import { ALL_PERMISSION_IDS, PERMISSION_CATALOG, SYSTEM_ROLES } from '@contribut
 export const TEST_PASSWORD = 'Test123456!';
 
 const TRUNCATE_TABLES = [
+  'ai_task_events',
+  'ai_tasks',
+  'conversation_messages',
+  'conversations',
   'audit_events',
   'login_attempts',
   'sessions',

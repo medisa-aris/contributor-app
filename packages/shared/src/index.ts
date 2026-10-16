@@ -2,6 +2,7 @@ export * from './permissions';
 export * from './roles';
 export * from './enums';
 export * from './audit-events';
+export * from './ai-modes';
 export * from './config-keys';
 export * from './dto/common.dto';
 export * from './dto/auth.dto';

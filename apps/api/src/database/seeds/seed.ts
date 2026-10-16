@@ -57,7 +57,7 @@ const NAV_TREE: readonly AppSeed[] = [
             icon: 'sparkle',
             routePath: '/workspace',
             permission: 'ai.workspace.access',
-            isFuture: true,
+            isFuture: false,
           },
         ],
       },
@@ -73,7 +73,7 @@ const NAV_TREE: readonly AppSeed[] = [
             icon: 'brain',
             routePath: '/workspace/second-brain',
             permission: 'ai.secondbrain.query',
-            isFuture: true,
+            isFuture: false,
           },
           {
             key: 'nav.ai-workspace.counterpart',
@@ -82,7 +82,7 @@ const NAV_TREE: readonly AppSeed[] = [
             icon: 'people-chat',
             routePath: '/workspace/counterpart',
             permission: 'ai.counterpart.analyze',
-            isFuture: true,
+            isFuture: false,
           },
           {
             key: 'nav.ai-workspace.subordinate',
@@ -91,7 +91,7 @@ const NAV_TREE: readonly AppSeed[] = [
             icon: 'bot',
             routePath: '/workspace/subordinate',
             permission: 'ai.subordinate.execute',
-            isFuture: true,
+            isFuture: false,
           },
           {
             key: 'nav.ai-workspace.history',
@@ -100,7 +100,7 @@ const NAV_TREE: readonly AppSeed[] = [
             icon: 'history',
             routePath: '/workspace/history',
             permission: 'ai.workspace.history.read',
-            isFuture: true,
+            isFuture: false,
           },
         ],
       },
@@ -511,7 +511,8 @@ async function seed(ds: DataSource): Promise<void> {
              (key, application_id, module_id, label_default, i18n_key, icon,
               route_path, required_permission, sort_order, is_active, is_future)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, $10)
-           ON CONFLICT (key) DO NOTHING`,
+           ON CONFLICT (key) DO UPDATE
+             SET is_future = EXCLUDED.is_future, updated_at = now()`,
           [
             item.key,
             appId,

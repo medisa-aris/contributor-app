@@ -6,6 +6,7 @@ import configuration from './config/configuration';
 import { validateEnv } from './config/env.validation';
 import { DatabaseModule } from './database/database.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { AiModule } from './modules/ai/ai.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CsrfGuard } from './modules/auth/csrf.guard';
@@ -26,6 +27,7 @@ import { RbacModule } from './modules/rbac/rbac.module';
     DatabaseModule,
     RbacModule,
     AuditModule,
+    AiModule,
     AuthModule,
     AdminModule,
     HealthModule,
