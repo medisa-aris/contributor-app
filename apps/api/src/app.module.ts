@@ -6,6 +6,7 @@ import configuration from './config/configuration';
 import { validateEnv } from './config/env.validation';
 import { DatabaseModule } from './database/database.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { AgentsModule } from './modules/agents/agents.module';
 import { AiModule } from './modules/ai/ai.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -13,6 +14,8 @@ import { CsrfGuard } from './modules/auth/csrf.guard';
 import { PermissionGuard } from './modules/auth/permission.guard';
 import { SessionAuthGuard } from './modules/auth/session-auth.guard';
 import { HealthModule } from './modules/health/health.module';
+import { IntegrationsModule } from './modules/integrations/integrations.module';
+import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 import { RbacModule } from './modules/rbac/rbac.module';
 
 @Module({
@@ -28,6 +31,9 @@ import { RbacModule } from './modules/rbac/rbac.module';
     RbacModule,
     AuditModule,
     AiModule,
+    KnowledgeModule,
+    AgentsModule,
+    IntegrationsModule,
     AuthModule,
     AdminModule,
     HealthModule,

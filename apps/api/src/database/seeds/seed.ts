@@ -5,6 +5,7 @@ import {
   PERMISSION_CATALOG,
   SYSTEM_ROLES,
 } from '@contributor/shared';
+import { hash } from 'bcryptjs';
 import { config as loadEnv } from 'dotenv';
 import { join } from 'node:path';
 import { DataSource } from 'typeorm';
@@ -12,6 +13,48 @@ import { buildDataSourceOptions } from '../data-source-options';
 import { updatedRows } from '../query-result';
 
 loadEnv({ path: join(__dirname, '../../../.env') });
+
+const BCRYPT_ROUNDS = 11;
+
+// Kredensial demo untuk domain lokal `.local` — hanya untuk pelatihan.
+// Pembuatan akun ini otomatis dilewati saat NODE_ENV=production.
+const DEMO_USERS: readonly {
+  email: string;
+  password: string;
+  displayName: string;
+  role: string;
+  dataScope: 'global' | 'department' | 'own';
+  departmentCode: string | null;
+  isSuperadmin: boolean;
+}[] = [
+  {
+    email: 'admin@contributor.local',
+    password: 'Kontrib-d98a5d6d!',
+    displayName: 'Super Admin',
+    role: SYSTEM_ROLES.administrator,
+    dataScope: 'global',
+    departmentCode: null,
+    isSuperadmin: true,
+  },
+  {
+    email: 'manajer@contributor.local',
+    password: 'ManajerDemo123!',
+    displayName: 'Manajer Demo',
+    role: SYSTEM_ROLES.manager,
+    dataScope: 'department',
+    departmentCode: 'IT',
+    isSuperadmin: false,
+  },
+  {
+    email: 'staf@contributor.local',
+    password: 'StafDemo123!',
+    displayName: 'Staf Demo',
+    role: SYSTEM_ROLES.staf,
+    dataScope: 'own',
+    departmentCode: 'IT',
+    isSuperadmin: false,
+  },
+];
 
 interface MenuSeed {
   key: string;
@@ -124,7 +167,7 @@ const NAV_TREE: readonly AppSeed[] = [
             icon: 'document',
             routePath: '/knowledge/documents',
             permission: 'knowledge.documents.read',
-            isFuture: true,
+            isFuture: false,
           },
           {
             key: 'nav.knowledge-center.collections',
@@ -133,7 +176,7 @@ const NAV_TREE: readonly AppSeed[] = [
             icon: 'folder',
             routePath: '/knowledge/collections',
             permission: 'knowledge.collections.read',
-            isFuture: true,
+            isFuture: false,
           },
         ],
       },
@@ -149,7 +192,7 @@ const NAV_TREE: readonly AppSeed[] = [
             icon: 'search',
             routePath: '/knowledge/search',
             permission: 'knowledge.search.use',
-            isFuture: true,
+            isFuture: false,
           },
         ],
       },
@@ -173,7 +216,7 @@ const NAV_TREE: readonly AppSeed[] = [
             icon: 'apps',
             routePath: '/agents',
             permission: 'agents.view',
-            isFuture: true,
+            isFuture: false,
           },
         ],
       },
@@ -189,7 +232,7 @@ const NAV_TREE: readonly AppSeed[] = [
             icon: 'settings',
             routePath: '/agents/definitions',
             permission: 'agents.create',
-            isFuture: true,
+            isFuture: false,
           },
         ],
       },
@@ -205,7 +248,7 @@ const NAV_TREE: readonly AppSeed[] = [
             icon: 'play',
             routePath: '/agents/operations',
             permission: 'agents.execute',
-            isFuture: true,
+            isFuture: false,
           },
           {
             key: 'nav.agent-center.approvals',
@@ -214,7 +257,7 @@ const NAV_TREE: readonly AppSeed[] = [
             icon: 'checkmark-circle',
             routePath: '/agents/approvals',
             permission: 'agents.approve',
-            isFuture: true,
+            isFuture: false,
           },
         ],
       },
@@ -238,7 +281,7 @@ const NAV_TREE: readonly AppSeed[] = [
             icon: 'plug-connected',
             routePath: '/integrations',
             permission: 'integrations.view',
-            isFuture: true,
+            isFuture: false,
           },
         ],
       },
@@ -254,7 +297,7 @@ const NAV_TREE: readonly AppSeed[] = [
             icon: 'key',
             routePath: '/integrations/credentials',
             permission: 'integrations.configure',
-            isFuture: true,
+            isFuture: false,
           },
         ],
       },
@@ -425,9 +468,12 @@ const SEED_ROLES = [
       'ai.counterpart.analyze',
       'ai.subordinate.execute',
       'knowledge.documents.read',
+      'knowledge.collections.read',
       'knowledge.search.use',
       'agents.view',
       'agents.execute',
+      'agents.approve',
+      'integrations.view',
       'admin.access',
       'rbac.users.read',
       'rbac.roles.read',
@@ -442,6 +488,7 @@ const SEED_ROLES = [
     permissions: [
       'ai.workspace.access',
       'knowledge.documents.read',
+      'knowledge.collections.read',
       'knowledge.search.use',
       'agents.view',
     ],
@@ -469,10 +516,243 @@ async function insertOrSelect(
   return id;
 }
 
-async function seed(ds: DataSource): Promise<void> {
-  await ds.query(
-    `INSERT INTO rbac_meta (id, version) VALUES (1, 1) ON CONFLICT (id) DO NOTHING`,
+async function seedDemoContent(ds: DataSource): Promise<void> {
+  const demoSources: {
+    code: string;
+    name: string;
+    description: string;
+    acl: Record<string, unknown>;
+    documents: { title: string; locator: string; content: string }[];
+  }[] = [
+    {
+      code: 'sop-klaim-jr',
+      name: 'SOP Klaim Jasa Raharja',
+      description: 'Prosedur layanan klaim santunan Jasa Raharja untuk calon kontributor',
+      acl: {},
+      documents: [
+        {
+          title: 'SOP Verifikasi Klaim Santunan',
+          locator: 'sop/verifikasi-klaim.pdf',
+          content:
+            'Setiap pengajuan klaim santunan Jasa Raharja diverifikasi maksimal 3 hari kerja. ' +
+            'Petugas memeriksa kelengkapan dokumen: identitas korban, surat keterangan kecelakaan dari kepolisian, ' +
+            'dan nomor registrasi kejadian. Klaim yang lengkap diteruskan ke manajer klaim untuk persetujuan pembayaran.',
+        },
+        {
+          title: 'FAQ Layanan Jasa Raharja',
+          locator: 'sop/faq.pdf',
+          content:
+            'Pertanyaan umum: bagaimana cara mengajukan klaim? Korban atau ahli waris mengisi formulir pengajuan ' +
+            'di kantor cabang atau aplikasi. Berapa lama pencairan? Maksimal 14 hari kerja setelah verifikasi selesai. ' +
+            'Apakah ada biaya? Tidak ada biaya administrasi untuk pengajuan klaim santunan.',
+        },
+      ],
+    },
+    {
+      code: 'panduan-keselamatan',
+      name: 'Panduan Keselamatan Kerja',
+      description: 'Materi keselamatan dan kesehatan kerja untuk seluruh pegawai',
+      acl: {},
+      documents: [
+        {
+          title: 'Panduan K3 Penumpang dan Roda',
+          locator: 'k3/panduan.pdf',
+          content:
+            'Seluruh pegawai wajib memahami prosedur keselamatan kerja: gunakan alat pelindung diri saat turun ke lapangan, ' +
+            'laporkan insiden dalam 1x24 jam, dan ikuti briefing keselamatan bulanan. Target kami: nol insiden fatal.',
+        },
+      ],
+    },
+    {
+      code: 'kebijakan-internal-it',
+      name: 'Kebijakan Internal IT',
+      description: 'Kebijakan infrastruktur yang hanya dapat diakses peran administrator',
+      acl: { roles: ['administrator'] },
+      documents: [
+        {
+          title: 'Kebijakan Akses Server',
+          locator: 'it/akses-server.pdf',
+          content:
+            'Akses server produksi hanya diberikan kepada administrator melalui jumphost dengan autentikasi dua faktor. ' +
+            'Kredensial pribadi dilarang dibagikan, dan setiap sesi dicatat dalam log audit.',
+        },
+      ],
+    },
+  ];
+
+  const sourceIds = new Map<string, string>();
+  for (const source of demoSources) {
+    const id = await insertOrSelect(
+      ds,
+      `INSERT INTO knowledge_sources (code, name, description, origin, acl)
+       VALUES ($1, $2, $3, 'manual', $4::jsonb)
+       ON CONFLICT (code) DO NOTHING
+       RETURNING id`,
+      [source.code, source.name, source.description, JSON.stringify(source.acl)],
+      `SELECT id FROM knowledge_sources WHERE code = $1`,
+      [source.code],
+    );
+    sourceIds.set(source.code, id);
+    for (const doc of source.documents) {
+      await ds.query(
+        `INSERT INTO knowledge_documents (source_id, title, locator, content, status, indexed_at)
+         SELECT $1::uuid, $2::varchar, $3::varchar, $4::text, 'indexed', now()
+          WHERE NOT EXISTS (
+            SELECT 1 FROM knowledge_documents WHERE source_id = $1::uuid AND title = $2::varchar
+          )`,
+        [id, doc.title, doc.locator, doc.content],
+      );
+    }
+  }
+
+  const klaimCollectionId = await insertOrSelect(
+    ds,
+    `INSERT INTO knowledge_collections (code, name, description)
+     VALUES ('klaim-asuransi', 'Proses Klaim Asuransi', 'Semua referensi terkait alur klaim santunan')
+     ON CONFLICT (code) DO NOTHING
+     RETURNING id`,
+    [],
+    `SELECT id FROM knowledge_collections WHERE code = 'klaim-asuransi'`,
+    [],
   );
+  for (const code of ['sop-klaim-jr', 'panduan-keselamatan']) {
+    await ds.query(
+      `INSERT INTO knowledge_collection_sources (collection_id, source_id) VALUES ($1, $2)
+       ON CONFLICT DO NOTHING`,
+      [klaimCollectionId, sourceIds.get(code)],
+    );
+  }
+
+  const demoAgents: {
+    code: string;
+    name: string;
+    description: string;
+    instruction: string;
+    tools: string[];
+    requireApproval: boolean;
+  }[] = [
+    {
+      code: 'penulis-laporan',
+      name: 'Penulis Laporan Klaim',
+      description: 'Menyusun draf laporan klaim mingguan dari data ringkasan',
+      instruction:
+        'Anda adalah asisten penulisan laporan klaim. Susun draf laporan ringkas berbahasa Indonesia ' +
+        'dengan struktur: ringkasan eksekutif, statistik klaim, dan tindak lanjut. Gunakan gaya formal.',
+      tools: ['knowledge.search'],
+      requireApproval: false,
+    },
+    {
+      code: 'notifikasi-pelanggan',
+      name: 'Notifikasi ke Pemohon Klaim',
+      description:
+        'Mengirim notifikasi status klaim; tindakan sensitif yang wajib disetujui manusia',
+      instruction:
+        'Anda adalah agen notifikasi. Tugas Anda menyiapkan pesan notifikasi status klaim untuk pemohon. ' +
+        'Karena pesan keluar perusahaan, setiap eksekusi wajib melalui persetujuan manusia terlebih dahulu.',
+      tools: ['email.send', 'notification.send'],
+      requireApproval: true,
+    },
+  ];
+  for (const agent of demoAgents) {
+    await ds.query(
+      `INSERT INTO agents (code, name, description, instruction, tool_allowlist, require_approval)
+       VALUES ($1, $2, $3, $4, $5::jsonb, $6)
+       ON CONFLICT (code) DO NOTHING`,
+      [
+        agent.code,
+        agent.name,
+        agent.description,
+        agent.instruction,
+        JSON.stringify(agent.tools),
+        agent.requireApproval,
+      ],
+    );
+  }
+
+  await ds.query(
+    `INSERT INTO mcp_servers (code, name, description, base_url, auth_type, enabled)
+     VALUES ('mcp-demo-dokumen', 'MCP Server Dokumen (Demo)', 'Server MCP contoh untuk pelatihan integrasi',
+             'http://192.168.0.62:3000/', 'none', true)
+     ON CONFLICT (code) DO NOTHING`,
+  );
+  await ds.query(
+    `INSERT INTO rest_connectors (code, name, description, base_url, tool_endpoints, auth_type, enabled)
+     VALUES ('contoh-api-pelatihan', 'Contoh API Pelatihan', 'Konektor REST contoh; health check mengarah ke mesin pelatihan',
+             'http://192.168.0.62:3000/',
+             '[{"name":"daftar-klaim","method":"GET","path":"/rest/products"},{"name":"detail-klaim","method":"GET","path":"/rest/products/{id}"}]'::jsonb,
+             'none', true)
+     ON CONFLICT (code) DO NOTHING`,
+  );
+}
+
+async function seedDemoUsers(ds: DataSource): Promise<number> {
+  if (process.env.NODE_ENV === 'production') {
+    console.log('  Akun demo: dilewati (NODE_ENV=production)');
+    return 0;
+  }
+
+  let created = 0;
+  for (const demo of DEMO_USERS) {
+    const roleRows = (await ds.query(`SELECT id FROM roles WHERE code = $1`, [demo.role])) as {
+      id: string;
+    }[];
+    const roleId = roleRows[0]?.id;
+    if (!roleId)
+      throw new Error(
+        `Peran demo tidak ditemukan: ${demo.role} — jalankan seed RBAC terlebih dahulu`,
+      );
+
+    const departmentId = demo.departmentCode
+      ? ((
+          (await ds.query(`SELECT id FROM departments WHERE code = $1`, [demo.departmentCode])) as {
+            id: string;
+          }[]
+        )[0]?.id ?? null)
+      : null;
+
+    const existing = (await ds.query(`SELECT id FROM users WHERE lower(email) = lower($1)`, [
+      demo.email,
+    ])) as { id: string }[];
+    let userId = existing[0]?.id;
+    if (!userId) {
+      const passwordHash = await hash(demo.password, BCRYPT_ROUNDS);
+      const inserted = (await ds.query(
+        `INSERT INTO users (email, password_hash, display_name, status, is_superadmin, department_id)
+         VALUES ($1, $2, $3, 'active', $4, $5)
+         ON CONFLICT (email) DO NOTHING
+         RETURNING id`,
+        [demo.email, passwordHash, demo.displayName, demo.isSuperadmin, departmentId],
+      )) as { id: string }[];
+      userId = inserted[0]?.id;
+      if (userId) created += 1;
+    }
+    if (!userId) {
+      const again = (await ds.query(`SELECT id FROM users WHERE lower(email) = lower($1)`, [
+        demo.email,
+      ])) as { id: string }[];
+      userId = again[0]?.id;
+    }
+    if (!userId) throw new Error(`Gagal membuat/memperoleh pengguna demo: ${demo.email}`);
+
+    await ds.query(
+      `INSERT INTO user_roles (user_id, role_id, data_scope, department_id)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT ON CONSTRAINT uq_user_roles DO NOTHING`,
+      [userId, roleId, demo.dataScope, demo.dataScope === 'department' ? departmentId : null],
+    );
+  }
+
+  console.log(
+    `  Akun demo: ${created} baru dibuat, ${DEMO_USERS.length} tersedia (kredensial lokal, jangan dipakai di produksi)`,
+  );
+  for (const demo of DEMO_USERS) {
+    console.log(`    ${demo.email} / ${demo.password} — ${demo.displayName}`);
+  }
+  return created;
+}
+
+async function seed(ds: DataSource): Promise<void> {
+  await ds.query(`INSERT INTO rbac_meta (id, version) VALUES (1, 1) ON CONFLICT (id) DO NOTHING`);
 
   for (const def of APP_CONFIG_DEFINITIONS) {
     await ds.query(
@@ -568,7 +848,7 @@ async function seed(ds: DataSource): Promise<void> {
 
   const departmentIds = new Map<string, string>();
   for (const dept of SEED_DEPARTMENTS) {
-    const parentId = dept.parent ? departmentIds.get(dept.parent) ?? null : null;
+    const parentId = dept.parent ? (departmentIds.get(dept.parent) ?? null) : null;
     const id = await insertOrSelect(
       ds,
       `INSERT INTO departments (code, name, parent_id)
@@ -580,6 +860,22 @@ async function seed(ds: DataSource): Promise<void> {
       [dept.code],
     );
     departmentIds.set(dept.code, id);
+  }
+
+  await seedDemoContent(ds);
+
+  const demoUsersCreated = await seedDemoUsers(ds);
+
+  if (demoUsersCreated > 0) {
+    await ds.query(
+      `INSERT INTO audit_events (severity, event_key, summary, actor_label, payload)
+       VALUES ('info', $1, $2, 'seed', $3::jsonb)`,
+      [
+        AUDIT_EVENTS.systemSeedExecuted,
+        `Akun demo dibuat: ${demoUsersCreated} pengguna`,
+        JSON.stringify({ created: demoUsersCreated, accounts: DEMO_USERS.map((d) => d.email) }),
+      ],
+    );
   }
 
   const versionRows = updatedRows<{ version: number }>(
@@ -613,8 +909,12 @@ async function seed(ds: DataSource): Promise<void> {
   const counts = countRows[0] ?? {};
 
   console.log('Seed selesai (idempoten, aman dijalankan berulang):');
-  console.log(`  Nav: ${counts.applications} aplikasi, ${counts.modules} modul, ${counts.menu_items} menu`);
-  console.log(`  RBAC: ${counts.permissions} permission, ${counts.roles} peran, ${counts.role_permissions} grant`);
+  console.log(
+    `  Nav: ${counts.applications} aplikasi, ${counts.modules} modul, ${counts.menu_items} menu`,
+  );
+  console.log(
+    `  RBAC: ${counts.permissions} permission, ${counts.roles} peran, ${counts.role_permissions} grant`,
+  );
   console.log(`  Organisasi: ${counts.departments} departemen, ${counts.app_config} konfigurasi`);
   console.log(`  Versi RBAC: ${version}`);
 }

@@ -59,6 +59,33 @@ export const AUDIT_EVENTS = {
   aiTaskFailed: 'ai.task.failed',
   aiTaskCancelled: 'ai.task.cancelled',
 
+  knowledgeSourceCreated: 'knowledge.source.created',
+  knowledgeSourceUpdated: 'knowledge.source.updated',
+  knowledgeSourceDeleted: 'knowledge.source.deleted',
+  knowledgeDocumentCreated: 'knowledge.document.created',
+  knowledgeDocumentUpdated: 'knowledge.document.updated',
+  knowledgeDocumentDeleted: 'knowledge.document.deleted',
+  knowledgeCollectionCreated: 'knowledge.collection.created',
+  knowledgeCollectionUpdated: 'knowledge.collection.updated',
+  knowledgeCollectionDeleted: 'knowledge.collection.deleted',
+  knowledgeSearchPerformed: 'knowledge.search.performed',
+
+  agentCreated: 'agent.created',
+  agentUpdated: 'agent.updated',
+  agentDeleted: 'agent.deleted',
+  agentTaskExecuted: 'agent.task.executed',
+  approvalRequested: 'agent.approval.requested',
+  approvalApproved: 'agent.approval.approved',
+  approvalRejected: 'agent.approval.rejected',
+
+  mcpServerCreated: 'integration.mcp_server.created',
+  mcpServerUpdated: 'integration.mcp_server.updated',
+  mcpServerDeleted: 'integration.mcp_server.deleted',
+  restConnectorCreated: 'integration.rest_connector.created',
+  restConnectorUpdated: 'integration.rest_connector.updated',
+  restConnectorDeleted: 'integration.rest_connector.deleted',
+  integrationHealthChecked: 'integration.health.checked',
+
   configUpdated: 'config.updated',
 
   securityAuthorizationDenied: 'security.authorization.denied',

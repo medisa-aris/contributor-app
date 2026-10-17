@@ -111,11 +111,37 @@ export class TasksService {
    */
   async run(auth: AuthContext, taskId: string): Promise<TaskRow> {
     const task = await this.mustOwn(auth, taskId);
+    return this.claimAndExecute(auth, taskId, task);
+  }
+
+  /**
+   * Jalankan tugas tanpa pemeriksaan kepemilikan — dipakai alur persetujuan agen,
+   * di mana approver yang menjalankan berbeda dengan peminta. `fromStatuses`
+   * menentukan status sumber yang boleh diklaim (default: runnable biasa).
+   */
+  async runAs(
+    actor: AuthContext,
+    taskId: string,
+    fromStatuses: readonly AiTaskStatus[] = RUNNABLE_STATUSES,
+  ): Promise<TaskRow> {
+    const rows = (await this.dataSource.query(`SELECT * FROM ai_tasks WHERE id = $1`, [taskId])) as TaskRow[];
+    if (rows.length === 0) {
+      throw new AppError(ERROR_CODES.notFound, 'Tugas tidak ditemukan.', 404);
+    }
+    return this.claimAndExecute(actor, taskId, rows[0]!, fromStatuses);
+  }
+
+  private async claimAndExecute(
+    actor: AuthContext,
+    taskId: string,
+    task: TaskRow,
+    fromStatuses: readonly AiTaskStatus[] = RUNNABLE_STATUSES,
+  ): Promise<TaskRow> {
     const claimed = updatedRows<{ id: string }>(
       await this.dataSource.query(
         `UPDATE ai_tasks SET status = 'validating', updated_at = now()
           WHERE id = $1 AND status = ANY($2) RETURNING id`,
-        [taskId, RUNNABLE_STATUSES],
+        [taskId, fromStatuses],
       ),
     );
     if (claimed.length === 0) {
@@ -158,9 +184,9 @@ export class TasksService {
         eventKey: AUDIT_EVENTS.aiTaskCompleted,
         severity: 'info',
         summary: `Menyelesaikan tugas "${task.title}"`,
-        actorUserId: auth.user.id,
-        actorLabel: auth.user.email,
-        actorIp: auth.session.ip,
+        actorUserId: actor.user.id,
+        actorLabel: actor.user.email,
+        actorIp: actor.session.ip,
         entityType: 'ai_task',
         entityId: taskId,
         payload: { durationMs, tokensIn: result.tokensIn, tokensOut: result.tokensOut },
@@ -185,9 +211,9 @@ export class TasksService {
         eventKey: AUDIT_EVENTS.aiTaskFailed,
         severity: 'warn',
         summary: `Tugas "${task.title}" gagal: ${message.slice(0, 120)}`,
-        actorUserId: auth.user.id,
-        actorLabel: auth.user.email,
-        actorIp: auth.session.ip,
+        actorUserId: actor.user.id,
+        actorLabel: actor.user.email,
+        actorIp: actor.session.ip,
         entityType: 'ai_task',
         entityId: taskId,
         payload: { durationMs },
