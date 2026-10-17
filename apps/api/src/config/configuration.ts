@@ -1,3 +1,5 @@
+import { resolve } from 'node:path';
+
 export interface AppConfig {
   nodeEnv: string;
   port: number;
@@ -8,6 +10,7 @@ export interface AppConfig {
   cookieSecure: boolean;
   sessionCookieName: string;
   logLevel: string;
+  aiUploadDir: string;
   aiProvider: string;
   aiModel: string;
   aiBaseUrl: string;
@@ -37,6 +40,7 @@ export default (): { app: AppConfig } => ({
     cookieSecure: parseBoolean(process.env.SESSION_COOKIE_SECURE, false),
     sessionCookieName: process.env.SESSION_COOKIE_NAME ?? 'ca_session',
     logLevel: process.env.LOG_LEVEL ?? 'info',
+    aiUploadDir: resolve(process.env.AI_UPLOAD_DIR ?? resolve(process.cwd(), 'var', 'ai-uploads')),
     aiProvider: process.env.AI_PROVIDER ?? 'openrouter',
     aiModel: process.env.AI_MODEL ?? 'google/gemini-3.1-flash-lite',
     aiBaseUrl: process.env.AI_BASE_URL ?? 'https://openrouter.ai/api/v1',

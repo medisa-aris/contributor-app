@@ -37,6 +37,7 @@ export class ConfigController {
       defaultLocale: String(map.get('app.default_locale') ?? 'id'),
       defaultTheme: (map.get('app.default_theme') ?? 'system') as PublicConfigDto['defaultTheme'],
       timezone: String(map.get('app.timezone') ?? 'Asia/Jakarta'),
+      showTokenUsage: map.get('ai.show_token_usage') !== false,
     };
   }
 

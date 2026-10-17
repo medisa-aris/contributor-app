@@ -131,6 +131,25 @@ describe('Admin users (e2e)', () => {
     expect(res.body.error.code).toBe(ERROR_CODES.escalationBlocked);
   });
 
+  it('admin non-superadmin tidak dapat memberi status superadmin (403)', async () => {
+    const res = await asClient(app, admin)
+      .patch(`/api/admin/users/${fixtures.users.staf}`, { isSuperadmin: true })
+      .expect(403);
+    expect(res.body.error.code).toBe(ERROR_CODES.escalationBlocked);
+  });
+
+  it('superadmin dapat mengaktifkan dan menonaktifkan status superadmin pengguna lain', async () => {
+    const granted = await asClient(app, superadmin)
+      .patch(`/api/admin/users/${fixtures.users.admin}`, { isSuperadmin: true })
+      .expect(200);
+    expect(granted.body.data.is_superadmin).toBe(true);
+
+    const revoked = await asClient(app, superadmin)
+      .patch(`/api/admin/users/${fixtures.users.admin}`, { isSuperadmin: false })
+      .expect(200);
+    expect(revoked.body.data.is_superadmin).toBe(false);
+  });
+
   it('menonaktifkan pengguna langsung mencabut sesi aktifnya', async () => {
     const baru = await loginAs(app, 'baru@test.local', 'BaruPass12345!');
     await asClient(app, baru).get('/api/auth/me').expect(200);

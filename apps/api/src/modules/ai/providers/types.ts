@@ -5,6 +5,12 @@ export interface ChatMessage {
   content: string;
 }
 
+export interface ChatImageAttachment {
+  name: string;
+  mimeType: string;
+  dataBase64: string;
+}
+
 export interface ChatRequestOptions {
   model: string;
   systemPrompt: string;
@@ -12,6 +18,7 @@ export interface ChatRequestOptions {
   maxTokens: number;
   temperature?: number;
   signal?: AbortSignal;
+  images?: ChatImageAttachment[];
 }
 
 export interface ChatResult {

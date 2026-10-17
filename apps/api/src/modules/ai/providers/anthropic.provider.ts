@@ -52,13 +52,37 @@ export class AnthropicProvider implements AiProviderAdapter {
   }
 
   private body(options: ChatRequestOptions, stream: boolean): Record<string, unknown> {
+    const messages: Array<{ role: string; content: unknown }> = options.messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+    if (options.images && options.images.length > 0) {
+      for (let index = messages.length - 1; index >= 0; index -= 1) {
+        if (messages[index]!.role !== 'user') continue;
+        messages[index] = {
+          role: 'user',
+          content: [
+            ...options.images.map((image) => ({
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: image.mimeType,
+                data: image.dataBase64,
+              },
+            })),
+            { type: 'text', text: messages[index]!.content },
+          ],
+        };
+        break;
+      }
+    }
     return {
       model: options.model,
       stream,
       max_tokens: options.maxTokens,
       ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
       system: options.systemPrompt,
-      messages: options.messages.map((m) => ({ role: m.role, content: m.content })),
+      messages,
     };
   }
 
@@ -119,11 +143,17 @@ export class AnthropicProvider implements AiProviderAdapter {
     let tokensOut: number | null = null;
     for await (const raw of iterateSse(response)) {
       const event = raw as AnthropicStreamEvent;
-      if (event.type === 'content_block_delta' && event.delta?.type === 'text' && event.delta.text) {
+      if (
+        event.type === 'content_block_delta' &&
+        (event.delta?.type === 'text_delta' || event.delta?.type === 'text') &&
+        event.delta.text
+      ) {
         text += event.delta.text;
         yield event.delta.text;
       } else if (event.type === 'message_start' && event.message) {
         model = event.message.model ?? model;
+        tokensIn = event.message.usage?.input_tokens ?? tokensIn;
+        tokensOut = event.message.usage?.output_tokens ?? tokensOut;
       }
       const usage = event.usage;
       if (usage) {

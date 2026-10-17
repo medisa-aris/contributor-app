@@ -234,6 +234,12 @@ describe('OpenAiCompatibleProvider', () => {
       tokensIn: 7,
       tokensOut: 3,
     });
+
+    const request = fetchMock.mock.calls[0]![1] as { body: string };
+    expect(JSON.parse(request.body)).toMatchObject({
+      stream: true,
+      stream_options: { include_usage: true },
+    });
   });
 });
 
@@ -270,5 +276,50 @@ describe('AnthropicProvider', () => {
     };
     expect(request.headers['x-api-key']).toBe('kunci');
     expect(JSON.parse(request.body)).toMatchObject({ system: 'Kamu pembantu.' });
+  });
+
+  it('stream() membaca usage dari message_start dan message_delta', async () => {
+    const sseBody = [
+      'event: message_start\n',
+      'data: {"type":"message_start","message":{"model":"claude-sonnet","usage":{"input_tokens":9,"output_tokens":1}}}\n\n',
+      'event: content_block_delta\n',
+      'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Halo"}}\n\n',
+      'event: message_delta\n',
+      'data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":4}}\n\n',
+      'event: message_stop\n',
+      'data: {"type":"message_stop"}\n\n',
+    ].join('');
+    const fetchMock = jest.fn().mockResolvedValue(new Response(sseBody, { status: 200 }));
+    const provider = new AnthropicProvider({
+      baseUrl: 'https://api.anthropic.com',
+      apiKey: 'kunci',
+      fetchImpl: fetchMock,
+    });
+
+    let text = '';
+    const result = await (async () => {
+      const generator = provider.stream({
+        model: 'claude-sonnet',
+        systemPrompt: 'Kamu pembantu.',
+        messages: [{ role: 'user', content: 'Kerjakan' }],
+        maxTokens: 100,
+      });
+      for (;;) {
+        const next = await generator.next();
+        if (next.done) return next.value;
+        text += next.value;
+      }
+    })();
+
+    expect(text).toBe('Halo');
+    expect(result).toMatchObject({
+      content: 'Halo',
+      model: 'claude-sonnet',
+      tokensIn: 9,
+      tokensOut: 4,
+    });
+
+    const request = fetchMock.mock.calls[0]![1] as { body: string };
+    expect(JSON.parse(request.body)).toMatchObject({ stream: true });
   });
 });

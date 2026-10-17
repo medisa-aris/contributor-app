@@ -18,6 +18,7 @@ const TRUNCATE_TABLES = [
   'conversation_messages',
   'conversations',
   'audit_events',
+  'app_config',
   'login_attempts',
   'sessions',
   'user_groups',
@@ -262,6 +263,22 @@ export async function seedTestFixtures(dataSource: DataSource): Promise<TestFixt
     `INSERT INTO user_roles (user_id, role_id, data_scope) VALUES ($1, $2, 'own')`,
     [staf, stafRoleId],
   );
+
+  // app_config ikut di-truncate, jadi baris bawaan migrasi di-seed ulang agar
+  // pengujian konfigurasi publik dan admin selalu berangkat dari keadaan sama.
+  await dataSource.query(`
+INSERT INTO app_config (key, value, description, is_public) VALUES
+  ('app.name', '"Contributor AI"', 'Nama aplikasi yang tampil di antarmuka', true),
+  ('app.default_locale', '"id"', 'Bahasa antarmuka bawaan', true),
+  ('app.default_theme', '"system"', 'Tema bawaan', true),
+  ('app.timezone', '"Asia/Jakarta"', 'Zona waktu tampilan', true),
+  ('ai.show_token_usage', 'true', 'Tampilkan total token konteks dan output pada antarmuka chat (Ya/Tidak)', true),
+  ('security.lockout_threshold', '5', 'Jumlah kegagalan login sebelum akun terkunci', false),
+  ('security.lockout_minutes', '15', 'Durasi kunci akun dalam menit', false),
+  ('security.session_idle_minutes', '480', 'Batas idle sesi dalam menit', false),
+  ('security.session_absolute_hours', '168', 'Batas absolut umur sesi dalam jam', false)
+ON CONFLICT (key) DO NOTHING;
+`);
 
   return {
     users: { superadmin, admin, manager, managerHr, hrAdmin, staf, disabled },

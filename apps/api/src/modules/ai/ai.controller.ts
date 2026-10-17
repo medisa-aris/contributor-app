@@ -10,10 +10,14 @@ import {
   Post,
   Query,
   Res,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags } from '@nestjs/swagger';
 import { PERMISSIONS, type AiTaskStatus, type ConversationMode } from '@contributor/shared';
 import type { Response } from 'express';
+import { ATTACHMENT_LIMITS, AttachmentsService } from './attachments.service';
 import { CurrentAuth } from '../../common/decorators/current-auth.decorator';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { paginated } from '../admin/common/pagination';
@@ -21,10 +25,13 @@ import type { AuthContext } from '../../common/types/auth-context';
 import { AppError, ERROR_CODES } from '../../common/errors/app-error';
 import { ConversationsService } from './conversations.service';
 import {
+  AddUrlAttachmentDto,
   ChatRequestDto,
   ConversationListQueryDto,
+  CreateConversationDto,
   CreateTaskDto,
   TaskListQueryDto,
+  UpdateAttachmentDto,
   UpdateConversationDto,
 } from './dto/ai.dto';
 import { AiGatewayService } from './gateway.service';
@@ -41,6 +48,7 @@ export class AiController {
   constructor(
     private readonly gateway: AiGatewayService,
     private readonly conversations: ConversationsService,
+    private readonly attachments: AttachmentsService,
     private readonly tasks: TasksService,
   ) {}
 
@@ -50,10 +58,13 @@ export class AiController {
   async chat(@CurrentAuth() auth: AuthContext, @Body() dto: ChatRequestDto) {
     this.assertModePermission(auth, dto.mode);
     const prepared = await this.conversations.prepareTurn(auth, dto);
+    const context = await this.attachments.chatContext(prepared.id);
     const result = await this.gateway.chat({
       mode: dto.mode,
       counterpartStyle: dto.counterpartStyle,
       messages: this.conversations.toChatMessages(prepared.history),
+      extraContext: context.text ?? undefined,
+      images: context.images.length > 0 ? context.images : undefined,
     });
     const assistant = await this.conversations.completeTurn(prepared.id, {
       content: result.content,
@@ -89,12 +100,15 @@ export class AiController {
 
     try {
       const prepared = await this.conversations.prepareTurn(auth, dto);
+      const context = await this.attachments.chatContext(prepared.id);
       sseWrite(res, 'ready', { conversationId: prepared.id });
       const stream = this.gateway.stream({
         mode: dto.mode,
         counterpartStyle: dto.counterpartStyle,
         messages: this.conversations.toChatMessages(prepared.history),
         signal: abort.signal,
+        extraContext: context.text ?? undefined,
+        images: context.images.length > 0 ? context.images : undefined,
       });
       let final: ChatResult | null = null;
       for (;;) {
@@ -148,6 +162,72 @@ export class AiController {
     return paginated(items, { page: query.page, limit: query.pageSize, offset: query.skip }, total);
   }
 
+  /** Draf percakapan agar lampiran bisa diunggah sebelum pesan pertama. */
+  @RequirePermission(PERMISSIONS.secondBrainQuery)
+  @Post('conversations')
+  createConversation(@CurrentAuth() auth: AuthContext, @Body() dto: CreateConversationDto) {
+    return this.conversations.createDraft(auth, dto.mode);
+  }
+
+  @RequirePermission(PERMISSIONS.secondBrainQuery)
+  @Get('conversations/:id/attachments')
+  listAttachments(
+    @CurrentAuth() auth: AuthContext,
+    @Param('id', new ParseUUIDPipe({ errorHttpStatusCode: 404 })) id: string,
+  ) {
+    return this.attachments.list(auth, id);
+  }
+
+  @RequirePermission(PERMISSIONS.secondBrainQuery)
+  @Post('conversations/:id/attachments')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: ATTACHMENT_LIMITS.maxFileBytes, files: 1 },
+    }),
+  )
+  uploadAttachment(
+    @CurrentAuth() auth: AuthContext,
+    @Param('id', new ParseUUIDPipe({ errorHttpStatusCode: 404 })) id: string,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new AppError(ERROR_CODES.validation, 'Pilih berkas yang akan diunggah.', 400);
+    }
+    return this.attachments.upload(auth, id, file);
+  }
+
+  @RequirePermission(PERMISSIONS.secondBrainQuery)
+  @Post('conversations/:id/attachments/url')
+  addUrlAttachment(
+    @CurrentAuth() auth: AuthContext,
+    @Param('id', new ParseUUIDPipe({ errorHttpStatusCode: 404 })) id: string,
+    @Body() dto: AddUrlAttachmentDto,
+  ) {
+    return this.attachments.addUrl(auth, id, dto.url);
+  }
+
+  @RequirePermission(PERMISSIONS.secondBrainQuery)
+  @Patch('conversations/:id/attachments/:attachmentId')
+  updateAttachment(
+    @CurrentAuth() auth: AuthContext,
+    @Param('id', new ParseUUIDPipe({ errorHttpStatusCode: 404 })) id: string,
+    @Param('attachmentId', new ParseUUIDPipe({ errorHttpStatusCode: 404 })) attachmentId: string,
+    @Body() dto: UpdateAttachmentDto,
+  ) {
+    return this.attachments.updateEnabled(auth, id, attachmentId, dto.enabled);
+  }
+
+  @RequirePermission(PERMISSIONS.secondBrainQuery)
+  @Delete('conversations/:id/attachments/:attachmentId')
+  async removeAttachment(
+    @CurrentAuth() auth: AuthContext,
+    @Param('id', new ParseUUIDPipe({ errorHttpStatusCode: 404 })) id: string,
+    @Param('attachmentId', new ParseUUIDPipe({ errorHttpStatusCode: 404 })) attachmentId: string,
+  ) {
+    await this.attachments.remove(auth, id, attachmentId);
+    return { deleted: true };
+  }
+
   @RequirePermission(PERMISSIONS.workspaceHistoryRead)
   @Get('conversations/:id')
   conversationDetail(
@@ -185,10 +265,13 @@ export class AiController {
   ) {
     const prepared = await this.conversations.prepareRegenerate(auth, id);
     this.assertModePermission(auth, prepared.mode);
+    const context = await this.attachments.chatContext(prepared.id);
     const result = await this.gateway.chat({
       mode: prepared.mode,
       counterpartStyle: prepared.counterpartStyle ?? undefined,
       messages: this.conversations.toChatMessages(prepared.history),
+      extraContext: context.text ?? undefined,
+      images: context.images.length > 0 ? context.images : undefined,
     });
     const assistant = await this.conversations.replaceAssistant(
       prepared.id,

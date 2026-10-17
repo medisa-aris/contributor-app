@@ -83,6 +83,7 @@ describe('Admin platform (e2e)', () => {
     expect(res.body.data.defaultLocale).toBe('id');
     expect(res.body.data.defaultTheme).toBe('system');
     expect(res.body.data.timezone).toBe('Asia/Jakarta');
+    expect(res.body.data.showTokenUsage).toBe(true);
   });
 
   it('konfigurasi privat diubah dan tercatat; kunci tidak dikenal 404', async () => {
@@ -110,6 +111,24 @@ describe('Admin platform (e2e)', () => {
     await asClient(app, admin)
       .put('/api/admin/config/tidak.ada', { value: 1 })
       .expect(404);
+  });
+
+  it('toggle tampilkan token diatur admin dan tercermin pada konfigurasi publik', async () => {
+    const off = await asClient(app, admin)
+      .put('/api/admin/config/ai.show_token_usage', { value: false })
+      .expect(200);
+    expect(off.body.data.value).toBe(false);
+
+    const publicOff = await request(app.getHttpServer()).get('/api/config/public').expect(200);
+    expect(publicOff.body.data.showTokenUsage).toBe(false);
+
+    const on = await asClient(app, admin)
+      .put('/api/admin/config/ai.show_token_usage', { value: true })
+      .expect(200);
+    expect(on.body.data.value).toBe(true);
+
+    const publicOn = await request(app.getHttpServer()).get('/api/config/public').expect(200);
+    expect(publicOn.body.data.showTokenUsage).toBe(true);
   });
 
   it('staf tidak dapat melihat maupun mengubah konfigurasi (403)', async () => {

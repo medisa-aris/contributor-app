@@ -42,7 +42,11 @@ const SUBORDINATE_PROMPT = [
 
 export type PromptMode = ConversationMode | 'subordinate';
 
-export function buildSystemPrompt(mode: PromptMode, counterpartStyle?: string): string {
+export function buildSystemPrompt(
+  mode: PromptMode,
+  counterpartStyle?: string,
+  extraContext?: string,
+): string {
   const lines: string[] = [];
   if (mode === 'subordinate') {
     lines.push(...SUBORDINATE_PROMPT);
@@ -54,5 +58,8 @@ export function buildSystemPrompt(mode: PromptMode, counterpartStyle?: string): 
     }
   }
   lines.push(...COMMON_RULES);
+  if (extraContext?.trim()) {
+    lines.push('', extraContext.trim());
+  }
   return lines.join('\n');
 }

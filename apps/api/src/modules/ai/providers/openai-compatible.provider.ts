@@ -56,15 +56,34 @@ export class OpenAiCompatibleProvider implements AiProviderAdapter {
   }
 
   private body(options: ChatRequestOptions, stream: boolean): Record<string, unknown> {
+    const messages: Array<{ role: string; content: unknown }> = options.messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+    if (options.images && options.images.length > 0) {
+      for (let index = messages.length - 1; index >= 0; index -= 1) {
+        if (messages[index]!.role !== 'user') continue;
+        messages[index] = {
+          role: 'user',
+          content: [
+            { type: 'text', text: messages[index]!.content },
+            ...options.images.map((image) => ({
+              type: 'image_url',
+              image_url: { url: `data:${image.mimeType};base64,${image.dataBase64}` },
+            })),
+          ],
+        };
+        break;
+      }
+    }
     return {
       model: options.model,
       stream,
+      // OpenRouter/OpenAI hanya mengirim usage pada stream bila diminta eksplisit.
+      ...(stream ? { stream_options: { include_usage: true } } : {}),
       max_tokens: options.maxTokens,
       ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
-      messages: [
-        { role: 'system', content: options.systemPrompt },
-        ...options.messages.map((m) => ({ role: m.role, content: m.content })),
-      ],
+      messages: [{ role: 'system', content: options.systemPrompt }, ...messages],
     };
   }
 

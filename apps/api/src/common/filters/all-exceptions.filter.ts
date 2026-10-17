@@ -62,6 +62,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
           message = typed.message;
         }
       }
+    } else if (exception instanceof Error && exception.name === 'MulterError') {
+      status = HttpStatus.BAD_REQUEST;
+      code = ERROR_CODES.validation;
+      message = 'Berkas tidak dapat diproses. Pastikan ukuran tidak melebihi 20 MB dan hanya satu berkas.';
     } else if (exception instanceof Error) {
       this.logger.error(`Unhandled error: ${exception.message}`, exception.stack);
     }

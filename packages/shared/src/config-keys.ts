@@ -11,6 +11,7 @@ export const APP_CONFIG_KEYS = {
   defaultLocale: 'app.default_locale',
   defaultTheme: 'app.default_theme',
   timezone: 'app.timezone',
+  showTokenUsage: 'ai.show_token_usage',
   lockoutThreshold: 'security.lockout_threshold',
   lockoutMinutes: 'security.lockout_minutes',
   sessionIdleMinutes: 'security.session_idle_minutes',
@@ -43,6 +44,12 @@ export const APP_CONFIG_DEFINITIONS: readonly AppConfigDefinition[] = [
     description: 'Zona waktu tampilan',
     isPublic: true,
     defaultValue: 'Asia/Jakarta',
+  },
+  {
+    key: APP_CONFIG_KEYS.showTokenUsage,
+    description: 'Tampilkan total token konteks dan output pada antarmuka chat (Ya/Tidak)',
+    isPublic: true,
+    defaultValue: true,
   },
   {
     key: APP_CONFIG_KEYS.lockoutThreshold,

@@ -6,6 +6,7 @@ import { AppError, ERROR_CODES } from '../../common/errors/app-error';
 import { DATA_SOURCE } from '../../database/database.module';
 import { updatedRows } from '../../database/query-result';
 import { AuditService } from '../audit/audit.service';
+import { AttachmentsService } from './attachments.service';
 import type { ChatMessage } from './providers/types';
 
 export interface ConversationSummary {
@@ -23,6 +24,8 @@ export interface ConversationMessageRow {
   role: 'system' | 'user' | 'assistant';
   content: string;
   model: string | null;
+  tokens_in: number | null;
+  tokens_out: number | null;
   created_at: string;
 }
 
@@ -40,7 +43,31 @@ export class ConversationsService {
   constructor(
     @Inject(DATA_SOURCE) private readonly dataSource: DataSource,
     private readonly audit: AuditService,
+    private readonly attachments: AttachmentsService,
   ) {}
+
+  /** Buat percakapan kosong agar lampiran dapat diunggah sebelum pesan pertama. */
+  async createDraft(auth: AuthContext, mode: ConversationMode): Promise<ConversationSummary> {
+    const created = (await this.dataSource.query(
+      `INSERT INTO conversations (user_id, mode, title)
+       VALUES ($1, $2, 'Percakapan baru')
+       RETURNING id, mode, title, counterpart_style, starred_at, updated_at, created_at`,
+      [auth.user.id, mode],
+    )) as ConversationSummary[];
+    const conversation = created[0]!;
+    await this.audit.record({
+      eventKey: AUDIT_EVENTS.aiConversationCreated,
+      severity: 'info',
+      summary: `Membuka percakapan ${mode} baru`,
+      actorUserId: auth.user.id,
+      actorLabel: auth.user.email,
+      actorIp: auth.session.ip,
+      entityType: 'conversation',
+      entityId: conversation.id,
+      payload: { mode },
+    });
+    return conversation;
+  }
 
   async list(
     auth: AuthContext,
@@ -57,8 +84,17 @@ export class ConversationsService {
       where += ` AND (title ILIKE $${params.length} OR EXISTS (
         SELECT 1 FROM conversation_messages m
          WHERE m.conversation_id = conversations.id AND m.content ILIKE $${params.length}
+      ) OR EXISTS (
+        SELECT 1 FROM conversation_attachments a
+         WHERE a.conversation_id = conversations.id AND a.file_name ILIKE $${params.length}
       ))`;
     }
+    // Draf kosong (belum punya pesan maupun lampiran) tidak ditampilkan di riwayat.
+    where += ` AND (EXISTS (
+      SELECT 1 FROM conversation_messages m WHERE m.conversation_id = conversations.id
+    ) OR EXISTS (
+      SELECT 1 FROM conversation_attachments a WHERE a.conversation_id = conversations.id
+    ))`;
     const totalRows = (await this.dataSource.query(
       `SELECT count(*)::int AS total FROM conversations WHERE ${where}`,
       params,
@@ -84,7 +120,7 @@ export class ConversationsService {
       throw new AppError(ERROR_CODES.notFound, 'Percakapan tidak ditemukan.', 404);
     }
     const messages = (await this.dataSource.query(
-      `SELECT id, role, content, model, created_at
+      `SELECT id, role, content, model, tokens_in, tokens_out, created_at
          FROM conversation_messages WHERE conversation_id = $1
         ORDER BY id`,
       [conversationId],
@@ -120,6 +156,13 @@ export class ConversationsService {
           400,
         );
       }
+      // Draf yang dibuat untuk lampiran masih berjudul bawaan; beri judul dari pesan pertama.
+      await this.dataSource.query(
+        `UPDATE conversations SET title = $3
+          WHERE id = $1 AND user_id = $2 AND title = 'Percakapan baru'
+            AND NOT EXISTS (SELECT 1 FROM conversation_messages WHERE conversation_id = $1)`,
+        [conversationId, auth.user.id, makeTitle(input.prompt)],
+      );
     } else {
       const created = (await this.dataSource.query(
         `INSERT INTO conversations (user_id, mode, title, counterpart_style)
@@ -150,7 +193,7 @@ export class ConversationsService {
     ]);
 
     const history = (await this.dataSource.query(
-      `SELECT id, role, content, model, created_at
+      `SELECT id, role, content, model, tokens_in, tokens_out, created_at
          FROM conversation_messages WHERE conversation_id = $1
         ORDER BY id`,
       [conversationId],
@@ -165,7 +208,8 @@ export class ConversationsService {
   ): Promise<ConversationMessageRow> {
     const inserted = (await this.dataSource.query(
       `INSERT INTO conversation_messages (conversation_id, role, content, model, tokens_in, tokens_out)
-       VALUES ($1, 'assistant', $2, $3, $4, $5) RETURNING id, role, content, model, created_at`,
+       VALUES ($1, 'assistant', $2, $3, $4, $5)
+       RETURNING id, role, content, model, tokens_in, tokens_out, created_at`,
       [conversationId, reply.content, reply.model, reply.tokensIn, reply.tokensOut],
     )) as ConversationMessageRow[];
     await this.dataSource.query(`UPDATE conversations SET updated_at = now() WHERE id = $1`, [
@@ -191,6 +235,7 @@ export class ConversationsService {
     if (deleted.length === 0) {
       throw new AppError(ERROR_CODES.notFound, 'Percakapan tidak ditemukan.', 404);
     }
+    await this.attachments.purgeConversationFiles(conversationId);
   }
 
   async update(
@@ -245,7 +290,7 @@ export class ConversationsService {
     }
 
     const messages = (await this.dataSource.query(
-      `SELECT id, role, content, model, created_at
+      `SELECT id, role, content, model, tokens_in, tokens_out, created_at
          FROM conversation_messages WHERE conversation_id = $1
         ORDER BY id`,
       [conversationId],
@@ -282,7 +327,8 @@ export class ConversationsService {
       const inserted = updatedRows<ConversationMessageRow>(
         await manager.query(
           `INSERT INTO conversation_messages (conversation_id, role, content, model, tokens_in, tokens_out)
-           VALUES ($1, 'assistant', $2, $3, $4, $5) RETURNING id, role, content, model, created_at`,
+           VALUES ($1, 'assistant', $2, $3, $4, $5)
+           RETURNING id, role, content, model, tokens_in, tokens_out, created_at`,
           [conversationId, reply.content, reply.model, reply.tokensIn, reply.tokensOut],
         ),
       );

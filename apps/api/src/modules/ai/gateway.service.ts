@@ -5,7 +5,12 @@ import { buildSystemPrompt, type PromptMode } from './prompts';
 import { resolveProviderConfig, type AiProviderSettings } from './provider-resolver';
 import { AnthropicProvider } from './providers/anthropic.provider';
 import { OpenAiCompatibleProvider } from './providers/openai-compatible.provider';
-import type { AiProviderAdapter, ChatMessage, ChatResult } from './providers/types';
+import type {
+  AiProviderAdapter,
+  ChatImageAttachment,
+  ChatMessage,
+  ChatResult,
+} from './providers/types';
 
 const MODE_TEMPERATURE: Record<PromptMode, number> = {
   second_brain: 0.3,
@@ -18,6 +23,8 @@ export interface GatewayChatOptions {
   counterpartStyle?: string;
   messages: ChatMessage[];
   signal?: AbortSignal;
+  extraContext?: string;
+  images?: ChatImageAttachment[];
 }
 
 @Injectable()
@@ -67,11 +74,12 @@ export class AiGatewayService {
     const signal = options.signal ? AbortSignal.any([timeout, options.signal]) : timeout;
     return {
       model: this.settings().aiModel,
-      systemPrompt: buildSystemPrompt(options.mode, options.counterpartStyle),
+      systemPrompt: buildSystemPrompt(options.mode, options.counterpartStyle, options.extraContext),
       messages: options.messages,
       maxTokens: AI_LIMITS.maxOutputTokens,
       temperature: MODE_TEMPERATURE[options.mode],
       signal,
+      ...(options.images && options.images.length > 0 ? { images: options.images } : {}),
     };
   }
 

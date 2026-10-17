@@ -40,6 +40,23 @@ export class ChatRequestDto {
   counterpartStyle?: string;
 }
 
+export class CreateConversationDto {
+  @IsIn(CONVERSATION_MODES)
+  mode: ConversationMode;
+}
+
+export class UpdateAttachmentDto {
+  @IsBoolean()
+  enabled: boolean;
+}
+
+export class AddUrlAttachmentDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(2048)
+  url: string;
+}
+
 export class ConversationListQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsIn(CONVERSATION_MODES)

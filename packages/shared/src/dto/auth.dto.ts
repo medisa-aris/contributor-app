@@ -48,4 +48,5 @@ export interface PublicConfigDto {
   defaultLocale: string;
   defaultTheme: ThemePreference;
   timezone: string;
+  showTokenUsage: boolean;
 }

@@ -102,11 +102,15 @@ describe('AI Workspace (e2e)', () => {
       role: 'assistant',
       content: 'Jawaban uji dari penyedia AI.',
       model: 'model-uji',
+      tokens_in: 11,
+      tokens_out: 7,
     });
     expect(assistant).toMatchObject({
       role: 'assistant',
       content: 'Jawaban uji dari penyedia AI.',
       model: 'model-uji',
+      tokens_in: 11,
+      tokens_out: 7,
     });
 
     const audits = (await dataSource.query(
@@ -288,8 +292,11 @@ describe('AI Workspace (e2e)', () => {
       role: 'assistant',
       content: 'Jawaban versi kedua.',
       model: 'model-uji-2',
+      tokens_in: 3,
+      tokens_out: 4,
     });
     expect(assistant.content).toBe('Jawaban versi kedua.');
+    expect(assistant).toMatchObject({ tokens_in: 3, tokens_out: 4 });
 
     const foreign = await asClient(app, admin).post(`/api/ai/conversations/${id}/regenerate`);
     expect(foreign.status).toBe(404);
@@ -316,11 +323,17 @@ describe('AI Workspace (e2e)', () => {
     expect(body).toContain('event: delta');
     expect(body).toContain('Potongan satu. ');
     expect(body).toContain('event: done');
+    expect(body).toContain('"tokens_in":5');
+    expect(body).toContain('"tokens_out":6');
 
     const tersimpan = (await dataSource.query(
-      `SELECT content FROM conversation_messages WHERE role = 'assistant' ORDER BY id DESC LIMIT 1`,
-    )) as { content: string }[];
-    expect(tersimpan[0]!.content).toBe('Potongan satu. Potongan dua.');
+      `SELECT content, tokens_in, tokens_out FROM conversation_messages WHERE role = 'assistant' ORDER BY id DESC LIMIT 1`,
+    )) as { content: string; tokens_in: number; tokens_out: number }[];
+    expect(tersimpan[0]).toMatchObject({
+      content: 'Potongan satu. Potongan dua.',
+      tokens_in: 5,
+      tokens_out: 6,
+    });
   });
 
   it('staf tanpa izin subordinate.execute ditolak membuat tugas', async () => {

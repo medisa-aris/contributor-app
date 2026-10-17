@@ -8,6 +8,9 @@ coverage/
 .env.*
 !.env.example
 
+# Lampiran chat tersimpan di disk lokal (jangan pernah masuk repo)
+apps/api/var/
+
 # Logs / OS noise
 *.log
 npm-debug.log*
