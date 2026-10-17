@@ -6,7 +6,7 @@ import { ApiError } from '@/api/http';
 import { useAuthStore } from '@/stores/auth.store';
 import { useConfigStore } from '@/stores/config.store';
 import { useNavigationStore } from '@/stores/navigation.store';
-import { CaButton, CaField, CaInput } from '@/components/ui';
+import { CaButton, CaField, CaIcon, CaIconButton, CaInput } from '@/components/ui';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -17,6 +17,7 @@ const navigation = useNavigationStore();
 
 const email = ref('');
 const password = ref('');
+const showPassword = ref(false);
 const submitting = ref(false);
 const errorMessage = ref('');
 
@@ -75,15 +76,26 @@ async function submit(): Promise<void> {
         </CaField>
         <CaField :label="t('login.password')" required>
           <template #default="{ id, describedBy }">
-            <CaInput
-              :id="id"
-              v-model="password"
-              :aria-describedby="describedBy"
-              type="password"
-              size="large"
-              autocomplete="current-password"
-              :placeholder="t('login.passwordPlaceholder')"
-            />
+            <div class="login__password">
+              <CaInput
+                :id="id"
+                v-model="password"
+                :aria-describedby="describedBy"
+                :type="showPassword ? 'text' : 'password'"
+                size="large"
+                autocomplete="current-password"
+                :placeholder="t('login.passwordPlaceholder')"
+              />
+              <CaIconButton
+                class="login__password-toggle"
+                :label="showPassword ? t('login.hidePassword') : t('login.showPassword')"
+                :aria-pressed="showPassword"
+                size="small"
+                @click="showPassword = !showPassword"
+              >
+                <CaIcon :name="showPassword ? 'eye-off' : 'eye'" :size="16" />
+              </CaIconButton>
+            </div>
           </template>
         </CaField>
         <CaButton
@@ -177,6 +189,20 @@ async function submit(): Promise<void> {
   display: flex;
   flex-direction: column;
   gap: var(--ca-space-8);
+}
+
+.login__password {
+  position: relative;
+}
+
+.login__password :deep(.ca-input) {
+  padding-right: 40px;
+}
+
+.login__password-toggle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
 }
 
 .login__footer {

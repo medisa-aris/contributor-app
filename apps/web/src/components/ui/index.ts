@@ -20,4 +20,5 @@ export { default as CaSpinner } from './CaSpinner.vue';
 export { default as CaSwitch } from './CaSwitch.vue';
 export { default as CaTable, type CaTableColumn } from './CaTable.vue';
 export { default as CaTabs } from './CaTabs.vue';
+export { default as CaTextarea } from './CaTextarea.vue';
 export { default as CaToastHost } from './CaToastHost.vue';
