@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsIn,
   IsInt,
   IsOptional,
@@ -11,6 +12,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { COUNTERPART_STYLES, type ConversationMode } from '@contributor/shared';
+import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { AI_LIMITS } from '../limits';
 
 export const COUNTERPART_STYLE_IDS = COUNTERPART_STYLES.map((style) => style.id) as [
@@ -18,8 +20,10 @@ export const COUNTERPART_STYLE_IDS = COUNTERPART_STYLES.map((style) => style.id)
   ...string[],
 ];
 
+export const CONVERSATION_MODES: readonly ConversationMode[] = ['second_brain', 'counterpart'];
+
 export class ChatRequestDto {
-  @IsIn(['second_brain', 'counterpart'])
+  @IsIn(CONVERSATION_MODES)
   mode: ConversationMode;
 
   @IsString()
@@ -34,6 +38,29 @@ export class ChatRequestDto {
   @IsOptional()
   @IsIn(COUNTERPART_STYLE_IDS)
   counterpartStyle?: string;
+}
+
+export class ConversationListQueryDto extends PaginationQueryDto {
+  @IsOptional()
+  @IsIn(CONVERSATION_MODES)
+  mode?: ConversationMode;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  search?: string;
+}
+
+export class UpdateConversationDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(120)
+  title?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  starred?: boolean;
 }
 
 export class CreateTaskDto {

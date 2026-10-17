@@ -6,6 +6,7 @@ import {
   HttpCode,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   Res,
@@ -15,12 +16,17 @@ import { PERMISSIONS, type AiTaskStatus, type ConversationMode } from '@contribu
 import type { Response } from 'express';
 import { CurrentAuth } from '../../common/decorators/current-auth.decorator';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import { paginated } from '../admin/common/pagination';
 import type { AuthContext } from '../../common/types/auth-context';
 import { AppError, ERROR_CODES } from '../../common/errors/app-error';
 import { ConversationsService } from './conversations.service';
-import { ChatRequestDto, CreateTaskDto, TaskListQueryDto } from './dto/ai.dto';
+import {
+  ChatRequestDto,
+  ConversationListQueryDto,
+  CreateTaskDto,
+  TaskListQueryDto,
+  UpdateConversationDto,
+} from './dto/ai.dto';
 import { AiGatewayService } from './gateway.service';
 import { TasksService } from './tasks.service';
 import type { ChatResult } from './providers/types';
@@ -74,6 +80,13 @@ export class AiController {
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders();
 
+    // Klien menekan Stop = koneksi ditutup. Batalkan juga permintaan ke provider
+    // agar jawaban tidak tersimpan setelah pengguna menghentikannya.
+    const abort = new AbortController();
+    res.on('close', () => {
+      if (!res.writableEnded) abort.abort();
+    });
+
     try {
       const prepared = await this.conversations.prepareTurn(auth, dto);
       sseWrite(res, 'ready', { conversationId: prepared.id });
@@ -81,6 +94,7 @@ export class AiController {
         mode: dto.mode,
         counterpartStyle: dto.counterpartStyle,
         messages: this.conversations.toChatMessages(prepared.history),
+        signal: abort.signal,
       });
       let final: ChatResult | null = null;
       for (;;) {
@@ -92,7 +106,11 @@ export class AiController {
         sseWrite(res, 'delta', { text: next.value });
       }
       if (!final) {
-        throw new AppError(ERROR_CODES.aiUpstreamError, 'Aliran jawaban terputus sebelum selesai.', 502);
+        throw new AppError(
+          ERROR_CODES.aiUpstreamError,
+          'Aliran jawaban terputus sebelum selesai.',
+          502,
+        );
       }
       const assistant = await this.conversations.completeTurn(prepared.id, {
         content: final.content,
@@ -103,7 +121,11 @@ export class AiController {
       sseWrite(res, 'done', { conversationId: prepared.id, message: assistant });
       res.end();
     } catch (error) {
-      const status = typeof (error as { status?: number }).status === 'number' ? (error as { status: number }).status : 500;
+      if (abort.signal.aborted) return;
+      const status =
+        typeof (error as { status?: number }).status === 'number'
+          ? (error as { status: number }).status
+          : 500;
       const code = (error as { code?: string }).code ?? 'INTERNAL_ERROR';
       const message = error instanceof Error ? error.message : 'Kesalahan tidak dikenal.';
       sseWrite(res, 'error', { status, code, message });
@@ -115,11 +137,11 @@ export class AiController {
   @Get('conversations')
   async listConversations(
     @CurrentAuth() auth: AuthContext,
-    @Query() query: PaginationQueryDto,
-    @Query('mode') mode?: ConversationMode,
+    @Query() query: ConversationListQueryDto,
   ) {
     const { items, total } = await this.conversations.list(auth, {
-      mode: mode === 'second_brain' || mode === 'counterpart' ? mode : undefined,
+      mode: query.mode,
+      search: query.search,
       skip: query.skip,
       take: query.pageSize,
     });
@@ -143,6 +165,43 @@ export class AiController {
   ) {
     await this.conversations.remove(auth, id);
     return { deleted: true };
+  }
+
+  @RequirePermission(PERMISSIONS.workspaceHistoryRead)
+  @Patch('conversations/:id')
+  updateConversation(
+    @CurrentAuth() auth: AuthContext,
+    @Param('id', new ParseUUIDPipe({ errorHttpStatusCode: 404 })) id: string,
+    @Body() dto: UpdateConversationDto,
+  ) {
+    return this.conversations.update(auth, id, dto);
+  }
+
+  @HttpCode(200)
+  @Post('conversations/:id/regenerate')
+  async regenerateConversation(
+    @CurrentAuth() auth: AuthContext,
+    @Param('id', new ParseUUIDPipe({ errorHttpStatusCode: 404 })) id: string,
+  ) {
+    const prepared = await this.conversations.prepareRegenerate(auth, id);
+    this.assertModePermission(auth, prepared.mode);
+    const result = await this.gateway.chat({
+      mode: prepared.mode,
+      counterpartStyle: prepared.counterpartStyle ?? undefined,
+      messages: this.conversations.toChatMessages(prepared.history),
+    });
+    const assistant = await this.conversations.replaceAssistant(
+      prepared.id,
+      prepared.previousAssistantId,
+      {
+        content: result.content,
+        model: result.model,
+        tokensIn: result.tokensIn,
+        tokensOut: result.tokensOut,
+      },
+    );
+    const conversation = await this.conversations.detail(auth, prepared.id);
+    return { conversation, assistant };
   }
 
   @RequirePermission(PERMISSIONS.subordinateExecute)

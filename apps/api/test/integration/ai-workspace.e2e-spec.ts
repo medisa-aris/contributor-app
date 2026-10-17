@@ -185,6 +185,116 @@ describe('AI Workspace (e2e)', () => {
     expect(resAdmin.body.data[0].title).toContain('Percakapan milik admin');
   });
 
+  it('daftar percakapan menerima filter mode persis seperti kiriman UI', async () => {
+    await asClient(app, admin).post('/api/ai/chat', {
+      mode: 'counterpart',
+      counterpartStyle: 'challenger',
+      prompt: 'Uji mitra berpikir admin',
+    });
+
+    // Query string ini yang dikirim ChatWorkspace saat memuat riwayat.
+    const otakKedua = await asClient(app, admin).get(
+      '/api/ai/conversations?mode=second_brain&page=1&pageSize=50',
+    );
+    expect(otakKedua.status).toBe(200);
+    expect(otakKedua.body.meta.total).toBe(1);
+    expect(otakKedua.body.data.map((row: { mode: string }) => row.mode)).toEqual(['second_brain']);
+
+    const mitra = await asClient(app, admin).get(
+      '/api/ai/conversations?mode=counterpart&page=1&pageSize=50',
+    );
+    expect(mitra.status).toBe(200);
+    expect(mitra.body.meta.total).toBe(1);
+    expect(mitra.body.data[0]).toMatchObject({
+      mode: 'counterpart',
+      counterpart_style: 'challenger',
+    });
+
+    const modeAsing = await asClient(app, admin).get('/api/ai/conversations?mode=third_brain');
+    expect(modeAsing.status).toBe(400);
+    expect(modeAsing.body.error.code).toBe(ERROR_CODES.validation);
+  });
+
+  it('pemilik dapat mengganti judul, membintangi, dan mencari percakapannya', async () => {
+    const created = await asClient(app, admin).post('/api/ai/chat', {
+      mode: 'second_brain',
+      prompt: 'Percakapan untuk dikelola',
+    });
+    const id = created.body.data.conversation.id as string;
+
+    const renamed = await asClient(app, admin)
+      .patch(`/api/ai/conversations/${id}`)
+      .send({ title: 'Judul Baru dari Pengguna' });
+    expect(renamed.status).toBe(200);
+    expect(renamed.body.data).toMatchObject({ id, title: 'Judul Baru dari Pengguna' });
+
+    const starred = await asClient(app, admin)
+      .patch(`/api/ai/conversations/${id}`)
+      .send({ starred: true });
+    expect(starred.status).toBe(200);
+    expect(starred.body.data.starred_at).not.toBeNull();
+
+    const byTitle = await asClient(app, admin).get(
+      '/api/ai/conversations?search=Judul%20Baru&page=1&pageSize=50',
+    );
+    expect(byTitle.status).toBe(200);
+    expect(byTitle.body.meta.total).toBe(1);
+    expect(byTitle.body.data[0].id).toBe(id);
+
+    const byContent = await asClient(app, admin).get(
+      '/api/ai/conversations?search=Percakapan%20untuk%20dikelola&page=1&pageSize=50',
+    );
+    expect(byContent.status).toBe(200);
+    expect(byContent.body.data.map((row: { id: string }) => row.id)).toContain(id);
+
+    const empty = await asClient(app, admin).get(
+      '/api/ai/conversations?search=tidak-ada-yang-cocok-xyz&page=1&pageSize=50',
+    );
+    expect(empty.status).toBe(200);
+    expect(empty.body.meta.total).toBe(0);
+
+    // Manajer tidak memegang ai.workspace.history.read, jadi ditolak guard sebelum scope dicek.
+    const foreign = await asClient(app, manager)
+      .patch(`/api/ai/conversations/${id}`)
+      .send({ title: 'Coba ubah milik orang' });
+    expect(foreign.status).toBe(403);
+
+    const missing = await asClient(app, admin)
+      .patch('/api/ai/conversations/00000000-0000-4000-8000-000000000000')
+      .send({ title: 'Tidak ada' });
+    expect(missing.status).toBe(404);
+  });
+
+  it('membuat ulang jawaban asisten terakhir menggantikan jawaban lama', async () => {
+    const created = await asClient(app, manager).post('/api/ai/chat', {
+      mode: 'second_brain',
+      prompt: 'Pertanyaan untuk regenerate',
+    });
+    const id = created.body.data.conversation.id as string;
+    expect(created.body.data.conversation.messages).toHaveLength(2);
+
+    mockAi.chat.mockResolvedValueOnce({
+      content: 'Jawaban versi kedua.',
+      model: 'model-uji-2',
+      tokensIn: 3,
+      tokensOut: 4,
+    });
+    const regen = await asClient(app, manager).post(`/api/ai/conversations/${id}/regenerate`);
+    expect(regen.status).toBe(200);
+    const { conversation, assistant } = regen.body.data;
+    expect(conversation.messages).toHaveLength(2);
+    expect(conversation.messages[0].content).toBe('Pertanyaan untuk regenerate');
+    expect(conversation.messages[1]).toMatchObject({
+      role: 'assistant',
+      content: 'Jawaban versi kedua.',
+      model: 'model-uji-2',
+    });
+    expect(assistant.content).toBe('Jawaban versi kedua.');
+
+    const foreign = await asClient(app, admin).post(`/api/ai/conversations/${id}/regenerate`);
+    expect(foreign.status).toBe(404);
+  });
+
   it('streaming SSE mengirim ready, delta, dan done; pesan asisten tersimpan', async () => {
     async function* potongan() {
       yield 'Potongan satu. ';

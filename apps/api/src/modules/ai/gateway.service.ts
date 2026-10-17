@@ -17,6 +17,7 @@ export interface GatewayChatOptions {
   mode: PromptMode;
   counterpartStyle?: string;
   messages: ChatMessage[];
+  signal?: AbortSignal;
 }
 
 @Injectable()
@@ -62,7 +63,8 @@ export class AiGatewayService {
 
   private buildRequest(options: GatewayChatOptions) {
     validateChatMessages(options.messages);
-    const signal = AbortSignal.timeout(this.settings().aiTimeoutMs);
+    const timeout = AbortSignal.timeout(this.settings().aiTimeoutMs);
+    const signal = options.signal ? AbortSignal.any([timeout, options.signal]) : timeout;
     return {
       model: this.settings().aiModel,
       systemPrompt: buildSystemPrompt(options.mode, options.counterpartStyle),
