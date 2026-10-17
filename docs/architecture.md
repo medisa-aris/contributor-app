@@ -1,6 +1,6 @@
 # Arsitektur Contributor AI
 
-> Fase 1–4: Fondasi + Autentikasi + RBAC + AI Workspace. Dokumen ini menjelaskan struktur, alur, dan keputusan desain utama.
+> Fase 1–6: Fondasi + Autentikasi + RBAC + AI Workspace + tiga pusat (Knowledge, Agent, Integration). Dokumen ini menjelaskan struktur, alur, dan keputusan desain utama.
 
 ## 1. Peta Monorepo
 
@@ -43,14 +43,17 @@ Windows (dev)                          Docker host remote (training@192.168.0.62
 
 ### 3.1 Modul
 
-| Modul    | Isi                                                                                                                                                                                                                                       |
-| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `auth`   | Login/logout, sesi DB-backed, CSRF double-submit, rate limit + lockout (`login_attempts`)                                                                                                                                                 |
-| `rbac`   | `policy-engine.ts`, `effective-permissions.service.ts`, `escalation.service.ts`, `authz-cache.service.ts`, `rbac-diagnostics.controller.ts`                                                                                               |
-| `admin`  | Controller admin: users, roles, permissions, departments, groups, policies, nav-admin, sessions, config, providers, audit, diagnostics                                                                                                    |
-| `ai`     | AI Workspace: `ai.controller.ts` (chat, chat/stream SSE, conversations, tasks), `conversations.service.ts`, `tasks.service.ts`, `gateway.service.ts`, `provider-resolver.ts`, `prompts.ts`, `limits.ts`, adapter provider di `providers/` |
-| `audit`  | `audit.interceptor.ts` + `audit.service.ts` — pencatatan AuditEvent                                                                                                                                                                       |
-| `health` | `/api/health`                                                                                                                                                                                                                             |
+| Modul          | Isi                                                                                                                                                                                                                                       |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `auth`         | Login/logout, sesi DB-backed, CSRF double-submit, rate limit + lockout (`login_attempts`)                                                                                                                                                 |
+| `rbac`         | `policy-engine.ts`, `effective-permissions.service.ts`, `escalation.service.ts`, `authz-cache.service.ts`, `rbac-diagnostics.controller.ts`                                                                                               |
+| `admin`        | Controller admin: users, roles, permissions, departments, groups, policies, nav-admin, sessions, config, providers, audit, diagnostics                                                                                                    |
+| `ai`           | AI Workspace: `ai.controller.ts` (chat, chat/stream SSE, conversations, tasks), `conversations.service.ts`, `tasks.service.ts`, `gateway.service.ts`, `provider-resolver.ts`, `prompts.ts`, `limits.ts`, adapter provider di `providers/` |
+| `audit`        | `audit.interceptor.ts` + `audit.service.ts` — pencatatan AuditEvent                                                                                                                                                                       |
+| `knowledge`    | Knowledge Center: sumber (`knowledge_sources`), dokumen (`knowledge_documents` + status indeks), koleksi dengan anggota sumber, pencarian FTS PostgreSQL dengan cuplikan `ts_headline` dan sitasi locator                                 |
+| `agents`       | Agent Center: registry agen (`agents`) + alat, eksekusi tugas berbasis lifecycle AI Workspace, antrean persetujuan (`approvals`) untuk agen `requires_approval`                                                                           |
+| `integrations` | Integration Center: MCP server (`mcp_servers`), REST connector + endpoint peralatan (`rest_connectors`), pemeriksaan kesehatan, status kredensial boolean saja (terkonfigurasi/belum — nilai rahasia tidak pernah keluar)                 |
+| `health`       | `/api/health`                                                                                                                                                                                                                             |
 
 ### 3.2 Pipeline HTTP (`configure-app.ts`)
 
@@ -69,8 +72,9 @@ TypeORM + migrasi SQL murni di `apps/api/src/database/migrations/`:
 - `1700000000000-initial-schema.ts` — seluruh tabel + indeks.
 - `1700000001000-seed-rbac-meta-and-app-config.ts` — baris `rbac_meta` (versi RBAC) dan `app_config` awal.
 - `1700000002000-ai-workspace.ts` — enum `task_status`, tabel AI Workspace (`conversations`, `conversation_messages`, `ai_tasks`, `ai_task_events`) + indeks parsial status terbuka.
+- `1700000003000-knowledge-agents-integrations.ts` — tabel Fase 5: `knowledge_sources`, `knowledge_collections`, `knowledge_collection_sources`, `knowledge_documents`, `agents`, `approvals`, `mcp_servers`, `rest_connectors` + indeks FTS.
 
-Tabel (23): `users`, `sessions`, `login_attempts`, `roles`, `permissions`, `role_permissions`, `user_roles`, `groups`, `user_groups`, `group_roles`, `departments`, `resource_policies`, `applications`, `modules`, `features`, `menu_items`, `app_config`, `rbac_meta`, `audit_events`, `conversations`, `conversation_messages`, `ai_tasks`, `ai_task_events`.
+Tabel (31): `users`, `sessions`, `login_attempts`, `roles`, `permissions`, `role_permissions`, `user_roles`, `groups`, `user_groups`, `group_roles`, `departments`, `resource_policies`, `applications`, `modules`, `features`, `menu_items`, `app_config`, `rbac_meta`, `audit_events`, `conversations`, `conversation_messages`, `ai_tasks`, `ai_task_events`, `knowledge_sources`, `knowledge_collections`, `knowledge_collection_sources`, `knowledge_documents`, `agents`, `approvals`, `mcp_servers`, `rest_connectors`.
 
 `rbac_meta.version` adalah **versi otorisasi global**: setiap mutasi RBAC menaikkannya; `AuthzCacheService` memakai versi ini sebagai kunci cache sehingga perubahan izin berlaku cepat tanpa restart.
 
@@ -98,6 +102,16 @@ Tiga mode interaksi AI, masing-masing dikunci permission tersendiri di bawah apl
 - **Konvensi respons list** sama dengan modul admin: `paginated()` → `{data: [...], meta: {page, limit, total, totalPages}}`.
 - **Frontend**: `ChatWorkspace.vue` dipakai ulang oleh kedua mode percakapan (sidebar riwayat hanya muncul bila pengguna punya `ai.workspace.history.read`); `SubordinateView.vue` memantau status terbuka dengan polling 2 dtk; `WorkspaceHistoryView.vue` menggabungkan riwayat percakapan dan tugas.
 
+### 3.6 Tiga Pusat Fase 5
+
+**Knowledge Center** (`knowledge/`). Sumber pengetahuan manual (kode unik, origin `manual`), dokumen dengan konten mentah + status indeks (`indexed|pending|failed`), dan koleksi sebagai himpunan sumber. Pencarian memakai kolom `tsvector` (`content_tsv`) dengan ranking `ts_rank`; cuplikan hasil dibungkus `ts_headline` (`<mark>…</mark>`) dan disajikan sebagai segmen `{text, highlighted}` di web — dirender elemen `<mark>` via `v-for`, **tanpa `v-html`**, sehingga aman dari XSS. Setiap hasil membawa sitasi locator (judul dokumen + sumber + lokasi) agar jawaban AI dapat dirujuk balik.
+
+**Agent Center** (`agents/`). Registry agen: nama, instruksi sistem, daftar alat, `requires_approval`, status aktif. Eksekusi memakai lifecycle tugas yang sama dengan Asisten Eksekusi (`created → validating → awaiting_approval/running → completed|failed`): agen tanpa persetujuan langsung berjalan, agen `requires_approval` berhenti di `awaiting_approval` sampai pemutus (`agents.approve`) menyetujui atau menolak — keputusan dicatat di `approvals` (pemutus, catatan, waktu) dan audit trail. Daftar tugas per agen menampilkan nama agen + email peminta agar operasional mudah diaudit.
+
+**Integration Center** (`integrations/`). Dua jenis konektor: **MCP server** (URL endpoint, jenis transport) dan **REST connector** (base URL + daftar endpoint peralatan `GET|POST` yang diparsing dari teks `METHOD /path`). Kesehatan dicek eksplisit lewat tombol "Periksa kesehatan" (bukan latar) dan hasilnya (`last_health_ok/at`) ditampilkan sebagai lencana. Status kredensial provider AI disajikan **boolean terkonfigurasi/belum** — nama variabel env boleh tampil, nilai rahasia tidak pernah keluar dari server.
+
+Ketiga pusat mengikuti konvensi yang sama: guard permission per endpoint, amplop `paginated()` untuk daftar, audit event untuk mutasi, dan DTO query ketat (`whitelist + forbidNonWhitelisted`) — parameter filter baru harus dideklarasikan eksplisit di DTO turunan `PaginationQueryDto`.
+
 ## 4. Frontend (apps/web)
 
 ```
@@ -110,7 +124,7 @@ src/
 ├── router/       # route + guard izin per-halaman
 ├── stores/       # Pinia: auth (sesi + permission efektif), theme, toast
 ├── styles/       # tokens.css + gaya global
-└── views/        # halaman (admin/ untuk layar administrasi; landing + 3 mode AI Workspace + riwayat)
+└── views/        # halaman: admin/ (layar administrasi), knowledge/, agents/, integrations/, landing + 3 mode AI Workspace + riwayat
 ```
 
 - **Navigasi dinamis**: sidebar dirender dari `GET /api/nav` — pohon Application → Module → Feature → MenuItem, difilter server berdasarkan permission efektif pengguna; item dengan `is_future` tampil dengan lencana "segera".
@@ -131,19 +145,23 @@ Detail lengkap: [`rbac.md`](rbac.md). Kontrak HTTP: [`api-conventions.md`](api-c
 
 ## 6. Keputusan Desain Penting
 
-| Keputusan                                                        | Alasan                                                                                                            |
-| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Deny-by-default di semua endpoint admin                          | Permukaan serangan minimal; setiap endpoint menyatakan permission eksplisit                                       |
-| Versi RBAC global (`rbac_meta`) sebagai kunci cache              | Konsistensi: perubahan izin langsung terlihat, tanpa invalidasi per-pengguna                                      |
-| Sesi DB-backed, bukan JWT                                        | Pencabutan seketika (revoke per sesi), audit lengkap, tanpa key rotation                                          |
-| Amplop respons seragam                                           | Klien web menangani sukses/error dengan satu jalur kode                                                           |
-| `packages/shared` build ganda CJS+ESM                            | Satu sumber kebenaran kontrak untuk dua ekosistem (Nest CJS, Vite ESM)                                            |
-| Migrasi SQL mentah, bukan `synchronize`                          | Terkontrol, dapat diaudit, aman untuk produksi                                                                    |
-| Kredensial provider AI hanya di `.env` + memori proses API       | Kunci tidak pernah sampai ke bundle frontend, log, atau respons — permukaan bocor minimal                         |
-| Adapter OpenAI-compatible tunggal untuk OpenAI/OpenRouter/Ollama | Tiga provider sejenis (API chat completions) dilayani satu jalur kode; Anthropic tetap adapter sendiri            |
-| SSE via `fetch` + pembaca stream manual                          | `EventSource` tidak mendukung POST dan header CSRF; fetch menjaga pipeline keamanan yang sama dengan request lain |
-| Klaim status tugas atomik di SQL                                 | Dua klik "Jalankan" bersamaan aman; tidak ada eksekusi dobel yang memboroskan token                               |
-| Data percakapan/tugas selalu milik-sendiri                       | Privasi terjaga walau role lebih tinggi; konsisten dengan data scope RBAC                                         |
+| Keputusan                                                        | Alasan                                                                                                                      |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Deny-by-default di semua endpoint admin                          | Permukaan serangan minimal; setiap endpoint menyatakan permission eksplisit                                                 |
+| Versi RBAC global (`rbac_meta`) sebagai kunci cache              | Konsistensi: perubahan izin langsung terlihat, tanpa invalidasi per-pengguna                                                |
+| Sesi DB-backed, bukan JWT                                        | Pencabutan seketika (revoke per sesi), audit lengkap, tanpa key rotation                                                    |
+| Amplop respons seragam                                           | Klien web menangani sukses/error dengan satu jalur kode                                                                     |
+| `packages/shared` build ganda CJS+ESM                            | Satu sumber kebenaran kontrak untuk dua ekosistem (Nest CJS, Vite ESM)                                                      |
+| Migrasi SQL mentah, bukan `synchronize`                          | Terkontrol, dapat diaudit, aman untuk produksi                                                                              |
+| Kredensial provider AI hanya di `.env` + memori proses API       | Kunci tidak pernah sampai ke bundle frontend, log, atau respons — permukaan bocor minimal                                   |
+| Adapter OpenAI-compatible tunggal untuk OpenAI/OpenRouter/Ollama | Tiga provider sejenis (API chat completions) dilayani satu jalur kode; Anthropic tetap adapter sendiri                      |
+| SSE via `fetch` + pembaca stream manual                          | `EventSource` tidak mendukung POST dan header CSRF; fetch menjaga pipeline keamanan yang sama dengan request lain           |
+| Klaim status tugas atomik di SQL                                 | Dua klik "Jalankan" bersamaan aman; tidak ada eksekusi dobel yang memboroskan token                                         |
+| Data percakapan/tugas selalu milik-sendiri                       | Privasi terjaga walau role lebih tinggi; konsisten dengan data scope RBAC                                                   |
+| Cuplikan FTS dirender sebagai segmen, bukan `v-html`             | Teks sumber dokumen tidak pernah diinjeksikan sebagai HTML — XSS mustahil lewat jalur hasil pencarian                       |
+| Status kredensial = boolean, nilai tidak pernah meninggalkan API | Operator bisa memverifikasi konfigurasi tanpa membuka rahasia; permukaan bocor minimal                                      |
+| Persetujuan agen sebagai baris keputusan terpisah (`approvals`)  | Siapa memutus, kapan, dengan catatan apa — jejak audit lengkap untuk tindakan sensitif                                      |
+| Kesehatan konektor dicek eksplisit, bukan latar                  | Host pelatihan sering offline; pemeriksaan latar akan membanjiri log dengan error — tombol menjadikannya keputusan operator |
 
 ## 7. Pedoman UI: Visualisasi Dulu, Form CRUD Kemudian
 

@@ -19,7 +19,9 @@ Panduan operasional harian: menjalankan, memverifikasi, dan memulihkan sistem. R
 npm install                 # sekali; menjalankan build packages/shared otomatis (postinstall)
 npm run infra:up            # PostgreSQL 16 + Redis 7 di host remote
 npm run db:migrate          # terapkan skema (idempoten)
-npm run db:seed             # data demo: admin, role, departemen, navigasi (idempoten; mencetak akun demo)
+npm run db:seed             # data demo: peran, izin, navigasi, departemen, konten tiga pusat,
+                            # dan 3 akun demo admin/manajer/staf (idempoten; dilewati otomatis
+                            # saat NODE_ENV=production; mencetak kredensial akun demo)
 npm run dev                 # shared (watch) + API :3000 + Web :5173
 ```
 
@@ -52,7 +54,7 @@ Konfigurasi runtime non-rahasia (mis. `security.lockout_threshold`, `security.se
 ## 5. Verifikasi Rilis (checklist)
 
 1. `npm run typecheck` — semua workspace hijau.
-2. `npm test` — baseline Fase 1–4: API 39 unit + 6 suite integrasi / 91 test; Web 3 file / 11 test.
+2. `npm test` — baseline Fase 1–6: API 39 unit + 7 suite integrasi / 114 test; Web 3 file / 11 test.
 3. `npm run build` — build produksi lolos.
 4. Smoke UI: login superadmin → sidebar memuat seluruh seksi; buka **Permission Efektif** untuk satu pengguna; buka **Uji Otorisasi** → jalankan satu kombinasi.
 5. Smoke deny: login akun staf → menu administrasi dan mode AI tidak tampil; akses paksa `GET /api/admin/users` dengan sesi staf → `403 AUTHORIZATION_FORBIDDEN`.
@@ -61,6 +63,14 @@ Konfigurasi runtime non-rahasia (mis. `security.lockout_threshold`, `security.se
    - **Asisten Eksekusi**: buat tugas → **Jalankan** → status bergerak `Dibuat → Selesai`, dialog Detail menampilkan hasil + jejak eksekusi (created/validating/running/completed, token, durasi, model).
    - **Riwayat Percakapan** (butuh `ai.workspace.history.read`): kedua tab memuat data milik-sendiri; hapus satu percakapan → baris hilang.
 7. Smoke isolasi: percakapan yang dibuat manajer tidak tampil di riwayat admin (dan sebaliknya).
+8. Smoke Knowledge Center:
+   - **Dokumen**: filter judul bekerja (masukkan kata dari judul seed, mis. `FAQ` → baris tersaring); unggah dokumen baru sebagai admin → status `Menunggu` lalu `Terindeks` (proses indeks berjalan sinkron saat unggah).
+   - **Pencarian Pengetahuan**: cari `santunan klaim` → ≥ 2 hasil terurut dengan cuplikan bercetak tebal dan sitasi `Lokasi:`; filter koleksi `Proses Klaim Asuransi` mempersempit hasil.
+   - Login staf: **Dokumen** terbaca tanpa tombol unggah/hapus; **Pencarian** berfungsi penuh.
+9. Smoke Agent Center:
+   - Jalankan agen `requires_approval` → status `Menunggu persetujuan`; login admin → **Persetujuan** → Setujui dengan catatan → tugas berjalan sampai `Selesai` di log **Jalankan Tugas**.
+   - Login staf: **Katalog Agen** terbuka tanpa tombol _Jalankan_; akses langsung `/agents/operations`, `/agents/approvals`, `/integrations` → dialihkan ke beranda dengan pemberitahuan izin.
+10. Smoke Integration Center: **Koneksi & Status** → **Periksa kesehatan** pada server MCP demo → lencana `Sehat` + stempel waktu; **Kredensial** hanya menampilkan status boolean (`Terkonfigurasi`/`Belum diisi`), bukan nilai.
 
 ## 6. Troubleshooting
 
@@ -76,6 +86,9 @@ Konfigurasi runtime non-rahasia (mis. `security.lockout_threshold`, `security.se
 | Chat/stream error atau jawaban kosong                      | Model salah ID / provider down / kunci tidak valid       | Lihat baris `Penyedia AI aktif: …` di log API; pastikan `AI_MODEL` adalah ID valid penyedia (mis. `google/gemini-3.1-flash-lite` untuk OpenRouter); uji kunci lewat dasbor penyedia |
 | Tugas Subordinate berstatus `Gagal`                        | Instruksi menolak validasi, timeout, atau error upstream | Buka dialog **Detail** → baca `error_message` dan jejak `ai_task_events`; perbaiki instruksi lalu **Jalankan** ulang (status `failed` boleh dijalankan lagi)                        |
 | Halaman tugas/riwayat menampilkan 0 baris padahal data ada | Konvensi respons list berubah                            | Endpoint AI memakai `paginated()` (`{data, meta}`) — klien web membaca `data` sebagai array dan `meta.total`                                                                        |
+| Pencarian pengetahuan kosong padahal dokumen ada           | Indeks FTS belum terbentuk / query tak cocok             | Pastikan dokumen berstatus `indexed` (kolom `content_tsv` terisi); uji langsung di DB dengan `to_tsvector('indonesian', …)`; ingat filter sumber/koleksi ikut membatasi hasil       |
+| Error 400 `property X should not exist`                    | Parameter query tidak dideklarasikan di DTO              | DTO turunan `PaginationQueryDto` menolak properti liar (`forbidNonWhitelisted`) — tambahkan field + validasi decorator di DTO, bukan di controller                                  |
+| Pemeriksaan kesehatan MCP/REST gagal                       | Host demo sering offline (mesin pelatihan)               | Itu hasil yang benar — lencana `Bermasalah` + `last_health_at` tercatat; ulangi saat host aktif, jangan anggap bug sistem                                                           |
 
 ## 7. Pemulihan (Restore)
 
@@ -90,6 +103,7 @@ Konfigurasi runtime non-rahasia (mis. `security.lockout_threshold`, `security.se
 ## 8. Keamanan Operasional
 
 - Jangan pernah menyalin nilai dari `apps/api/.env` ke tiket, chat, atau log.
+- Akun demo `@contributor.local` (dibuat `db:seed`, kata sandi tercetak di layar) hanya untuk pelatihan lokal — seed melewatinya otomatis saat `NODE_ENV=production`; di produksi bootstrap lewat `db:create-admin`.
 - Rotasi kunci `OPENROUTER_API_KEY`: ubah di `.env`, restart API — tidak ada penyimpanan lain.
 - Bootstrap superadmin produksi lewat `db:create-admin`; setelah itu ganti kata sandi via UI.
 - Semua keputusan tolak tercatat (`security.authorization.denied`, `security.privilege_escalation_blocked`) — pantau lewat Log Audit dengan filter severity `warn`/`critical`.
