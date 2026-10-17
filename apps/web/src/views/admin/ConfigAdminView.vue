@@ -45,8 +45,7 @@ const filtered = computed(() => {
   if (!term) return rows.value;
   return rows.value.filter(
     (row) =>
-      row.key.toLowerCase().includes(term) ||
-      (row.description ?? '').toLowerCase().includes(term),
+      row.key.toLowerCase().includes(term) || (row.description ?? '').toLowerCase().includes(term),
   );
 });
 
@@ -57,7 +56,8 @@ const columns = computed<CaTableColumn[]>(() => {
     { key: 'is_public', label: t('admin.config.columnPublic'), width: '120px' },
     { key: 'updated_at', label: t('admin.config.columnUpdated'), width: '170px' },
   ];
-  if (canManage.value) base.push({ key: 'actions', label: '', width: '90px', align: 'end', sortable: false });
+  if (canManage.value)
+    base.push({ key: 'actions', label: '', width: '90px', align: 'end', sortable: false });
   return base;
 });
 
@@ -71,6 +71,7 @@ function valueKind(value: unknown): ValueKind {
 }
 
 function valuePreview(value: unknown): string {
+  if (typeof value === 'boolean') return value ? t('common.yes') : t('common.no');
   if (typeof value === 'string') return value;
   try {
     return JSON.stringify(value);
@@ -137,10 +138,7 @@ onMounted(load);
 
 <template>
   <section>
-    <CaPageHeader
-      :title="t('admin.config.title')"
-      :description="t('admin.config.description')"
-    />
+    <CaPageHeader :title="t('admin.config.title')" :description="t('admin.config.description')" />
 
     <div class="admin-filters">
       <div class="admin-filters__field admin-filters__wide">
@@ -183,14 +181,24 @@ onMounted(load);
       </template>
     </CaTable>
 
-    <CaDialog v-model:open="showEdit" :title="t('admin.config.editTitle')" :subtitle="target?.key" size="small">
+    <CaDialog
+      v-model:open="showEdit"
+      :title="t('admin.config.editTitle')"
+      :subtitle="target?.key"
+      size="small"
+    >
       <div class="admin-form">
-        <CaField :label="t('admin.config.columnValue')" :hint="editKind === 'json' ? t('admin.config.valueHintJson') : undefined">
-          <CaSwitch
-            v-if="editKind === 'boolean'"
-            :model-value="editValue === true"
-            @update:model-value="(v) => (editValue = v)"
-          />
+        <CaField
+          :label="t('admin.config.columnValue')"
+          :hint="editKind === 'json' ? t('admin.config.valueHintJson') : undefined"
+        >
+          <div v-if="editKind === 'boolean'" class="cfg-boolean">
+            <CaSwitch
+              :model-value="editValue === true"
+              @update:model-value="(v) => (editValue = v)"
+            />
+            <span>{{ editValue === true ? t('common.yes') : t('common.no') }}</span>
+          </div>
           <CaInput
             v-else
             :model-value="String(editValue)"
@@ -218,5 +226,13 @@ onMounted(load);
   color: var(--ca-fg-2);
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.cfg-boolean {
+  display: flex;
+  align-items: center;
+  gap: var(--ca-space-2);
+  font-size: var(--ca-text-200);
+  color: var(--ca-fg-2);
 }
 </style>

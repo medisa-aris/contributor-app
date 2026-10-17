@@ -1,8 +1,9 @@
 import type { AiTaskStatus, ConversationMode } from '@contributor/shared';
-import { apiDelete, apiGet, apiGetPaged, apiPatch, apiPost } from '@/api/http';
+import { apiDelete, apiGet, apiGetPaged, apiPatch, apiPost, apiPostForm } from '@/api/http';
 import type {
   ChatRequestPayload,
   ChatSendResult,
+  ConversationAttachment,
   ConversationDetail,
   ConversationSummary,
   TaskDetail,
@@ -49,6 +50,55 @@ export function updateConversation(
 
 export function regenerateReply(id: string): Promise<ChatSendResult> {
   return apiPost<ChatSendResult>(`/ai/conversations/${id}/regenerate`);
+}
+
+export function createConversation(mode: ConversationMode): Promise<ConversationSummary> {
+  return apiPost<ConversationSummary>('/ai/conversations', { mode });
+}
+
+export function listAttachments(conversationId: string): Promise<ConversationAttachment[]> {
+  return apiGet<ConversationAttachment[]>(`/ai/conversations/${conversationId}/attachments`);
+}
+
+export function uploadAttachment(
+  conversationId: string,
+  file: File,
+): Promise<ConversationAttachment> {
+  const form = new FormData();
+  form.append('file', file, file.name);
+  return apiPostForm<ConversationAttachment>(
+    `/ai/conversations/${conversationId}/attachments`,
+    form,
+  );
+}
+
+export function updateAttachment(
+  conversationId: string,
+  attachmentId: string,
+  enabled: boolean,
+): Promise<ConversationAttachment> {
+  return apiPatch<ConversationAttachment>(
+    `/ai/conversations/${conversationId}/attachments/${attachmentId}`,
+    { enabled },
+  );
+}
+
+export function addUrlAttachment(
+  conversationId: string,
+  url: string,
+): Promise<ConversationAttachment> {
+  return apiPost<ConversationAttachment>(`/ai/conversations/${conversationId}/attachments/url`, {
+    url,
+  });
+}
+
+export function deleteAttachment(
+  conversationId: string,
+  attachmentId: string,
+): Promise<{ deleted: boolean }> {
+  return apiDelete<{ deleted: boolean }>(
+    `/ai/conversations/${conversationId}/attachments/${attachmentId}`,
+  );
 }
 
 export function createTask(input: { title: string; instruction: string }): Promise<TaskRow> {

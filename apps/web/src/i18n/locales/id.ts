@@ -102,8 +102,7 @@ export const id = {
     title: 'Selamat datang, {name}',
     subtitle: 'Pilih aplikasi untuk mulai bekerja. Menu yang tampil mengikuti izin akses Anda.',
     emptyTitle: 'Belum ada akses',
-    emptyDescription:
-      'Akun Anda belum memiliki akses ke aplikasi mana pun. Hubungi administrator.',
+    emptyDescription: 'Akun Anda belum memiliki akses ke aplikasi mana pun. Hubungi administrator.',
   },
   comingSoon: {
     title: 'Fitur belum tersedia',
@@ -172,6 +171,12 @@ export const id = {
       disabled: 'Pengguna dinonaktifkan.',
       enabled: 'Pengguna diaktifkan.',
       superadminBadge: 'Superadmin',
+      superadminTitle: 'Status superadmin',
+      superadminHint:
+        'Superadmin melewati seluruh pemeriksaan izin. Hanya superadmin yang dapat mengubah status ini; simpan untuk menerapkan.',
+      superadminOn: 'Aktif',
+      superadminOff: 'Nonaktif',
+      superadminUpdated: 'Status superadmin diperbarui.',
     },
     roles: {
       title: 'Peran',
@@ -225,8 +230,7 @@ export const id = {
     },
     departments: {
       title: 'Departemen',
-      description:
-        'Struktur organisasi untuk cakupan data peran dan penempatan pengguna.',
+      description: 'Struktur organisasi untuk cakupan data peran dan penempatan pengguna.',
       addButton: 'Tambah departemen',
       addChild: 'Tambah sub-departemen',
       columnCode: 'Kode',
@@ -251,7 +255,8 @@ export const id = {
       empty: 'Belum ada departemen.',
       editAction: 'Ubah',
       deleteAction: 'Hapus',
-      chartHint: 'Klik kartu untuk melihat detail. Seret kanvas untuk menggeser, tombol +/− pada kartu untuk membuka atau melipat cabang.',
+      chartHint:
+        'Klik kartu untuk melihat detail. Seret kanvas untuk menggeser, tombol +/− pada kartu untuk membuka atau melipat cabang.',
       zoomIn: 'Perbesar',
       zoomOut: 'Perkecil',
       fitView: 'Sesuaikan',
@@ -304,8 +309,7 @@ export const id = {
       selectMembers: 'Pilih pengguna',
       selectedCount: '{count} dipilih',
       rolesTitle: 'Peran grup',
-      rolesDescription:
-        'Peran yang diberikan ke grup ini berlaku untuk seluruh anggotanya.',
+      rolesDescription: 'Peran yang diberikan ke grup ini berlaku untuk seluruh anggotanya.',
       addRole: 'Tambah peran',
       assignRoleTitle: 'Tambah peran grup',
       formRole: 'Peran',
@@ -589,8 +593,7 @@ export const id = {
       newChat: 'Baru',
       historyEmpty: 'Belum ada percakapan pada mode ini.',
       emptyTitle: 'Mulai percakapan',
-      emptyDescription:
-        'Tulis pertanyaan atau gagasan Anda pada kolom di bawah, lalu tekan Kirim.',
+      emptyDescription: 'Tulis pertanyaan atau gagasan Anda pada kolom di bawah, lalu tekan Kirim.',
       placeholder: 'Tulis pesan Anda di sini…',
       composerHint: 'Enter untuk mengirim, Shift+Enter untuk baris baru.',
       send: 'Kirim',
@@ -615,6 +618,8 @@ export const id = {
       stopped: 'Jawaban dihentikan.',
       exportMarkdown: 'Ekspor MD',
       print: 'Cetak / PDF',
+      tokenTotal: 'Total token: konteks {input} · output {output}',
+      tokenResponse: 'Token respons: konteks {input} · output {output}',
       exportDone: 'Percakapan diekspor sebagai Markdown.',
       exportMeta: 'Diekspor dari Contributor AI pada {date}',
       exportUser: 'Anda',
@@ -632,6 +637,45 @@ export const id = {
       codePlain: 'TEKS',
       diagramLoading: 'Memuat diagram…',
       diagramError: 'Diagram Mermaid tidak dapat dirender.',
+      attachments: {
+        toggle: 'Lampiran',
+        show: 'Tampilkan panel lampiran',
+        hide: 'Sembunyikan panel lampiran',
+        title: 'Lampiran percakapan',
+        count: '{enabled} dari {total} aktif',
+        hint: 'Hanya dapat diakses oleh percakapan ini.',
+        formats: 'Word, Excel, PowerPoint, PDF, atau gambar. Maks. 20 MB per berkas.',
+        upload: 'Unggah dokumen',
+        uploading: 'Mengunggah {done}/{total}…',
+        urlLabel: 'Tambah dari URL',
+        urlPlaceholder: 'https://contoh.com/artikel',
+        urlAdd: 'Tambah',
+        urlAdding: 'Membaca halaman dan menyusun ringkasan…',
+        urlAdded: 'Sumber web ditambahkan dan diringkas.',
+        urlFailed: 'Sumber web gagal ditambahkan.',
+        urlHint: 'Halaman akan dibaca dan diringkas otomatis sebagai konteks.',
+        urlSummary: 'Ringkasan AI',
+        emptyTitle: 'Belum ada lampiran',
+        emptyDescription:
+          'Unggah dokumen atau gambar, atau tambahkan tautan agar AI membacanya sebagai konteks percakapan ini.',
+        active: 'Aktif',
+        inactive: 'Nonaktif',
+        uploaded: '{count} berkas berhasil diunggah.',
+        uploadFailed: 'Berkas gagal diunggah.',
+        deleted: 'Lampiran dihapus.',
+        confirmDelete: 'Hapus lampiran "{name}"?',
+        enabledToast: 'Lampiran diaktifkan untuk percakapan ini.',
+        disabledToast: 'Lampiran dinonaktifkan dari percakapan ini.',
+        toggleFailed: 'Status lampiran gagal diubah.',
+        loadFailed: 'Daftar lampiran gagal dimuat.',
+        status: {
+          ready: 'Teks siap · {chars} karakter',
+          urlReady: 'Ringkasan siap · {chars} karakter',
+          image: 'Gambar siap',
+          failed: 'Ekstraksi teks gagal',
+          processing: 'Memproses…',
+        },
+      },
     },
     subordinate: {
       title: 'Asisten Eksekusi',
@@ -749,7 +793,8 @@ export const id = {
     searchTooShort: 'Kata kunci pencarian minimal 2 karakter.',
     resultCount: '{count} hasil ditemukan',
     searchNoResult: 'Tidak ada dokumen yang cocok. Coba kata kunci lain atau longgarkan filter.',
-    searchHint: 'Masukkan kata kunci lalu tekan Cari. Gunakan filter untuk membatasi pada sumber atau koleksi tertentu.',
+    searchHint:
+      'Masukkan kata kunci lalu tekan Cari. Gunakan filter untuk membatasi pada sumber atau koleksi tertentu.',
     locatorLabel: 'Lokasi',
   },
   agents: {
@@ -865,15 +910,20 @@ export const id = {
     formEndpoints: 'Daftar endpoint',
     formEndpointsHint:
       'Satu endpoint per baris, format: GET /path/untuk/alat. Hanya metode GET dan POST yang didukung.',
-    endpointsInvalid: 'Format endpoint tidak valid. Gunakan satu baris per endpoint: GET /path atau POST /path.',
+    endpointsInvalid:
+      'Format endpoint tidak valid. Gunakan satu baris per endpoint: GET /path atau POST /path.',
     credentialsTitle: 'Kredensial Integrasi',
     credentialsDescription:
       'Status ketersediaan kredensial server. Yang tampil hanya nama variabel dan status — bukan nilainya.',
     policyHeading: 'Kebijakan kredensial',
-    policyItem1: 'Seluruh nilai rahasia disimpan di berkas .env di server dan tidak masuk ke repositori git.',
-    policyItem2: 'API kredensial hanya mengembalikan status terkonfigurasi atau belum, bukan nilai aslinya.',
-    policyItem3: 'Kunci API untuk konektor diisi melalui nama variabel lingkungan, bukan tertulis di aplikasi.',
-    policyItem4: 'Log aplikasi tidak mencatat nilai kredensial; pemeriksaan kesehatan hanya menyimpan status berhasil atau gagal.',
+    policyItem1:
+      'Seluruh nilai rahasia disimpan di berkas .env di server dan tidak masuk ke repositori git.',
+    policyItem2:
+      'API kredensial hanya mengembalikan status terkonfigurasi atau belum, bukan nilai aslinya.',
+    policyItem3:
+      'Kunci API untuk konektor diisi melalui nama variabel lingkungan, bukan tertulis di aplikasi.',
+    policyItem4:
+      'Log aplikasi tidak mencatat nilai kredensial; pemeriksaan kesehatan hanya menyimpan status berhasil atau gagal.',
     columnEnv: 'Variabel lingkungan',
     columnCredentialStatus: 'Status',
     configuredBadge: 'Terkonfigurasi',

@@ -3,19 +3,26 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n';
 import { COUNTERPART_STYLES, type ConversationMode } from '@contributor/shared';
 import {
+  addUrlAttachment,
   conversationDetail,
+  createConversation,
+  deleteAttachment,
   deleteConversation,
+  listAttachments,
   listConversations,
   regenerateReply,
+  updateAttachment,
   updateConversation,
+  uploadAttachment,
 } from '@/api/ai';
 import { chatStream } from '@/api/ai/stream';
-import type { ConversationMessage, ConversationSummary } from '@/api/ai';
+import type { ConversationAttachment, ConversationMessage, ConversationSummary } from '@/api/ai';
 import { ApiError } from '@/api/http';
 import { useAuthStore } from '@/stores/auth.store';
+import { useConfigStore } from '@/stores/config.store';
 import { useToastStore } from '@/stores/toast.store';
-import { CaButton, CaEmptyState, CaIcon, CaSpinner } from '@/components/ui';
-import { formatDateTime } from '@/utils/format';
+import { CaButton, CaEmptyState, CaIcon, CaSpinner, CaSwitch } from '@/components/ui';
+import { formatDateTime, formatNumber } from '@/utils/format';
 import ChatMessage from './ChatMessage.vue';
 
 interface SpeechResultAlternative {
@@ -51,6 +58,7 @@ const props = defineProps<{
 
 const { t } = useI18n();
 const auth = useAuthStore();
+const config = useConfigStore();
 const toast = useToastStore();
 
 const canBrowseHistory = computed(() => auth.can('ai.workspace.history.read'));
@@ -89,6 +97,30 @@ const voiceSupported = computed(() => speechCtor !== null);
 
 const scrollArea = ref<HTMLElement | null>(null);
 
+const supportsAttachments = computed(() => props.mode === 'second_brain');
+const attachmentsOpen = ref(true);
+const attachments = ref<ConversationAttachment[]>([]);
+const attachmentsLoading = ref(false);
+const attachmentsError = ref('');
+const uploading = ref(false);
+const uploadProgress = ref({ done: 0, total: 0 });
+const urlDraft = ref('');
+const addingUrl = ref(false);
+const attachmentBusyId = ref<string | null>(null);
+const attachmentInput = ref<HTMLInputElement | null>(null);
+const showAttachmentsPane = computed(() => supportsAttachments.value && attachmentsOpen.value);
+const canAddUrl = computed(
+  () =>
+    supportsAttachments.value &&
+    urlDraft.value.trim().length > 0 &&
+    !addingUrl.value &&
+    !uploading.value,
+);
+const enabledAttachmentCount = computed(
+  () => attachments.value.filter((item) => item.enabled).length,
+);
+const ATTACHMENT_ACCEPT = '.docx,.xlsx,.pptx,.pdf,.png,.jpg,.jpeg,.webp,.gif';
+
 const selectedStyle = computed(
   () => COUNTERPART_STYLES.find((style) => style.id === styleId.value) ?? COUNTERPART_STYLES[0]!,
 );
@@ -103,6 +135,26 @@ const topbarTitle = computed(() => {
     ? t('workspace.chat.conversationFallbackTitle')
     : t('workspace.chat.newChatTitle');
 });
+
+const tokenTotals = computed(() => {
+  let input = 0;
+  let output = 0;
+  for (const message of messages.value) {
+    if (message.role !== 'assistant') continue;
+    if (message.tokens_in !== null) input += message.tokens_in;
+    if (message.tokens_out !== null) output += message.tokens_out;
+  }
+  return { input, output };
+});
+
+const showTokenUsage = computed(
+  () =>
+    config.showTokenUsage &&
+    messages.value.some(
+      (message) =>
+        message.role === 'assistant' && (message.tokens_in !== null || message.tokens_out !== null),
+    ),
+);
 
 const voiceLabel = computed(() =>
   listening.value ? t('workspace.chat.voiceStop') : t('workspace.chat.voiceStart'),
@@ -137,13 +189,14 @@ watch(searchQuery, () => {
 });
 
 async function openConversation(id: string): Promise<void> {
-  if (streaming.value || regenerating.value) return;
+  if (streaming.value || regenerating.value || uploading.value || addingUrl.value) return;
   try {
     const detail = await conversationDetail(id);
     conversationId.value = detail.id;
     messages.value = detail.messages;
     streamError.value = '';
     if (detail.counterpart_style) styleId.value = detail.counterpart_style;
+    void loadAttachments(detail.id);
   } catch (caught) {
     toast.push(
       {
@@ -153,6 +206,238 @@ async function openConversation(id: string): Promise<void> {
       5000,
     );
   }
+}
+
+async function loadAttachments(id: string): Promise<void> {
+  if (!supportsAttachments.value) return;
+  attachmentsLoading.value = true;
+  attachmentsError.value = '';
+  attachments.value = [];
+  try {
+    attachments.value = await listAttachments(id);
+  } catch (caught) {
+    attachmentsError.value =
+      caught instanceof ApiError ? caught.message : t('workspace.chat.attachments.loadFailed');
+  } finally {
+    attachmentsLoading.value = false;
+  }
+}
+
+function resetAttachments(): void {
+  attachments.value = [];
+  attachmentsError.value = '';
+  attachmentsLoading.value = false;
+  uploading.value = false;
+  uploadProgress.value = { done: 0, total: 0 };
+  urlDraft.value = '';
+  addingUrl.value = false;
+  attachmentBusyId.value = null;
+}
+
+async function ensureConversation(): Promise<string | null> {
+  if (conversationId.value) return conversationId.value;
+  try {
+    const created = await createConversation(props.mode);
+    conversationId.value = created.id;
+    if (canBrowseHistory.value) conversations.value = [created, ...conversations.value];
+    return created.id;
+  } catch (caught) {
+    toast.push(
+      {
+        variant: 'danger',
+        title: caught instanceof ApiError ? caught.message : t('errors.saveFailed'),
+      },
+      5000,
+    );
+    return null;
+  }
+}
+
+function triggerAttachmentPicker(): void {
+  if (uploading.value) return;
+  attachmentInput.value?.click();
+}
+
+async function onAttachmentFiles(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement;
+  const files = Array.from(input.files ?? []);
+  input.value = '';
+  if (files.length === 0) return;
+  await uploadAttachments(files);
+}
+
+async function uploadAttachments(files: File[]): Promise<void> {
+  if (!supportsAttachments.value || uploading.value) return;
+  const id = await ensureConversation();
+  if (!id) return;
+  uploading.value = true;
+  uploadProgress.value = { done: 0, total: files.length };
+  let failure: string | null = null;
+  let failedCount = 0;
+  for (const file of files) {
+    try {
+      const created = await uploadAttachment(id, file);
+      if (conversationId.value === id) attachments.value = [...attachments.value, created];
+    } catch (caught) {
+      failedCount += 1;
+      failure =
+        caught instanceof ApiError ? caught.message : t('workspace.chat.attachments.uploadFailed');
+    } finally {
+      uploadProgress.value = { done: uploadProgress.value.done + 1, total: files.length };
+    }
+  }
+  uploading.value = false;
+  attachmentsOpen.value = true;
+  if (failedCount > 0) {
+    toast.push(
+      {
+        variant: 'danger',
+        title:
+          failedCount === 1
+            ? (failure ?? t('workspace.chat.attachments.uploadFailed'))
+            : `${failure ?? t('workspace.chat.attachments.uploadFailed')} (${failedCount}/${files.length})`,
+      },
+      6000,
+    );
+  } else {
+    toast.push(
+      {
+        variant: 'success',
+        title: t('workspace.chat.attachments.uploaded', { count: files.length }),
+      },
+      3000,
+    );
+  }
+  if (canBrowseHistory.value) void loadConversations({ silent: true });
+}
+
+async function addUrlSource(): Promise<void> {
+  if (!supportsAttachments.value || addingUrl.value || uploading.value) return;
+  const url = urlDraft.value.trim();
+  if (!url) return;
+  const id = await ensureConversation();
+  if (!id) return;
+  addingUrl.value = true;
+  try {
+    const created = await addUrlAttachment(id, url);
+    if (conversationId.value === id) attachments.value = [...attachments.value, created];
+    urlDraft.value = '';
+    attachmentsOpen.value = true;
+    toast.push({ variant: 'success', title: t('workspace.chat.attachments.urlAdded') }, 4000);
+    if (canBrowseHistory.value) void loadConversations({ silent: true });
+  } catch (caught) {
+    toast.push(
+      {
+        variant: 'danger',
+        title:
+          caught instanceof ApiError ? caught.message : t('workspace.chat.attachments.urlFailed'),
+      },
+      6000,
+    );
+  } finally {
+    addingUrl.value = false;
+  }
+}
+
+async function setAttachmentEnabled(item: ConversationAttachment, enabled: boolean): Promise<void> {
+  const id = conversationId.value;
+  if (!id || attachmentBusyId.value) return;
+  attachmentBusyId.value = item.id;
+  try {
+    const updated = await updateAttachment(id, item.id, enabled);
+    attachments.value = attachments.value.map((current) =>
+      current.id === updated.id ? updated : current,
+    );
+    toast.push(
+      {
+        variant: 'success',
+        title: enabled
+          ? t('workspace.chat.attachments.enabledToast')
+          : t('workspace.chat.attachments.disabledToast'),
+      },
+      2500,
+    );
+  } catch (caught) {
+    toast.push(
+      {
+        variant: 'danger',
+        title:
+          caught instanceof ApiError
+            ? caught.message
+            : t('workspace.chat.attachments.toggleFailed'),
+      },
+      5000,
+    );
+  } finally {
+    attachmentBusyId.value = null;
+  }
+}
+
+async function removeAttachmentFile(item: ConversationAttachment): Promise<void> {
+  const id = conversationId.value;
+  if (!id || attachmentBusyId.value) return;
+  if (!window.confirm(t('workspace.chat.attachments.confirmDelete', { name: item.file_name }))) {
+    return;
+  }
+  attachmentBusyId.value = item.id;
+  try {
+    await deleteAttachment(id, item.id);
+    attachments.value = attachments.value.filter((current) => current.id !== item.id);
+    toast.push({ variant: 'success', title: t('workspace.chat.attachments.deleted') }, 3000);
+    if (canBrowseHistory.value) void loadConversations({ silent: true });
+  } catch (caught) {
+    toast.push(
+      {
+        variant: 'danger',
+        title: caught instanceof ApiError ? caught.message : t('errors.saveFailed'),
+      },
+      5000,
+    );
+  } finally {
+    attachmentBusyId.value = null;
+  }
+}
+
+function formatFileSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1).replace('.', ',')} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1).replace('.', ',')} MB`;
+}
+
+function attachmentStatus(item: ConversationAttachment): string {
+  if (item.kind === 'image') return t('workspace.chat.attachments.status.image');
+  if (item.extraction_status === 'failed') {
+    return t('workspace.chat.attachments.status.failed');
+  }
+  if (item.extraction_status === 'ready') {
+    return t(
+      item.source_type === 'url'
+        ? 'workspace.chat.attachments.status.urlReady'
+        : 'workspace.chat.attachments.status.ready',
+      { chars: item.extracted_chars.toLocaleString('id-ID') },
+    );
+  }
+  return t('workspace.chat.attachments.status.processing');
+}
+
+function attachmentHost(item: ConversationAttachment): string {
+  if (!item.source_url) return '';
+  try {
+    return new URL(item.source_url).hostname.replace(/^www\./, '');
+  } catch {
+    return item.source_url;
+  }
+}
+
+function formatSummary(text: string): string {
+  return text
+    .replace(/\r\n/g, '\n')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/(^|\n)\s*[-*]\s+/g, '$1• ')
+    .replace(/\s+\*\s+/g, '\n• ')
+    .replace(/\*([^*\n]+)\*/g, '$1')
+    .trim();
 }
 
 async function removeConversation(id: string): Promise<void> {
@@ -224,11 +509,12 @@ async function commitRename(item: ConversationSummary): Promise<void> {
 }
 
 function startNew(): void {
-  if (streaming.value || regenerating.value) return;
+  if (streaming.value || regenerating.value || uploading.value || addingUrl.value) return;
   conversationId.value = null;
   messages.value = [];
   streamError.value = '';
   pendingText.value = '';
+  resetAttachments();
 }
 
 async function scrollToBottom(): Promise<void> {
@@ -252,7 +538,15 @@ async function send(): Promise<void> {
   pendingText.value = '';
   messages.value = [
     ...messages.value,
-    { id: '', role: 'user', content: prompt, model: null, created_at: '' },
+    {
+      id: '',
+      role: 'user',
+      content: prompt,
+      model: null,
+      tokens_in: null,
+      tokens_out: null,
+      created_at: '',
+    },
   ];
   draft.value = '';
 
@@ -481,6 +775,9 @@ function onComposerKeydown(event: KeyboardEvent): void {
 }
 
 onMounted(() => {
+  // Paksa ambil ulang agar toggle "Tampilkan token" dari menu Konfigurasi
+  // langsung berlaku tanpa perlu muat ulang halaman.
+  void config.load(true);
   void loadConversations();
 });
 
@@ -492,7 +789,13 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="chat" :class="{ 'chat--no-sidebar': !canBrowseHistory }">
+  <div
+    class="chat"
+    :class="{
+      'chat--no-sidebar': !canBrowseHistory,
+      'chat--attachments': showAttachmentsPane,
+    }"
+  >
     <aside v-if="canBrowseHistory" class="chat__sidebar">
       <div class="chat__sidebar-head">
         <h2 class="chat__sidebar-title">{{ t('workspace.chat.sidebarTitle') }}</h2>
@@ -590,25 +893,58 @@ onBeforeUnmount(() => {
     <section class="chat__main">
       <div class="chat__topbar">
         <div class="chat__topbar-title">
-          <h2>{{ topbarTitle }}</h2>
-          <button
-            v-if="activeConversation"
-            type="button"
-            class="chat__toolbar-icon"
-            :class="{ 'chat__toolbar-icon--starred': activeConversation.starred_at }"
-            :aria-label="
-              activeConversation.starred_at ? t('workspace.chat.unstar') : t('workspace.chat.star')
-            "
-            :aria-pressed="Boolean(activeConversation.starred_at)"
-            :title="
-              activeConversation.starred_at ? t('workspace.chat.unstar') : t('workspace.chat.star')
-            "
-            @click="toggleStar(activeConversation)"
-          >
-            <CaIcon name="star" :size="15" />
-          </button>
+          <div class="chat__topbar-heading">
+            <h2>{{ topbarTitle }}</h2>
+            <button
+              v-if="activeConversation"
+              type="button"
+              class="chat__toolbar-icon"
+              :class="{ 'chat__toolbar-icon--starred': activeConversation.starred_at }"
+              :aria-label="
+                activeConversation.starred_at
+                  ? t('workspace.chat.unstar')
+                  : t('workspace.chat.star')
+              "
+              :aria-pressed="Boolean(activeConversation.starred_at)"
+              :title="
+                activeConversation.starred_at
+                  ? t('workspace.chat.unstar')
+                  : t('workspace.chat.star')
+              "
+              @click="toggleStar(activeConversation)"
+            >
+              <CaIcon name="star" :size="15" />
+            </button>
+          </div>
+          <p v-if="showTokenUsage" class="chat__token-total">
+            {{
+              t('workspace.chat.tokenTotal', {
+                input: formatNumber(tokenTotals.input),
+                output: formatNumber(tokenTotals.output),
+              })
+            }}
+          </p>
         </div>
         <div class="chat__topbar-actions">
+          <button
+            v-if="supportsAttachments"
+            type="button"
+            class="chat__toolbar-button"
+            :class="{ 'chat__toolbar-button--active': showAttachmentsPane }"
+            :aria-pressed="showAttachmentsPane"
+            :title="
+              showAttachmentsPane
+                ? t('workspace.chat.attachments.hide')
+                : t('workspace.chat.attachments.show')
+            "
+            @click="attachmentsOpen = !attachmentsOpen"
+          >
+            <CaIcon name="paperclip" :size="14" />
+            <span>{{ t('workspace.chat.attachments.toggle') }}</span>
+            <span v-if="attachments.length > 0" class="chat__toolbar-badge">
+              {{ enabledAttachmentCount }}/{{ attachments.length }}
+            </span>
+          </button>
           <button
             v-if="messages.length > 0"
             type="button"
@@ -668,6 +1004,9 @@ onBeforeUnmount(() => {
             :content="message.content"
             :model="message.model"
             :created-at="message.created_at"
+            :tokens-in="message.tokens_in"
+            :tokens-out="message.tokens_out"
+            :show-tokens="config.showTokenUsage"
             :can-regenerate="
               message.role === 'assistant' &&
               index === messages.length - 1 &&
@@ -734,6 +1073,188 @@ onBeforeUnmount(() => {
         </div>
       </form>
     </section>
+
+    <aside
+      v-if="showAttachmentsPane"
+      class="chat__attachments"
+      :aria-label="t('workspace.chat.attachments.title')"
+    >
+      <div class="chat__attachments-head">
+        <div class="chat__attachments-heading">
+          <h2 class="chat__attachments-title">{{ t('workspace.chat.attachments.title') }}</h2>
+          <p v-if="attachments.length > 0" class="chat__attachments-count">
+            {{
+              t('workspace.chat.attachments.count', {
+                enabled: enabledAttachmentCount,
+                total: attachments.length,
+              })
+            }}
+          </p>
+        </div>
+        <button
+          type="button"
+          class="chat__toolbar-icon"
+          :aria-label="t('common.close')"
+          :title="t('workspace.chat.attachments.hide')"
+          @click="attachmentsOpen = false"
+        >
+          <CaIcon name="close" :size="14" />
+        </button>
+      </div>
+
+      <div class="chat__attachments-body">
+        <p class="chat__attachments-hint">{{ t('workspace.chat.attachments.hint') }}</p>
+        <CaButton
+          variant="secondary"
+          block
+          :loading="uploading"
+          :disabled="uploading"
+          @click="triggerAttachmentPicker"
+        >
+          <template #icon-start><CaIcon name="upload" :size="14" /></template>
+          {{
+            uploading
+              ? t('workspace.chat.attachments.uploading', {
+                  done: uploadProgress.done,
+                  total: uploadProgress.total,
+                })
+              : t('workspace.chat.attachments.upload')
+          }}
+        </CaButton>
+        <p class="chat__attachments-formats">{{ t('workspace.chat.attachments.formats') }}</p>
+        <input
+          ref="attachmentInput"
+          type="file"
+          class="chat__attachments-input"
+          :accept="ATTACHMENT_ACCEPT"
+          :aria-label="t('workspace.chat.attachments.upload')"
+          multiple
+          @change="onAttachmentFiles"
+        />
+
+        <div class="chat__url-add">
+          <label class="chat__url-label" for="chat-source-url">
+            {{ t('workspace.chat.attachments.urlLabel') }}
+          </label>
+          <form class="chat__url-row" @submit.prevent="addUrlSource">
+            <input
+              id="chat-source-url"
+              v-model="urlDraft"
+              type="url"
+              class="chat__url-input"
+              :placeholder="t('workspace.chat.attachments.urlPlaceholder')"
+              :disabled="addingUrl || uploading"
+              inputmode="url"
+              autocomplete="off"
+            />
+            <CaButton
+              size="small"
+              variant="secondary"
+              type="submit"
+              :loading="addingUrl"
+              :disabled="!canAddUrl"
+            >
+              {{ t('workspace.chat.attachments.urlAdd') }}
+            </CaButton>
+          </form>
+          <p class="chat__url-hint">
+            {{
+              addingUrl
+                ? t('workspace.chat.attachments.urlAdding')
+                : t('workspace.chat.attachments.urlHint')
+            }}
+          </p>
+        </div>
+
+        <CaSpinner v-if="attachmentsLoading" class="chat__attachments-loading" />
+        <p v-else-if="attachmentsError" class="chat__attachments-error" role="alert">
+          {{ attachmentsError }}
+        </p>
+        <div v-else-if="attachments.length === 0" class="chat__attachments-empty">
+          <CaIcon name="paperclip" :size="22" />
+          <p class="chat__attachments-empty-title">
+            {{ t('workspace.chat.attachments.emptyTitle') }}
+          </p>
+          <p class="chat__attachments-empty-desc">
+            {{ t('workspace.chat.attachments.emptyDescription') }}
+          </p>
+        </div>
+        <ul v-else class="chat__attachment-list">
+          <li
+            v-for="item in attachments"
+            :key="item.id"
+            class="chat__attachment"
+            :class="{ 'chat__attachment--inactive': !item.enabled }"
+          >
+            <span class="chat__attachment-icon">
+              <CaIcon
+                :name="
+                  item.source_type === 'url' ? 'link' : item.kind === 'image' ? 'image' : 'file'
+                "
+                :size="15"
+              />
+            </span>
+            <div class="chat__attachment-info">
+              <p class="chat__attachment-name" :title="item.file_name">
+                <a
+                  v-if="item.source_type === 'url' && item.source_url"
+                  :href="item.source_url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="chat__attachment-link"
+                >
+                  {{ item.file_name }}
+                </a>
+                <template v-else>{{ item.file_name }}</template>
+              </p>
+              <p class="chat__attachment-meta">
+                <template v-if="item.source_type === 'url'">
+                  {{ attachmentHost(item) }} · {{ attachmentStatus(item) }}
+                </template>
+                <template v-else>
+                  {{ formatFileSize(item.size_bytes) }} · {{ attachmentStatus(item) }}
+                </template>
+              </p>
+              <div
+                v-if="item.source_type === 'url' && item.summary"
+                class="chat__attachment-summary"
+              >
+                <p class="chat__attachment-summary-label">
+                  {{ t('workspace.chat.attachments.urlSummary') }}
+                </p>
+                <p class="chat__attachment-summary-text" :title="formatSummary(item.summary)">
+                  {{ formatSummary(item.summary) }}
+                </p>
+              </div>
+              <div class="chat__attachment-toggle">
+                <CaSwitch
+                  :model-value="item.enabled"
+                  :disabled="attachmentBusyId === item.id || uploading"
+                  @update:model-value="setAttachmentEnabled(item, $event)"
+                />
+                <span class="chat__attachment-state">
+                  {{
+                    item.enabled
+                      ? t('workspace.chat.attachments.active')
+                      : t('workspace.chat.attachments.inactive')
+                  }}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              class="chat__attachment-delete"
+              :disabled="attachmentBusyId === item.id"
+              :aria-label="t('common.delete')"
+              :title="t('common.delete')"
+              @click="removeAttachmentFile(item)"
+            >
+              <CaIcon name="trash" :size="13" />
+            </button>
+          </li>
+        </ul>
+      </div>
+    </aside>
   </div>
 </template>
 
@@ -746,8 +1267,16 @@ onBeforeUnmount(() => {
   height: calc(100vh - 220px);
 }
 
+.chat--attachments {
+  grid-template-columns: 280px minmax(0, 1fr) 300px;
+}
+
 .chat--no-sidebar {
   grid-template-columns: minmax(0, 1fr);
+}
+
+.chat--no-sidebar.chat--attachments {
+  grid-template-columns: minmax(0, 1fr) 300px;
 }
 
 .chat__sidebar {
@@ -968,6 +1497,293 @@ onBeforeUnmount(() => {
   outline: none;
 }
 
+.chat__attachments {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--ca-stroke-2);
+  border-radius: var(--ca-radius-xl);
+  background: var(--ca-bg-surface);
+  overflow: hidden;
+}
+
+.chat__attachments-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ca-space-2);
+  padding: var(--ca-space-4) var(--ca-space-3) var(--ca-space-2) var(--ca-space-4);
+  border-bottom: 1px solid var(--ca-stroke-2);
+}
+
+.chat__attachments-heading {
+  min-width: 0;
+}
+
+.chat__attachments-title {
+  margin: 0;
+  font-size: var(--ca-text-300);
+  font-weight: var(--ca-font-weight-semibold);
+  color: var(--ca-fg-1);
+}
+
+.chat__attachments-count {
+  margin: 2px 0 0;
+  font-size: var(--ca-text-100);
+  color: var(--ca-fg-3);
+}
+
+.chat__attachments-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ca-space-2);
+  flex: 1;
+  min-height: 0;
+  padding: var(--ca-space-4);
+  overflow-y: auto;
+}
+
+.chat__attachments-hint {
+  margin: 0;
+  font-size: var(--ca-text-200);
+  color: var(--ca-fg-2);
+}
+
+.chat__attachments-formats {
+  margin: 0 0 var(--ca-space-2);
+  font-size: var(--ca-text-100);
+  line-height: var(--ca-line-100);
+  color: var(--ca-fg-3);
+}
+
+.chat__attachments-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.chat__url-add {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ca-space-1);
+  margin-top: var(--ca-space-1);
+  padding-top: var(--ca-space-3);
+  border-top: 1px solid var(--ca-stroke-2);
+}
+
+.chat__url-label {
+  font-size: var(--ca-text-100);
+  font-weight: var(--ca-font-weight-semibold);
+  color: var(--ca-fg-2);
+}
+
+.chat__url-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ca-space-1);
+}
+
+.chat__url-input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding: 0 var(--ca-space-2);
+  border: 1px solid var(--ca-stroke-1);
+  border-radius: var(--ca-radius-sm);
+  background: var(--ca-bg-surface);
+  color: var(--ca-fg-1);
+  font: inherit;
+  font-size: var(--ca-text-200);
+}
+
+.chat__url-input:focus {
+  outline: 2px solid var(--ca-color-brand);
+  outline-offset: 1px;
+}
+
+.chat__url-input:disabled {
+  background: var(--ca-bg-surface-3);
+  color: var(--ca-fg-disabled);
+}
+
+.chat__url-hint {
+  margin: 0;
+  font-size: var(--ca-text-100);
+  line-height: var(--ca-line-100);
+  color: var(--ca-fg-3);
+}
+
+.chat__attachments-loading {
+  margin: var(--ca-space-6) auto;
+}
+
+.chat__attachments-error {
+  margin: 0;
+  padding: var(--ca-space-2) 0;
+  font-size: var(--ca-text-200);
+  color: var(--ca-danger-fg);
+}
+
+.chat__attachments-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ca-space-2);
+  margin-top: var(--ca-space-4);
+  padding: var(--ca-space-5) var(--ca-space-3);
+  border: 1px dashed var(--ca-stroke-2);
+  border-radius: var(--ca-radius-lg);
+  color: var(--ca-fg-3);
+  text-align: center;
+}
+
+.chat__attachments-empty-title {
+  margin: 0;
+  font-size: var(--ca-text-200);
+  font-weight: var(--ca-font-weight-semibold);
+  color: var(--ca-fg-2);
+}
+
+.chat__attachments-empty-desc {
+  margin: 0;
+  font-size: var(--ca-text-100);
+  line-height: var(--ca-line-200);
+}
+
+.chat__attachment-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ca-space-2);
+}
+
+.chat__attachment {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ca-space-2);
+  padding: var(--ca-space-3);
+  border: 1px solid var(--ca-stroke-2);
+  border-radius: var(--ca-radius-md);
+  background: var(--ca-bg-surface-2);
+}
+
+.chat__attachment--inactive {
+  opacity: 0.7;
+}
+
+.chat__attachment-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border: 1px solid var(--ca-stroke-1);
+  border-radius: var(--ca-radius-sm);
+  background: var(--ca-bg-surface);
+  color: var(--ca-color-brand);
+}
+
+.chat__attachment-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat__attachment-name {
+  margin: 0;
+  font-size: var(--ca-text-200);
+  color: var(--ca-fg-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat__attachment-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.chat__attachment-link:hover {
+  color: var(--ca-color-brand);
+  text-decoration: underline;
+}
+
+.chat__attachment-summary {
+  margin-top: var(--ca-space-2);
+  padding: var(--ca-space-2);
+  border-radius: var(--ca-radius-sm);
+  background: var(--ca-bg-surface);
+}
+
+.chat__attachment-summary-label {
+  margin: 0;
+  font-size: 9px;
+  font-weight: var(--ca-font-weight-semibold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ca-fg-3);
+}
+
+.chat__attachment-summary-text {
+  display: -webkit-box;
+  margin: 2px 0 0;
+  overflow: hidden;
+  font-size: var(--ca-text-100);
+  line-height: var(--ca-line-200);
+  color: var(--ca-fg-2);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.chat__attachment-meta {
+  margin: 2px 0 0;
+  font-size: var(--ca-text-100);
+  color: var(--ca-fg-3);
+  overflow-wrap: anywhere;
+}
+
+.chat__attachment-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--ca-space-2);
+  margin-top: var(--ca-space-2);
+}
+
+.chat__attachment-state {
+  font-size: var(--ca-text-100);
+  color: var(--ca-fg-2);
+}
+
+.chat__attachment-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--ca-radius-sm);
+  background: none;
+  color: var(--ca-fg-3);
+  cursor: pointer;
+}
+
+.chat__attachment-delete:hover:not(:disabled) {
+  background: var(--ca-bg-surface-3);
+  color: var(--ca-danger-fg);
+}
+
+.chat__attachment-delete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .chat__main {
   display: flex;
   flex-direction: column;
@@ -980,18 +1796,29 @@ onBeforeUnmount(() => {
 
 .chat__topbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--ca-space-3);
+  gap: var(--ca-space-2) var(--ca-space-3);
   padding: var(--ca-space-2) var(--ca-space-4) var(--ca-space-2) var(--ca-space-6);
   border-bottom: 1px solid var(--ca-stroke-2);
 }
 
 .chat__topbar-title {
   display: flex;
+  flex: 1 1 200px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+.chat__topbar-heading {
+  display: flex;
   align-items: center;
   gap: var(--ca-space-2);
   min-width: 0;
+  max-width: 100%;
 }
 
 .chat__topbar-title h2 {
@@ -1002,6 +1829,16 @@ onBeforeUnmount(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.chat__token-total {
+  max-width: 100%;
+  margin: 0;
+  font-size: var(--ca-text-100);
+  color: var(--ca-fg-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .chat__toolbar-icon {
@@ -1029,6 +1866,7 @@ onBeforeUnmount(() => {
 
 .chat__topbar-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--ca-space-1);
 }
@@ -1050,6 +1888,25 @@ onBeforeUnmount(() => {
 .chat__toolbar-button:hover {
   background: var(--ca-bg-surface-3);
   color: var(--ca-fg-1);
+}
+
+.chat__toolbar-button--active {
+  background: var(--ca-color-brand-subtle);
+  color: var(--ca-color-brand);
+}
+
+.chat__toolbar-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: var(--ca-radius-circular);
+  background: var(--ca-bg-surface-3);
+  color: var(--ca-fg-2);
+  font-size: 10px;
+  line-height: 1;
 }
 
 .chat__styles {
@@ -1222,14 +2079,27 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
+@media (max-width: 1200px) {
+  .chat--attachments {
+    grid-template-columns: 240px minmax(0, 1fr) 270px;
+  }
+}
+
 @media (max-width: 900px) {
-  .chat {
+  .chat,
+  .chat--attachments,
+  .chat--no-sidebar,
+  .chat--no-sidebar.chat--attachments {
     grid-template-columns: 1fr;
     height: auto;
   }
 
   .chat__sidebar {
     max-height: 260px;
+  }
+
+  .chat__attachments {
+    max-height: 360px;
   }
 
   .chat__composer-bar {

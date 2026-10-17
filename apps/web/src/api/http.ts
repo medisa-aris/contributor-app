@@ -61,7 +61,10 @@ export interface RequestOptions {
   signal?: AbortSignal;
 }
 
-export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<ApiEnvelope<T>> {
+export async function apiRequest<T>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<ApiEnvelope<T>> {
   const method = options.method ?? 'GET';
   let url = buildUrl(path);
 
@@ -86,7 +89,24 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
     signal: options.signal,
   });
+  return parseResponse<T>(response);
+}
 
+/** POST multipart/form-data (unggah berkas) — tanpa header Content-Type manual. */
+export async function apiPostForm<T>(path: string, form: FormData): Promise<T> {
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+  const response = await fetch(buildUrl(path), {
+    method: 'POST',
+    headers,
+    credentials: 'include',
+    body: form,
+  });
+  const envelope = await parseResponse<T>(response);
+  return envelope.data;
+}
+
+async function parseResponse<T>(response: Response): Promise<ApiEnvelope<T>> {
   if (response.status === 204) {
     return { data: undefined as T };
   }

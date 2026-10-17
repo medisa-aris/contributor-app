@@ -27,6 +27,7 @@ import {
   CaPageHeader,
   CaSelect,
   CaSpinner,
+  CaSwitch,
   type CaSelectOption,
 } from '@/components/ui';
 import { formatDateTime } from '@/utils/format';
@@ -94,23 +95,32 @@ onMounted(async () => {
 
 const editName = ref('');
 const editDepartmentId = ref('');
+const editSuperadmin = ref(false);
 
 function syncEditForm(): void {
   editName.value = user.value?.display_name ?? '';
   editDepartmentId.value = user.value?.department_id ?? '';
+  editSuperadmin.value = user.value?.is_superadmin ?? false;
 }
 
 async function saveProfile(): Promise<void> {
   if (!user.value) return;
+  const self = user.value.id === auth.user?.id;
+  const superadminChanged = auth.isSuperadmin && editSuperadmin.value !== user.value.is_superadmin;
   savingProfile.value = true;
   try {
     await updateUser(user.value.id, {
       displayName: editName.value.trim() || undefined,
       departmentId: editDepartmentId.value || null,
+      ...(auth.isSuperadmin ? { isSuperadmin: editSuperadmin.value } : {}),
     });
-    toast.push({ variant: 'success', title: t('admin.users.saved') });
+    toast.push({
+      variant: 'success',
+      title: superadminChanged ? t('admin.users.superadminUpdated') : t('admin.users.saved'),
+    });
     await loadUser();
     syncEditForm();
+    if (self && superadminChanged) await auth.fetchMe();
   } catch (caught) {
     toast.push({
       variant: 'danger',
@@ -176,7 +186,11 @@ const assignError = ref('');
 const assignForm = ref({ roleId: '', dataScope: 'department', departmentId: '' });
 
 function openAssign(): void {
-  assignForm.value = { roleId: '', dataScope: 'department', departmentId: user.value?.department_id ?? '' };
+  assignForm.value = {
+    roleId: '',
+    dataScope: 'department',
+    departmentId: user.value?.department_id ?? '',
+  };
   assignError.value = '';
   assignOpen.value = true;
 }
@@ -248,7 +262,11 @@ function departmentName(id: string | null): string {
 
       <div class="udetail-badges">
         <CaBadge :variant="user.status === 'active' ? 'success' : 'neutral'" size="small">
-          {{ user.status === 'active' ? t('admin.users.statusActive') : t('admin.users.statusDisabled') }}
+          {{
+            user.status === 'active'
+              ? t('admin.users.statusActive')
+              : t('admin.users.statusDisabled')
+          }}
         </CaBadge>
         <CaBadge v-if="user.is_superadmin" variant="brand" size="small">
           {{ t('admin.users.superadminBadge') }}
@@ -280,6 +298,19 @@ function departmentName(id: string | null): string {
               />
             </template>
           </CaField>
+          <div v-if="auth.isSuperadmin" class="udetail-superadmin">
+            <div class="udetail-superadmin__text">
+              <p class="udetail-superadmin__title">{{ t('admin.users.superadminTitle') }}</p>
+              <p class="udetail-superadmin__hint">{{ t('admin.users.superadminHint') }}</p>
+            </div>
+            <CaSwitch
+              v-model="editSuperadmin"
+              :disabled="!canManage"
+              :label="
+                editSuperadmin ? t('admin.users.superadminOn') : t('admin.users.superadminOff')
+              "
+            />
+          </div>
           <div v-if="canManage" class="admin-form__actions">
             <CaButton variant="secondary" @click="openReset">
               {{ t('admin.users.resetPassword') }}
@@ -319,7 +350,12 @@ function departmentName(id: string | null): string {
                 <template v-if="assignment.departmentId">
                   · {{ departmentName(assignment.departmentId) }}
                 </template>
-                · {{ assignment.source === 'group' ? t('admin.users.sourceGroup') : t('admin.users.sourceUser') }}
+                ·
+                {{
+                  assignment.source === 'group'
+                    ? t('admin.users.sourceGroup')
+                    : t('admin.users.sourceUser')
+                }}
                 <template v-if="assignment.groupName">({{ assignment.groupName }})</template>
               </span>
             </div>
@@ -337,7 +373,9 @@ function departmentName(id: string | null): string {
 
       <section class="admin-section">
         <h2 class="admin-section__title">{{ t('admin.users.groupsSection') }}</h2>
-        <p v-if="user.groups.length === 0" class="admin-cell__sub">{{ t('admin.users.noGroups') }}</p>
+        <p v-if="user.groups.length === 0" class="admin-cell__sub">
+          {{ t('admin.users.noGroups') }}
+        </p>
         <ul v-else class="udetail-list">
           <li v-for="group in user.groups" :key="group.id" class="udetail-item">
             <div class="admin-cell">
@@ -350,15 +388,27 @@ function departmentName(id: string | null): string {
         </ul>
       </section>
 
-      <CaDialog v-model:open="resetOpen" :title="t('admin.users.resetTitle')" :subtitle="t('admin.users.resetSubtitle')" size="small">
+      <CaDialog
+        v-model:open="resetOpen"
+        :title="t('admin.users.resetTitle')"
+        :subtitle="t('admin.users.resetSubtitle')"
+        size="small"
+      >
         <p v-if="resetError" class="admin-error" role="alert">{{ resetError }}</p>
         <CaField :label="t('admin.users.resetField')" required>
           <template #default="{ id, describedBy }">
-            <CaInput :id="id" v-model="resetPassword" :aria-describedby="describedBy" type="password" />
+            <CaInput
+              :id="id"
+              v-model="resetPassword"
+              :aria-describedby="describedBy"
+              type="password"
+            />
           </template>
         </CaField>
         <template #footer>
-          <CaButton variant="secondary" @click="resetOpen = false">{{ t('common.cancel') }}</CaButton>
+          <CaButton variant="secondary" @click="resetOpen = false">{{
+            t('common.cancel')
+          }}</CaButton>
           <CaButton variant="primary" :loading="resetSaving" @click="submitReset">
             {{ t('common.save') }}
           </CaButton>
@@ -370,15 +420,28 @@ function departmentName(id: string | null): string {
         <form class="admin-form" @submit.prevent="submitAssign">
           <CaField :label="t('admin.users.assignRoleLabel')" required>
             <template #default="{ id, describedBy }">
-              <CaSelect :id="id" v-model="assignForm.roleId" :aria-describedby="describedBy" :options="roleOptions" />
+              <CaSelect
+                :id="id"
+                v-model="assignForm.roleId"
+                :aria-describedby="describedBy"
+                :options="roleOptions"
+              />
             </template>
           </CaField>
           <CaField :label="t('admin.users.assignScopeLabel')">
             <template #default="{ id, describedBy }">
-              <CaSelect :id="id" v-model="assignForm.dataScope" :aria-describedby="describedBy" :options="scopeOptions" />
+              <CaSelect
+                :id="id"
+                v-model="assignForm.dataScope"
+                :aria-describedby="describedBy"
+                :options="scopeOptions"
+              />
             </template>
           </CaField>
-          <CaField v-if="assignForm.dataScope === 'department'" :label="t('admin.users.assignDepartmentLabel')">
+          <CaField
+            v-if="assignForm.dataScope === 'department'"
+            :label="t('admin.users.assignDepartmentLabel')"
+          >
             <template #default="{ id, describedBy }">
               <CaSelect
                 :id="id"
@@ -390,7 +453,9 @@ function departmentName(id: string | null): string {
           </CaField>
         </form>
         <template #footer>
-          <CaButton variant="secondary" @click="assignOpen = false">{{ t('common.cancel') }}</CaButton>
+          <CaButton variant="secondary" @click="assignOpen = false">{{
+            t('common.cancel')
+          }}</CaButton>
           <CaButton variant="primary" :loading="assignSaving" @click="submitAssign">
             {{ t('common.save') }}
           </CaButton>
@@ -401,7 +466,9 @@ function departmentName(id: string | null): string {
     <div v-else>
       <CaPageHeader :title="t('admin.users.detailTitle')" />
       <p class="admin-error" role="alert">{{ error || t('errors.loadFailed') }}</p>
-      <RouterLink class="admin-name-link" to="/administration/users">{{ t('common.back') }}</RouterLink>
+      <RouterLink class="admin-name-link" to="/administration/users">{{
+        t('common.back')
+      }}</RouterLink>
     </div>
   </div>
 </template>
@@ -436,6 +503,35 @@ function departmentName(id: string | null): string {
 
 .udetail-form .admin-form__actions {
   grid-column: 1 / -1;
+}
+
+.udetail-superadmin {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ca-space-4);
+  padding: var(--ca-space-4);
+  background: var(--ca-bg-surface);
+  border: 1px solid var(--ca-stroke-2);
+  border-radius: var(--ca-radius-md);
+}
+
+.udetail-superadmin__text {
+  min-width: 0;
+}
+
+.udetail-superadmin__title {
+  margin: 0;
+  font-weight: var(--ca-font-weight-semibold);
+  font-size: var(--ca-text-300);
+}
+
+.udetail-superadmin__hint {
+  margin: var(--ca-space-1) 0 0;
+  color: var(--ca-fg-3);
+  font-size: var(--ca-text-200);
+  line-height: var(--ca-line-200);
 }
 
 .udetail-section-head {

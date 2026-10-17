@@ -15,6 +15,8 @@ export type ConversationMessage = {
   role: 'system' | 'user' | 'assistant';
   content: string;
   model: string | null;
+  tokens_in: number | null;
+  tokens_out: number | null;
   created_at: string;
 };
 
@@ -25,6 +27,23 @@ export type ConversationDetail = ConversationSummary & {
 export type ChatSendResult = {
   conversation: ConversationDetail;
   assistant: ConversationMessage;
+};
+
+export type ConversationAttachment = {
+  id: string;
+  conversation_id: string;
+  file_name: string;
+  mime_type: string;
+  extension: string;
+  size_bytes: number;
+  kind: 'document' | 'image';
+  extraction_status: 'ready' | 'image' | 'failed';
+  extracted_chars: number;
+  enabled: boolean;
+  created_at: string;
+  source_type: 'file' | 'url';
+  source_url: string | null;
+  summary: string | null;
 };
 
 export type TaskRow = {

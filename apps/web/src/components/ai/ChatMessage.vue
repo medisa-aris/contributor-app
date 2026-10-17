@@ -5,7 +5,7 @@ import DOMPurify from 'dompurify';
 import hljs from 'highlight.js/lib/common';
 import { Marked, type Tokens } from 'marked';
 import { CaIcon } from '@/components/ui';
-import { formatDateTime } from '@/utils/format';
+import { formatDateTime, formatNumber } from '@/utils/format';
 
 const props = withDefaults(
   defineProps<{
@@ -13,10 +13,21 @@ const props = withDefaults(
     content: string;
     model?: string | null;
     createdAt?: string | null;
+    tokensIn?: number | null;
+    tokensOut?: number | null;
+    showTokens?: boolean;
     pending?: boolean;
     canRegenerate?: boolean;
   }>(),
-  { model: null, createdAt: null, pending: false, canRegenerate: false },
+  {
+    model: null,
+    createdAt: null,
+    tokensIn: null,
+    tokensOut: null,
+    showTokens: false,
+    pending: false,
+    canRegenerate: false,
+  },
 );
 
 const emit = defineEmits<{ regenerate: [] }>();
@@ -26,6 +37,12 @@ const { t } = useI18n();
 const contentRef = ref<HTMLElement | null>(null);
 const copied = ref(false);
 const formattedTime = computed(() => (props.createdAt ? formatDateTime(props.createdAt) : ''));
+const showTokenMeta = computed(
+  () =>
+    props.showTokens &&
+    props.role === 'assistant' &&
+    (props.tokensIn !== null || props.tokensOut !== null),
+);
 
 const HTML_ESCAPES: Record<string, string> = {
   '&': '&amp;',
@@ -221,6 +238,14 @@ let purifyHookInstalled = false;
     <footer class="msg__footer">
       <div v-if="role === 'assistant'" class="msg__meta">
         <span v-if="model" class="msg__model">{{ model }}</span>
+        <span v-if="showTokenMeta" class="msg__tokens">
+          {{
+            t('workspace.chat.tokenResponse', {
+              input: formatNumber(tokensIn),
+              output: formatNumber(tokensOut),
+            })
+          }}
+        </span>
         <span v-if="formattedTime">{{ formattedTime }}</span>
       </div>
       <div v-if="!pending" class="msg__actions">
@@ -285,6 +310,7 @@ let purifyHookInstalled = false;
 .msg__meta {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--ca-space-3);
   font-size: var(--ca-text-100);
   color: var(--ca-fg-3);
