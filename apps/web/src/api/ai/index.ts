@@ -1,5 +1,5 @@
 import type { AiTaskStatus, ConversationMode } from '@contributor/shared';
-import { apiDelete, apiGet, apiGetPaged, apiPost } from '@/api/http';
+import { apiDelete, apiGet, apiGetPaged, apiPatch, apiPost } from '@/api/http';
 import type {
   ChatRequestPayload,
   ChatSendResult,
@@ -20,11 +20,13 @@ export async function sendChat(payload: ChatRequestPayload): Promise<ChatSendRes
 
 export function listConversations(query: {
   mode?: ConversationMode;
+  search?: string;
   page: number;
   pageSize: number;
 }) {
   return apiGetPaged<ConversationSummary>('/ai/conversations', {
     mode: query.mode,
+    search: query.search,
     page: query.page,
     pageSize: query.pageSize,
   });
@@ -36,6 +38,17 @@ export function conversationDetail(id: string): Promise<ConversationDetail> {
 
 export function deleteConversation(id: string): Promise<{ deleted: boolean }> {
   return apiDelete<{ deleted: boolean }>(`/ai/conversations/${id}`);
+}
+
+export function updateConversation(
+  id: string,
+  patch: { title?: string; starred?: boolean },
+): Promise<ConversationSummary> {
+  return apiPatch<ConversationSummary>(`/ai/conversations/${id}`, patch);
+}
+
+export function regenerateReply(id: string): Promise<ChatSendResult> {
+  return apiPost<ChatSendResult>(`/ai/conversations/${id}/regenerate`);
 }
 
 export function createTask(input: { title: string; instruction: string }): Promise<TaskRow> {

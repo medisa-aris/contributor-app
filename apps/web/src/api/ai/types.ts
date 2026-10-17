@@ -5,6 +5,7 @@ export type ConversationSummary = {
   mode: ConversationMode;
   title: string;
   counterpart_style: string | null;
+  starred_at: string | null;
   updated_at: string;
   created_at: string;
 };
