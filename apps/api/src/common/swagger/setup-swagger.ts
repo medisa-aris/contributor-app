@@ -3,7 +3,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 export function setupSwagger(app: INestApplication): void {
   const config = new DocumentBuilder()
-    .setTitle('Contributor AI API')
+    .setTitle('BeLead AI API')
     .setDescription(
       'Enterprise Employee AI Enablement Framework. Fase 1-3: autentikasi, RBAC, konfigurasi navigasi.',
     )

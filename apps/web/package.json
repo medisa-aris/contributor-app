@@ -1,9 +1,9 @@
 {
-  "name": "@contributor/web",
-  "version": "0.1.0",
+  "name": "@bara/web",
+  "version": "0.1.7",
   "private": true,
   "type": "module",
-  "description": "Contributor AI frontend (Vue 3 + Vite)",
+  "description": "BeLead AI frontend (Vue 3 + Vite)",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -p tsconfig.json --noEmit && vite build",
@@ -12,7 +12,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@contributor/shared": "0.1.0",
+    "@bara/shared": "0.1.0",
     "d3": "^7.9.0",
     "d3-org-chart": "^3.1.1",
     "dompurify": "^3.4.17",

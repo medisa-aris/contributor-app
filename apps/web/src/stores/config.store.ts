@@ -1,10 +1,10 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import type { PublicConfigDto } from '@contributor/shared';
+import type { PublicConfigDto } from '@bara/shared';
 import { apiGet } from '@/api/http';
 
 export const useConfigStore = defineStore('config', () => {
-  const appName = ref('Contributor AI');
+  const appName = ref('BeLead AI');
   const timezone = ref('Asia/Jakarta');
   const showTokenUsage = ref(true);
   const loaded = ref(false);

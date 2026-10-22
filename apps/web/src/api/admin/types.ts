@@ -14,7 +14,7 @@ export type AdminUserRow = {
   department_name: string | null;
   last_login_at: string | null;
   created_at: string;
-}
+};
 
 export type AdminRoleAssignment = {
   id: string;
@@ -25,12 +25,12 @@ export type AdminRoleAssignment = {
   departmentId: string | null;
   source: 'user' | 'group';
   groupName: string | null;
-}
+};
 
 export type AdminUserDetail = AdminUserRow & {
   assignments: AdminRoleAssignment[];
   groups: { id: string; code: string; name: string }[];
-}
+};
 
 export type AdminRoleRow = {
   id: string;
@@ -41,7 +41,7 @@ export type AdminRoleRow = {
   created_at: string;
   permission_count: number;
   assignment_count: number;
-}
+};
 
 export type AdminGroupRow = {
   id: string;
@@ -51,7 +51,7 @@ export type AdminGroupRow = {
   created_at: string;
   member_count: number;
   role_count: number;
-}
+};
 
 export type AdminGroupMember = {
   id: string;
@@ -60,7 +60,7 @@ export type AdminGroupMember = {
   status: AdminUserStatus;
   department_id: string | null;
   department_name: string | null;
-}
+};
 
 export type AdminGroupRole = {
   id: string;
@@ -69,7 +69,7 @@ export type AdminGroupRole = {
   roleName: string;
   dataScope: AdminDataScope;
   departmentId: string | null;
-}
+};
 
 export type AdminGroupDetail = {
   id: string;
@@ -79,7 +79,7 @@ export type AdminGroupDetail = {
   created_at: string;
   members: AdminGroupMember[];
   roles: AdminGroupRole[];
-}
+};
 
 export type AdminDepartmentNode = {
   id: string;
@@ -87,8 +87,17 @@ export type AdminDepartmentNode = {
   code: string;
   parent_id: string | null;
   user_count: number;
+  users: AdminDepartmentUser[];
   children: AdminDepartmentNode[];
-}
+};
+
+export type AdminDepartmentUser = {
+  id: string;
+  display_name: string;
+  email: string;
+  job_title: string | null;
+  status: string;
+};
 
 export type AdminPolicyRow = {
   id: string;
@@ -105,7 +114,7 @@ export type AdminPolicyRow = {
   is_active: boolean;
   created_at: string;
   updated_at: string;
-}
+};
 
 export type AdminPermissionRow = {
   id: string;
@@ -114,14 +123,14 @@ export type AdminPermissionRow = {
   description: string | null;
   is_system: boolean;
   role_count: number;
-}
+};
 
 export type EffectiveChainEntry = {
   kind: string;
   label: string;
   effect: 'allow' | 'deny' | 'info';
   detail: string;
-}
+};
 
 export type EffectiveDecision = {
   permission: string;
@@ -129,7 +138,7 @@ export type EffectiveDecision = {
   reason: string;
   scope: AdminDataScope | null;
   chain: EffectiveChainEntry[];
-}
+};
 
 export type EffectivePermissionsResponse = {
   user: {
@@ -150,14 +159,14 @@ export type EffectivePermissionsResponse = {
     source: 'user' | 'group';
   }>;
   decisions: EffectiveDecision[];
-}
+};
 
 export type AuthzTestResponse = {
   allowed: boolean;
   reason: string;
   scope: AdminDataScope | null;
   chain: EffectiveChainEntry[];
-}
+};
 
 export type AdminAuditRow = {
   id: string;
@@ -172,7 +181,7 @@ export type AdminAuditRow = {
   entity_type: string | null;
   entity_id: string | null;
   payload: Record<string, unknown>;
-}
+};
 
 export type AdminSessionRow = {
   id: string;
@@ -184,7 +193,7 @@ export type AdminSessionRow = {
   created_at: string;
   last_seen_at: string;
   expires_at: string;
-}
+};
 
 export type AdminConfigEntry = {
   key: string;
@@ -193,7 +202,7 @@ export type AdminConfigEntry = {
   is_public: boolean;
   updated_at: string;
   updated_by: string | null;
-}
+};
 
 export type AdminProviderStatus = {
   name: string;
@@ -201,12 +210,12 @@ export type AdminProviderStatus = {
   model: string | null;
   baseUrl: string | null;
   isDefault: boolean;
-}
+};
 
 export type AdminProvidersOverview = {
   defaultProvider: string;
   providers: AdminProviderStatus[];
-}
+};
 
 export type AdminNavApplication = {
   id: string;
@@ -216,7 +225,7 @@ export type AdminNavApplication = {
   description: string | null;
   sort_order: number;
   is_active: boolean;
-}
+};
 
 export type AdminNavModule = {
   id: string;
@@ -227,7 +236,7 @@ export type AdminNavModule = {
   description: string | null;
   sort_order: number;
   is_active: boolean;
-}
+};
 
 export type AdminNavFeature = {
   id: string;
@@ -237,7 +246,7 @@ export type AdminNavFeature = {
   description: string | null;
   sort_order: number;
   is_active: boolean;
-}
+};
 
 export type AdminNavMenuItem = {
   id: string;
@@ -254,11 +263,11 @@ export type AdminNavMenuItem = {
   sort_order: number;
   is_active: boolean;
   is_future: boolean;
-}
+};
 
 export type AdminNavTree = {
   applications: AdminNavApplication[];
   modules: AdminNavModule[];
   features: AdminNavFeature[];
   menuItems: AdminNavMenuItem[];
-}
+};

@@ -25,7 +25,7 @@ export const APP_CONFIG_DEFINITIONS: readonly AppConfigDefinition[] = [
     key: APP_CONFIG_KEYS.appName,
     description: 'Nama aplikasi yang tampil di antarmuka',
     isPublic: true,
-    defaultValue: 'Contributor AI',
+    defaultValue: 'BeLead AI',
   },
   {
     key: APP_CONFIG_KEYS.defaultLocale,

@@ -226,7 +226,7 @@ describe('AI chat attachments (e2e)', () => {
       'application/pdf',
     );
     expect(res.status).toBe(400);
-    expect(res.body.error.message).toContain('Otak Kedua');
+    expect(res.body.error.message).toContain('Multi Brain');
   });
 
   it('isi dokumen aktif dikirim sebagai konteks dan draf diberi judul dari pesan pertama', async () => {
@@ -484,7 +484,7 @@ describe('AI chat attachments (e2e)', () => {
 
     const res = await addUrl(manager, conversationId, 'https://93.184.216.34/artikel');
     expect(res.status).toBe(400);
-    expect(res.body.error.message).toContain('Otak Kedua');
+    expect(res.body.error.message).toContain('Multi Brain');
   });
 
   it('staf tanpa izin secondbrain tidak dapat menambahkan sumber URL', async () => {

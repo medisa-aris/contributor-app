@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { AUDIT_EVENTS, isKnownPermissionId } from '@contributor/shared';
+import { AUDIT_EVENTS, isKnownPermissionId } from '@bara/shared';
 import { DataSource } from 'typeorm';
 import type { AuthContext } from '../../common/types/auth-context';
 import { AppError, ERROR_CODES } from '../../common/errors/app-error';

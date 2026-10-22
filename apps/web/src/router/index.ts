@@ -89,6 +89,7 @@ export const router = createRouter({
         admin('agents/operations', 'agent-operations', () => import('@/views/agents/AgentOperationsView.vue'), 'agents.execute'),
         admin('agents/approvals', 'agent-approvals', () => import('@/views/agents/AgentApprovalsView.vue'), 'agents.approve'),
         admin('integrations', 'integrations-overview', () => import('@/views/integrations/IntegrationsOverviewView.vue'), 'integrations.view'),
+        admin('integrations/oauth/callback', 'integrations-oauth-callback', () => import('@/views/integrations/McpOauthCallbackView.vue'), 'integrations.configure'),
         admin('integrations/credentials', 'integrations-credentials', () => import('@/views/integrations/IntegrationsCredentialsView.vue'), 'integrations.view'),
         {
           path: ':pathMatch(.*)*',

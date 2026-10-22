@@ -1,0 +1,3135 @@
+{
+ "users": [
+  {
+   "key": "hendra",
+   "displayName": "Hendra Wijaksana",
+   "jobTitle": "GM Safety",
+   "departmentCode": "HSE",
+   "role": "manager"
+  },
+  {
+   "key": "ratna",
+   "displayName": "Ratna Kusumawardani",
+   "jobTitle": "Manager HIRA",
+   "departmentCode": "HSE-HIRA",
+   "role": "manager"
+  },
+  {
+   "key": "bambang",
+   "displayName": "Bambang Sutrisno",
+   "jobTitle": "Manager Safety",
+   "departmentCode": "HSE-SAFETY",
+   "role": "manager"
+  },
+  {
+   "key": "dimas",
+   "displayName": "Dimas Aryo Pratama",
+   "jobTitle": "Superintendent HIRA Operasional",
+   "departmentCode": "HIRA-OPS",
+   "role": "superintendent"
+  },
+  {
+   "key": "siti",
+   "displayName": "Siti Nurhaliza Putri",
+   "jobTitle": "Superintendent Risk Control & MOC",
+   "departmentCode": "HIRA-RCM",
+   "role": "superintendent"
+  },
+  {
+   "key": "fajar",
+   "displayName": "Fajar Nugroho",
+   "jobTitle": "Superintendent Safety Operasional & Inspeksi",
+   "departmentCode": "SAFE-OPS",
+   "role": "superintendent"
+  },
+  {
+   "key": "maria",
+   "displayName": "Maria Magdalena Sinaga",
+   "jobTitle": "Superintendent Safety Compliance & Audit",
+   "departmentCode": "SAFE-CMP",
+   "role": "superintendent"
+  }
+ ],
+ "conversations": [
+  {
+   "owner": "hendra",
+   "taskCode": "1.1",
+   "title": "Review dan persetujuan rencana kerja K3L tahunan seluruh site",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Claude, saya mau review draft rencana kerja K3L 2027. Bisa bantu rangkum poin utamanya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Siap, Pak Hendra. Silakan lampirkan drafnya, nanti saya rangkum per program, target, dan anggaran."
+    },
+    {
+     "role": "user",
+     "content": "Sudah saya unggah. Fokus ke program yang berubah dibanding 2026."
+    },
+    {
+     "role": "assistant",
+     "content": "Ada empat perubahan utama: penambahan program fatigue management, perluasan audit kontraktor, pelatihan critical risk, dan penambahan simulasi tanggap darurat."
+    },
+    {
+     "role": "user",
+     "content": "Anggarannya naik berapa persen?"
+    },
+    {
+     "role": "assistant",
+     "content": "Di draf, total anggaran naik sekitar 12 persen, terbesar di pelatihan dan audit kontraktor."
+    },
+    {
+     "role": "user",
+     "content": "Apakah ada program 2026 yang belum tuntas tapi tidak masuk draf 2027?"
+    },
+    {
+     "role": "assistant",
+     "content": "Ada dua: revisi prosedur kerja di ketinggian dan digitalisasi laporan hazard. Keduanya tidak disebut di draf 2027."
+    },
+    {
+     "role": "user",
+     "content": "Tolong buatkan daftar pertanyaan untuk saya ajukan ke Manager Safety dan Manager HIRA."
+    },
+    {
+     "role": "assistant",
+     "content": "Saya siapkan 8 pertanyaan, antara lain alasan dihapusnya dua program tadi, dasar kenaikan anggaran, dan indikator keberhasilan tiap program."
+    },
+    {
+     "role": "user",
+     "content": "Bagus. Tambahkan juga pertanyaan soal beban kerja tim di akhir tahun."
+    },
+    {
+     "role": "assistant",
+     "content": "Sudah saya tambahkan, ditujukan ke kedua manager: kapasitas tim untuk menjalankan semua program secara paralel di Q1."
+    },
+    {
+     "role": "user",
+     "content": "Apa risiko terbesar kalau rencana ini disetujui apa adanya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Risiko utamanya kapasitas tim terlalu padat di Q1 dan dua program carry-over tidak terpantau sehingga berpotensi jadi temuan."
+    },
+    {
+     "role": "user",
+     "content": "Oke, saya minta draf memo persetujuan bersyarat."
+    },
+    {
+     "role": "assistant",
+     "content": "Draf memo: disetujui dengan syarat dua program carry-over dimasukkan kembali dan jadwal Q1 diperbarui dalam 7 hari kerja."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan tenggat revisi sampai akhir bulan ini."
+    },
+    {
+     "role": "assistant",
+     "content": "Sudah, tenggat revisi saya set 31 Oktober 2026 dan saya tandai sebagai tindak lanjut Manager HIRA dan Manager Safety."
+    },
+    {
+     "role": "user",
+     "content": "Terima kasih, kirim memo ke saya dulu untuk ditandatangani."
+    },
+    {
+     "role": "assistant",
+     "content": "Baik, memo final sudah siap dalam format yang bisa langsung Bapak tinjau dan tandatangani."
+    }
+   ]
+  },
+  {
+   "owner": "hendra",
+   "taskCode": "1.2",
+   "title": "Evaluasi kinerja safety bulanan (TRIFR, LTIFR) untuk presentasi ke Direksi",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya perlu bahan presentasi kinerja safety September untuk Direksi."
+    },
+    {
+     "role": "assistant",
+     "content": "Baik. Boleh saya minta data insiden, jam kerja, dan target TRIFR/LTIFR bulan September?"
+    },
+    {
+     "role": "user",
+     "content": "Data sudah di spreadsheet yang saya unggah. Target TRIFR 0,45 dan LTIFR 0,10."
+    },
+    {
+     "role": "assistant",
+     "content": "Hasil hitungan sample: TRIFR 0,52 dan LTIFR 0,08. LTIFR di bawah target, TRIFR di atas target."
+    },
+    {
+     "role": "user",
+     "content": "Apa penyebab TRIFR naik?"
+    },
+    {
+     "role": "assistant",
+     "content": "Dari data, kenaikan datang dari tiga kasus medical treatment pada kontraktor angkutan, semuanya cedera ringan di area workshop."
+    },
+    {
+     "role": "user",
+     "content": "Bandingkan dengan Agustus."
+    },
+    {
+     "role": "assistant",
+     "content": "Agustus TRIFR 0,41. Jadi naik 0,11 poin, dengan jam kerja relatif sama."
+    },
+    {
+     "role": "user",
+     "content": "Buatkan struktur slide ringkas, maksimal 6 slide."
+    },
+    {
+     "role": "assistant",
+     "content": "Usulan: ringkasan KPI, tren 6 bulan, analisis penyebab, insiden menonjol, rencana perbaikan, dan permintaan dukungan Direksi."
+    },
+    {
+     "role": "user",
+     "content": "Untuk slide analisis penyebab, apa narasi yang tepat?"
+    },
+    {
+     "role": "assistant",
+     "content": "Fokus ke pola: kasus terkonsentrasi di satu kontraktor dan satu area. Ini menunjukkan masalah spesifik, bukan sistemik."
+    },
+    {
+     "role": "user",
+     "content": "Rencana perbaikan apa yang realistis?"
+    },
+    {
+     "role": "assistant",
+     "content": "Audit khusus kontraktor tersebut, refresher training pekerja workshop, dan inspeksi harian selama 30 hari."
+    },
+    {
+     "role": "user",
+     "content": "Direksi biasanya bertanya soal tren ke depan. Ada proyeksi?"
+    },
+    {
+     "role": "assistant",
+     "content": "Jika perbaikan berjalan, proyeksi sederhana TRIFR kembali ke kisaran 0,45 dalam 2 bulan. Saya tandai ini sebagai estimasi, bukan jaminan."
+    },
+    {
+     "role": "user",
+     "content": "Setuju, tolong beri label estimasi di slide."
+    },
+    {
+     "role": "assistant",
+     "content": "Sudah saya beri label dan catatan asumsi di bagian bawah slide."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan satu halaman lampiran rumus perhitungan."
+    },
+    {
+     "role": "assistant",
+     "content": "Lampiran ditambahkan, berisi rumus TRIFR dan LTIFR beserta basis 1.000.000 jam kerja."
+    }
+   ]
+  },
+  {
+   "owner": "hendra",
+   "taskCode": "1.3",
+   "title": "Pembahasan hasil investigasi insiden fatal bersama Kepala Teknik Tambang (KTT)",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Besok saya bahas laporan investigasi insiden fatal dengan KTT. Tolong bantu saya mempersiapkan."
+    },
+    {
+     "role": "assistant",
+     "content": "Baik. Silakan bagikan laporan investigasinya, saya akan ekstrak kronologi, akar masalah, dan rekomendasi."
+    },
+    {
+     "role": "user",
+     "content": "Laporan sudah saya unggah."
+    },
+    {
+     "role": "assistant",
+     "content": "Ringkasan: insiden terjadi saat unit pendukung berada di blind spot dump truck. Akar masalah ada pada jalur kerja yang tidak terpisah dan prosedur komunikasi radio yang tidak dijalankan."
+    },
+    {
+     "role": "user",
+     "content": "Rekomendasinya sudah cukup kuat belum?"
+    },
+    {
+     "role": "assistant",
+     "content": "Ada 7 rekomendasi. Tiga di antaranya bersifat administratif, padahal hierarki pengendalian menuntut penguatan di level rekayasa teknik dan eliminasi."
+    },
+    {
+     "role": "user",
+     "content": "Contoh yang bisa ditambahkan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pemisahan fisik jalur kendaraan ringan dan unit besar, penambahan sistem deteksi proximity, dan pembatasan akses area kerja unit besar."
+    },
+    {
+     "role": "user",
+     "content": "Pertanyaan apa yang mungkin diajukan KTT?"
+    },
+    {
+     "role": "assistant",
+     "content": "Kemungkinan: apakah kejadian serupa pernah terjadi, status tindak lanjut near miss sebelumnya, dan tenggat penyelesaian tiap rekomendasi."
+    },
+    {
+     "role": "user",
+     "content": "Apakah ada near miss sebelumnya di area yang sama?"
+    },
+    {
+     "role": "assistant",
+     "content": "Di data yang saya baca, ada dua near miss kendaraan di area itu dalam 6 bulan terakhir, belum ada yang ditutup tindak lanjutnya."
+    },
+    {
+     "role": "user",
+     "content": "Itu poin penting. Masukkan ke bahan."
+    },
+    {
+     "role": "assistant",
+     "content": "Sudah saya masukkan sebagai butir temuan tambahan dengan tanggal dan nomor laporan near miss."
+    },
+    {
+     "role": "user",
+     "content": "Buatkan usulan timeline penyelesaian rekomendasi."
+    },
+    {
+     "role": "assistant",
+     "content": "Usulan: pengendalian sementara 3 hari, rambu dan jalur terpisah 14 hari, sistem proximity 60 hari, evaluasi efektivitas 90 hari."
+    },
+    {
+     "role": "user",
+     "content": "Siapa PIC yang sebaiknya ditunjuk?"
+    },
+    {
+     "role": "assistant",
+     "content": "Usulan PIC: Manager Safety untuk pengendalian operasional, Manager HIRA untuk review risiko, dan manajer Produksi untuk perubahan jalur kerja."
+    },
+    {
+     "role": "user",
+     "content": "Baik, susun satu halaman briefing untuk KTT."
+    },
+    {
+     "role": "assistant",
+     "content": "Briefing satu halaman sudah siap, berisi kronologi singkat, akar masalah, rekomendasi prioritas, PIC, dan timeline."
+    }
+   ]
+  },
+  {
+   "owner": "hendra",
+   "taskCode": "1.4",
+   "title": "Penetapan target dan KPI safety untuk Manager di bawahnya",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya mau menyusun KPI 2027 untuk Manager HIRA dan Manager Safety. Ada saran struktur?"
+    },
+    {
+     "role": "assistant",
+     "content": "Bisa dibagi dua jenis: indikator lagging (hasil) dan leading (proses). Ingin saya usulkan contohnya?"
+    },
+    {
+     "role": "user",
+     "content": "Ya, untuk Manager HIRA dulu."
+    },
+    {
+     "role": "assistant",
+     "content": "Leading: persentase IBPR area baru selesai sebelum operasi, persentase risiko tinggi dengan pengendalian terverifikasi. Lagging: jumlah insiden akibat bahaya yang sudah teridentifikasi."
+    },
+    {
+     "role": "user",
+     "content": "Targetnya berapa yang realistis?"
+    },
+    {
+     "role": "assistant",
+     "content": "Sebagai titik awal: IBPR selesai 100 persen sebelum operasi, verifikasi pengendalian risiko tinggi minimal 95 persen. Silakan sesuaikan dengan kapasitas tim."
+    },
+    {
+     "role": "user",
+     "content": "Sekarang Manager Safety."
+    },
+    {
+     "role": "assistant",
+     "content": "Leading: kepatuhan penyelesaian tindak lanjut temuan tepat waktu, cakupan pelatihan wajib. Lagging: TRIFR dan LTIFR perusahaan serta kontraktor."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana supaya KPI tidak saling tumpang tindih?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pisahkan kepemilikan: HIRA memiliki kualitas identifikasi dan pengendalian risiko, Safety memiliki eksekusi lapangan dan kepatuhan. Lagging dimiliki bersama."
+    },
+    {
+     "role": "user",
+     "content": "Bobot yang cocok untuk lagging dan leading?"
+    },
+    {
+     "role": "assistant",
+     "content": "Umumnya 40 persen lagging dan 60 persen leading agar fokus pada pencegahan. Ini bisa disesuaikan dengan kebijakan perusahaan."
+    },
+    {
+     "role": "user",
+     "content": "Ada risiko perilaku yang tidak diinginkan dari KPI lagging?"
+    },
+    {
+     "role": "assistant",
+     "content": "Ada, yaitu under-reporting insiden. Sebaiknya tambahkan indikator pelaporan near miss dan hazard report sebagai pengimbang."
+    },
+    {
+     "role": "user",
+     "content": "Bagus, masukkan itu."
+    },
+    {
+     "role": "assistant",
+     "content": "Sudah, saya tambahkan indikator jumlah near miss dan hazard report yang dilaporkan serta ditutup."
+    },
+    {
+     "role": "user",
+     "content": "Buat dalam bentuk tabel untuk saya diskusikan."
+    },
+    {
+     "role": "assistant",
+     "content": "Tabel KPI sudah siap dengan kolom indikator, jenis, target, bobot, dan sumber data."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan kolom frekuensi review."
+    },
+    {
+     "role": "assistant",
+     "content": "Kolom ditambahkan: indikator leading direview bulanan, lagging direview bulanan dan dievaluasi kumulatif tiap kuartal."
+    }
+   ]
+  },
+  {
+   "owner": "hendra",
+   "taskCode": "1.5",
+   "title": "Koordinasi dengan Inspektur Tambang terkait kesiapan inspeksi tahunan",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Inspektur Tambang akan datang bulan depan. Bantu saya susun checklist kesiapan."
+    },
+    {
+     "role": "assistant",
+     "content": "Baik. Mari kelompokkan: dokumen, kondisi lapangan, dan kompetensi personel. Mau mulai dari yang mana?"
+    },
+    {
+     "role": "user",
+     "content": "Dokumen dulu."
+    },
+    {
+     "role": "assistant",
+     "content": "Dokumen kunci: program K3, laporan statistik, hasil audit internal, bukti tindak lanjut temuan, dokumen izin kerja, dan catatan pelatihan."
+    },
+    {
+     "role": "user",
+     "content": "Untuk lapangan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Fokus pada jalan angkut, rambu dan guardrail, fuel station, workshop, area peledakan, dan fasilitas tanggap darurat."
+    },
+    {
+     "role": "user",
+     "content": "Kompetensi personel?"
+    },
+    {
+     "role": "assistant",
+     "content": "Sertifikasi pengawas dan operator, status kompetensi tim tanggap darurat, serta catatan induksi karyawan baru dan kontraktor."
+    },
+    {
+     "role": "user",
+     "content": "Apa yang biasanya jadi temuan berulang?"
+    },
+    {
+     "role": "assistant",
+     "content": "Secara umum: tindak lanjut temuan yang terlambat, dokumen yang tidak mutakhir, dan sertifikasi yang kedaluwarsa. Saya sarankan cek tiga hal ini lebih dulu."
+    },
+    {
+     "role": "user",
+     "content": "Siapa yang sebaiknya bertanggung jawab per kelompok?"
+    },
+    {
+     "role": "assistant",
+     "content": "Usulan: dokumen ke Superintendent Compliance, lapangan ke Superintendent Safety Operasional, dan risiko ke Manager HIRA."
+    },
+    {
+     "role": "user",
+     "content": "Buat timeline persiapan 4 minggu."
+    },
+    {
+     "role": "assistant",
+     "content": "Minggu 1 audit dokumen, minggu 2 inspeksi lapangan internal, minggu 3 perbaikan temuan, minggu 4 simulasi pemeriksaan dan briefing tim."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan rapat koordinasi mingguan."
+    },
+    {
+     "role": "assistant",
+     "content": "Saya tambahkan rapat 30 menit tiap Senin untuk memantau progres dan hambatan."
+    },
+    {
+     "role": "user",
+     "content": "Draf surat konfirmasi jadwal ke Inspektur Tambang juga ya."
+    },
+    {
+     "role": "assistant",
+     "content": "Draf surat sudah saya buat, berisi konfirmasi jadwal, ruang lingkup, dan kontak PIC. Silakan Bapak periksa sebelum dikirim."
+    },
+    {
+     "role": "user",
+     "content": "Pastikan tidak dikirim otomatis."
+    },
+    {
+     "role": "assistant",
+     "content": "Betul, saya tidak akan mengirim apa pun tanpa persetujuan Bapak. Draf hanya disimpan sampai Bapak minta untuk dikirim."
+    }
+   ]
+  },
+  {
+   "owner": "ratna",
+   "taskCode": "2.1",
+   "title": "Penyusunan peta risiko tingkat perusahaan (corporate risk register) kuartal IV",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Claude, saya mulai menyusun corporate risk register Q4. Ada template yang bisa dipakai?"
+    },
+    {
+     "role": "assistant",
+     "content": "Bisa. Kolom umum: ID risiko, kategori, deskripsi, penyebab, dampak, penilaian awal, pengendalian, risiko residual, pemilik, dan status."
+    },
+    {
+     "role": "user",
+     "content": "Saya ingin menambah kolom critical control."
+    },
+    {
+     "role": "assistant",
+     "content": "Ide bagus. Kolom itu menandai pengendalian yang jika gagal menyebabkan dampak fatal, sehingga mudah diprioritaskan verifikasinya."
+    },
+    {
+     "role": "user",
+     "content": "Ada 42 risiko dari Q3. Bagaimana cara me-review cepat?"
+    },
+    {
+     "role": "assistant",
+     "content": "Urutkan berdasarkan risiko residual. Tinjau dulu yang tinggi dan ekstrem, lalu yang berubah penilaian sejak Q3."
+    },
+    {
+     "role": "user",
+     "content": "Bantu kategorikan risiko baru dari area pit baru."
+    },
+    {
+     "role": "assistant",
+     "content": "Kategori yang relevan: stabilitas lereng, interaksi kendaraan, pengelolaan air tambang, dan peledakan. Mau saya buat draf deskripsi risiko tiap kategori?"
+    },
+    {
+     "role": "user",
+     "content": "Ya, mulai dari stabilitas lereng."
+    },
+    {
+     "role": "assistant",
+     "content": "Draf: kegagalan lereng akibat curah hujan tinggi dan geometri jenjang tidak sesuai, berdampak pada cedera fatal dan kehilangan produksi."
+    },
+    {
+     "role": "user",
+     "content": "Tolong tambah penyebab terkait drainase."
+    },
+    {
+     "role": "assistant",
+     "content": "Ditambahkan: sistem drainase tidak memadai sehingga muka air tanah naik dan menurunkan kekuatan geser lereng."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana menilai kemungkinan dan dampaknya secara konsisten?"
+    },
+    {
+     "role": "assistant",
+     "content": "Gunakan matriks risiko perusahaan yang berlaku dan catat dasar penilaian tiap risiko agar bisa diaudit ulang."
+    },
+    {
+     "role": "user",
+     "content": "Baik. Risiko mana yang perlu eskalasi ke GM Safety?"
+    },
+    {
+     "role": "assistant",
+     "content": "Semua risiko residual tinggi dan ekstrem, serta yang pengendalian kritisnya belum terverifikasi."
+    },
+    {
+     "role": "user",
+     "content": "Buat ringkasan eskalasinya."
+    },
+    {
+     "role": "assistant",
+     "content": "Ringkasan satu halaman berisi daftar risiko eskalasi, alasan, pemilik, dan tindakan yang diminta."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan tren dibanding Q3."
+    },
+    {
+     "role": "assistant",
+     "content": "Ditambahkan tabel perbandingan Q3 dan Q4: jumlah risiko per tingkat, risiko baru, risiko turun level, dan risiko ditutup."
+    }
+   ]
+  },
+  {
+   "owner": "ratna",
+   "taskCode": "2.2",
+   "title": "Review hasil IBPR area pit baru",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Tim mengirim hasil IBPR untuk pit baru. Tolong bantu saya review."
+    },
+    {
+     "role": "assistant",
+     "content": "Siap. Saya akan cek kelengkapan aktivitas, kualitas identifikasi bahaya, penilaian risiko, dan hierarki pengendalian. Silakan unggah dokumennya."
+    },
+    {
+     "role": "user",
+     "content": "Sudah ya."
+    },
+    {
+     "role": "assistant",
+     "content": "Temuan awal: aktivitas dewatering dan pekerjaan di sekitar sump belum teridentifikasi."
+    },
+    {
+     "role": "user",
+     "content": "Itu penting. Ada lagi?"
+    },
+    {
+     "role": "assistant",
+     "content": "Beberapa pengendalian hanya berupa \"briefing\" dan \"APD\" untuk risiko tinggi. Perlu pengendalian yang lebih tinggi pada hierarki."
+    },
+    {
+     "role": "user",
+     "content": "Contoh risiko yang mana?"
+    },
+    {
+     "role": "assistant",
+     "content": "Risiko tertimpa material dari dinding jenjang: pengendaliannya hanya rambu dan APD, belum ada pengendalian geometri jenjang atau pembatasan akses."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana dengan penilaian risikonya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Ada ketidakkonsistenan: dua risiko serupa dinilai berbeda, satu sedang dan satu tinggi tanpa alasan tertulis."
+    },
+    {
+     "role": "user",
+     "content": "Tolong buatkan daftar catatan review untuk dikembalikan ke tim."
+    },
+    {
+     "role": "assistant",
+     "content": "Daftar 9 catatan sudah saya susun, dikelompokkan per kelengkapan, penilaian, dan pengendalian, lengkap dengan lokasi di dokumen."
+    },
+    {
+     "role": "user",
+     "content": "Beri prioritas."
+    },
+    {
+     "role": "assistant",
+     "content": "Prioritas tinggi: aktivitas yang belum teridentifikasi dan pengendalian lemah pada risiko tinggi. Sisanya prioritas sedang."
+    },
+    {
+     "role": "user",
+     "content": "Berapa lama tim sebaiknya merevisi?"
+    },
+    {
+     "role": "assistant",
+     "content": "Usulan 5 hari kerja untuk prioritas tinggi dan 10 hari untuk sisanya."
+    },
+    {
+     "role": "user",
+     "content": "Oke. Sertakan saran perbaikan agar tim tidak bingung."
+    },
+    {
+     "role": "assistant",
+     "content": "Sudah saya tambahkan saran spesifik, misalnya pengendalian rekayasa teknik untuk dinding jenjang dan prosedur izin kerja untuk area sump."
+    },
+    {
+     "role": "user",
+     "content": "Kirim ke Dimas sebagai draf dulu."
+    },
+    {
+     "role": "assistant",
+     "content": "Draf pesan untuk Dimas sudah siap. Saya tidak mengirimnya, silakan Ibu periksa dan kirim atau minta saya mengirim setelah persetujuan."
+    }
+   ]
+  },
+  {
+   "owner": "ratna",
+   "taskCode": "2.3",
+   "title": "Penetapan metodologi dan standar penilaian risiko (matriks risiko) terbaru",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Kita akan memperbarui matriks risiko perusahaan. Bagaimana pendekatan yang baik?"
+    },
+    {
+     "role": "assistant",
+     "content": "Mulai dari evaluasi matriks saat ini: apakah ada ketidakjelasan kriteria, tingkat risiko yang tidak membedakan, atau keluhan pengguna."
+    },
+    {
+     "role": "user",
+     "content": "Keluhan utama: kriteria dampak tidak jelas untuk lingkungan."
+    },
+    {
+     "role": "assistant",
+     "content": "Maka sebaiknya kriteria dampak dibuat terpisah per aspek: keselamatan, kesehatan, lingkungan, aset, dan reputasi, dengan contoh konkret."
+    },
+    {
+     "role": "user",
+     "content": "Berapa skala yang disarankan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Matriks 5x5 umum dan cukup membedakan. Yang lebih penting adalah definisi tiap level yang jelas dan terukur."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana dengan kemungkinan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Gunakan deskripsi frekuensi dan contoh historis, misalnya \"terjadi lebih dari sekali per tahun di industri tambang\"."
+    },
+    {
+     "role": "user",
+     "content": "Kita juga perlu aturan tindakan per tingkat risiko."
+    },
+    {
+     "role": "assistant",
+     "content": "Contoh: ekstrem wajib dihentikan sampai ada pengendalian, tinggi butuh persetujuan manajemen senior, sedang butuh rencana tindakan, rendah dipantau rutin."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana menguji matriks baru sebelum diterapkan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Lakukan uji coba menilai 10 risiko nyata dengan dua tim berbeda, lalu bandingkan hasil untuk melihat konsistensi."
+    },
+    {
+     "role": "user",
+     "content": "Bagus. Susun rencana uji coba."
+    },
+    {
+     "role": "assistant",
+     "content": "Rencana: pilih 10 risiko, dua tim menilai terpisah, hitung kesesuaian, diskusikan perbedaan, perbaiki definisi, lalu finalisasi."
+    },
+    {
+     "role": "user",
+     "content": "Berapa lama?"
+    },
+    {
+     "role": "assistant",
+     "content": "Sekitar 3 minggu termasuk sosialisasi singkat. Bisa lebih cepat jika tim sudah familiar."
+    },
+    {
+     "role": "user",
+     "content": "Perlu persetujuan siapa?"
+    },
+    {
+     "role": "assistant",
+     "content": "Sesuai struktur Anda: GM Safety dan pihak manajemen risiko yang berwenang. Saya sarankan konfirmasi alur formalnya."
+    },
+    {
+     "role": "user",
+     "content": "Buat draf dokumen standar penilaian risiko."
+    },
+    {
+     "role": "assistant",
+     "content": "Draf kerangka dokumen sudah siap: tujuan, ruang lingkup, skala, kriteria, aturan tindakan, peran, dan riwayat revisi."
+    }
+   ]
+  },
+  {
+   "owner": "ratna",
+   "taskCode": "2.4",
+   "title": "Pembahasan risiko kritis (critical risk) dengan Manager Produksi dan Hauling",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Besok saya bahas critical risk hauling dengan Manager Produksi. Bantu siapkan."
+    },
+    {
+     "role": "assistant",
+     "content": "Baik. Risiko kritis hauling yang umum: tabrakan kendaraan, kendaraan terguling, kehilangan kendali di tanjakan, dan kelelahan operator."
+    },
+    {
+     "role": "user",
+     "content": "Fokus tabrakan dan terguling."
+    },
+    {
+     "role": "assistant",
+     "content": "Untuk tabrakan, pengendalian kritis: pemisahan jalur, jarak aman, komunikasi radio, dan sistem proximity. Untuk terguling: kondisi jalan, superelevasi, kecepatan, dan tanggul pengaman."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana status pengendalian itu saat ini?"
+    },
+    {
+     "role": "assistant",
+     "content": "Dari data inspeksi sample yang ada, tanggul pengaman di dua segmen jalan tidak memenuhi tinggi minimum, dan kepatuhan radio sekitar 87 persen."
+    },
+    {
+     "role": "user",
+     "content": "Itu bahan diskusi. Apa yang bisa saya minta dari Produksi?"
+    },
+    {
+     "role": "assistant",
+     "content": "Perbaikan tanggul dua segmen, penegakan disiplin radio, dan pembatasan kecepatan sementara di segmen bermasalah."
+    },
+    {
+     "role": "user",
+     "content": "Produksi mungkin keberatan karena menurunkan produktivitas."
+    },
+    {
+     "role": "assistant",
+     "content": "Siapkan argumen biaya: satu insiden fatal bisa menghentikan operasi dan menimbulkan kerugian jauh lebih besar daripada penurunan sementara produktivitas."
+    },
+    {
+     "role": "user",
+     "content": "Tolong hitung ilustrasi sederhana."
+    },
+    {
+     "role": "assistant",
+     "content": "Saya bisa buat ilustrasi dengan asumsi, tetapi perlu data biaya per jam henti produksi. Boleh saya minta angka dari Produksi?"
+    },
+    {
+     "role": "user",
+     "content": "Pakai asumsi dulu, tandai sebagai asumsi."
+    },
+    {
+     "role": "assistant",
+     "content": "Baik, ilustrasi saya beri label asumsi dan Anda bisa mengganti dengan angka riil nanti."
+    },
+    {
+     "role": "user",
+     "content": "Susun agenda rapat 45 menit."
+    },
+    {
+     "role": "assistant",
+     "content": "Agenda: 5 menit tujuan, 15 menit status pengendalian, 15 menit diskusi solusi, 10 menit kesepakatan PIC dan tenggat."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan bahan pendukung berupa foto dan data."
+    },
+    {
+     "role": "assistant",
+     "content": "Saya sarankan lampirkan foto tanggul, grafik kepatuhan radio, dan tabel segmen jalan berisiko dari Supt HIRA."
+    },
+    {
+     "role": "user",
+     "content": "Baik, buat catatan rapat template-nya."
+    },
+    {
+     "role": "assistant",
+     "content": "Template catatan rapat siap, dengan kolom keputusan, PIC, tenggat, dan status tindak lanjut."
+    }
+   ]
+  },
+  {
+   "owner": "ratna",
+   "taskCode": "2.5",
+   "title": "Verifikasi efektivitas pengendalian risiko prioritas tinggi",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya ingin memverifikasi apakah pengendalian risiko tinggi benar-benar efektif. Bagaimana caranya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Gunakan tiga pertanyaan: apakah pengendalian ada, apakah berfungsi sesuai desain, dan apakah dijalankan konsisten."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana metode verifikasinya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Kombinasi observasi lapangan, tinjauan dokumen, wawancara pekerja, dan analisis data insiden serta near miss."
+    },
+    {
+     "role": "user",
+     "content": "Ada 15 risiko tinggi. Mulai dari mana?"
+    },
+    {
+     "role": "assistant",
+     "content": "Prioritaskan yang pengendalian kritisnya paling bergantung pada perilaku manusia, karena paling mudah gagal."
+    },
+    {
+     "role": "user",
+     "content": "Buatkan form verifikasi."
+    },
+    {
+     "role": "assistant",
+     "content": "Form berisi: risiko, pengendalian, kriteria efektif, hasil observasi, bukti, penilaian (efektif/sebagian/tidak), dan rekomendasi."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana menentukan kriteria efektif?"
+    },
+    {
+     "role": "assistant",
+     "content": "Tentukan indikator terukur, misalnya \"100 persen kendaraan memiliki sabuk pengaman berfungsi\" atau \"tidak ada pekerja di zona larangan saat alat beroperasi\"."
+    },
+    {
+     "role": "user",
+     "content": "Jika pengendalian tidak efektif, tindak lanjutnya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Catat sebagai temuan, tetapkan pengendalian sementara, buat rencana perbaikan dengan PIC dan tenggat, lalu verifikasi ulang."
+    },
+    {
+     "role": "user",
+     "content": "Saya ingin dashboard sederhana status verifikasi."
+    },
+    {
+     "role": "assistant",
+     "content": "Bisa berupa tabel ringkas: jumlah risiko diverifikasi, efektif, sebagian, tidak efektif, dan temuan terbuka."
+    },
+    {
+     "role": "user",
+     "content": "Berapa frekuensi verifikasi yang ideal?"
+    },
+    {
+     "role": "assistant",
+     "content": "Risiko ekstrem bulanan, risiko tinggi per kuartal, kecuali ada perubahan kondisi atau insiden yang memicu verifikasi ulang."
+    },
+    {
+     "role": "user",
+     "content": "Tolong jadwalkan untuk Q4."
+    },
+    {
+     "role": "assistant",
+     "content": "Saya susun jadwal 15 risiko tersebar di 12 minggu, maksimal 2 sampai 3 verifikasi per minggu agar tim tidak kewalahan."
+    },
+    {
+     "role": "user",
+     "content": "Tandai yang paling kritis di awal."
+    },
+    {
+     "role": "assistant",
+     "content": "Sudah, lima risiko dengan ketergantungan perilaku tertinggi dijadwalkan di tiga minggu pertama."
+    }
+   ]
+  },
+  {
+   "owner": "bambang",
+   "taskCode": "3.1",
+   "title": "Penyusunan program kampanye budaya keselamatan (safety culture) tahun 2027",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya mau menyusun kampanye safety culture 2027. Ada ide kerangkanya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Mulai dari asesmen kondisi saat ini, tetapkan tema, tentukan kegiatan, lalu ukur dampaknya. Sudah ada hasil survei budaya keselamatan?"
+    },
+    {
+     "role": "user",
+     "content": "Ada, tahun lalu. Skor terendah di aspek keberanian melapor."
+    },
+    {
+     "role": "assistant",
+     "content": "Maka tema bisa fokus pada \"berani lapor, aman bersama\" dengan penekanan bahwa pelapor dilindungi dan dihargai."
+    },
+    {
+     "role": "user",
+     "content": "Kegiatan apa yang efektif?"
+    },
+    {
+     "role": "assistant",
+     "content": "Contoh: kunjungan kepemimpinan di lapangan, sesi berbagi pembelajaran insiden, penghargaan hazard report berkualitas, dan pelatihan stop work authority."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana supaya kontraktor ikut terlibat?"
+    },
+    {
+     "role": "assistant",
+     "content": "Libatkan mereka dalam perancangan, buat kompetisi lintas perusahaan, dan masukkan indikator budaya keselamatan ke evaluasi kontrak."
+    },
+    {
+     "role": "user",
+     "content": "Anggaran tahun ini terbatas."
+    },
+    {
+     "role": "assistant",
+     "content": "Prioritaskan kegiatan berdampak tinggi berbiaya rendah: kunjungan pimpinan dan sesi berbagi pembelajaran dulu, lalu hadiah dan materi cetak."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana mengukur keberhasilan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pantau jumlah dan kualitas hazard report, near miss yang dilaporkan, partisipasi sesi safety, dan survei budaya ulang di akhir tahun."
+    },
+    {
+     "role": "user",
+     "content": "Buat kalender kegiatan kuartalan."
+    },
+    {
+     "role": "assistant",
+     "content": "Q1 peluncuran dan kunjungan pimpinan, Q2 pelatihan stop work, Q3 kompetisi lintas kontraktor, Q4 survei dan evaluasi."
+    },
+    {
+     "role": "user",
+     "content": "Siapa yang perlu dilibatkan dari manajemen?"
+    },
+    {
+     "role": "assistant",
+     "content": "GM Safety sebagai sponsor, para manajer operasional sebagai pelaksana kunjungan, serta HR untuk penghargaan."
+    },
+    {
+     "role": "user",
+     "content": "Buatkan draf pesan peluncuran dari GM Safety."
+    },
+    {
+     "role": "assistant",
+     "content": "Draf singkat sudah saya tulis, menekankan komitmen manajemen, perlindungan pelapor, dan ajakan berpartisipasi."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan slogan alternatif."
+    },
+    {
+     "role": "assistant",
+     "content": "Beberapa alternatif: \"Lapor Hari Ini, Selamat Esok Hari\", \"Kita Jaga Satu Sama Lain\", dan \"Berhenti Itu Berani\"."
+    }
+   ]
+  },
+  {
+   "owner": "bambang",
+   "taskCode": "3.2",
+   "title": "Review tren insiden dan near miss lintas departemen",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya perlu analisis tren insiden dan near miss 6 bulan terakhir."
+    },
+    {
+     "role": "assistant",
+     "content": "Baik. Silakan unggah datanya. Saya akan lihat tren per bulan, departemen, jenis kejadian, dan lokasi."
+    },
+    {
+     "role": "user",
+     "content": "Data sudah ada."
+    },
+    {
+     "role": "assistant",
+     "content": "Gambaran awal: near miss naik 18 persen, insiden cedera turun 7 persen. Kategori terbanyak adalah kendaraan dan kejatuhan material."
+    },
+    {
+     "role": "user",
+     "content": "Kenaikan near miss itu baik atau buruk?"
+    },
+    {
+     "role": "assistant",
+     "content": "Bisa positif, menandakan budaya pelaporan membaik, selama diikuti penutupan tindak lanjut. Saya cek rasio penutupannya."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana hasilnya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Hanya 61 persen near miss yang tindak lanjutnya sudah ditutup. Ini perlu perhatian."
+    },
+    {
+     "role": "user",
+     "content": "Departemen mana yang paling lambat?"
+    },
+    {
+     "role": "assistant",
+     "content": "Dalam data sample, Hauling dan Workshop memiliki tunggakan tindak lanjut terbanyak."
+    },
+    {
+     "role": "user",
+     "content": "Pola waktu kejadiannya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Kejadian cenderung meningkat pada pergantian shift dan jam-jam menjelang akhir shift malam, mengindikasikan faktor kelelahan dan serah terima."
+    },
+    {
+     "role": "user",
+     "content": "Rekomendasi?"
+    },
+    {
+     "role": "assistant",
+     "content": "Perkuat prosedur serah terima shift, tinjau pengaturan jam kerja, dan buat target penutupan near miss maksimal 14 hari."
+    },
+    {
+     "role": "user",
+     "content": "Buat ringkasan visual."
+    },
+    {
+     "role": "assistant",
+     "content": "Saya siapkan tiga grafik: tren bulanan, distribusi per kategori, dan status penutupan per departemen."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan tiga pembelajaran utama."
+    },
+    {
+     "role": "assistant",
+     "content": "Pembelajaran: pelaporan meningkat, penutupan tindak lanjut tertinggal, dan risiko memuncak di pergantian shift."
+    },
+    {
+     "role": "user",
+     "content": "Bentuk akhirnya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Satu halaman ringkasan eksekutif plus lampiran data, siap dipresentasikan di rapat bulanan."
+    }
+   ]
+  },
+  {
+   "owner": "bambang",
+   "taskCode": "3.3",
+   "title": "Penyusunan jadwal dan anggaran pelatihan K3 wajib karyawan dan kontraktor",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya perlu jadwal dan anggaran pelatihan K3 wajib untuk 2027."
+    },
+    {
+     "role": "assistant",
+     "content": "Baik. Boleh saya tahu jumlah karyawan, kontraktor, dan jenis pelatihan wajib yang berlaku?"
+    },
+    {
+     "role": "user",
+     "content": "Karyawan 850, kontraktor 1.400. Pelatihan: induksi, P3K, kebakaran, pengawas, dan kerja di ketinggian."
+    },
+    {
+     "role": "assistant",
+     "content": "Saya hitung estimasi peserta per pelatihan berdasarkan siklus sertifikasi. Apakah masa berlaku sertifikat sudah tercatat?"
+    },
+    {
+     "role": "user",
+     "content": "Ada di database, saya unggah."
+    },
+    {
+     "role": "assistant",
+     "content": "Dari data, sekitar 320 orang sertifikasinya kedaluwarsa di 2027, terbanyak di pelatihan kerja di ketinggian dan P3K."
+    },
+    {
+     "role": "user",
+     "content": "Susun jadwal berdasarkan itu."
+    },
+    {
+     "role": "assistant",
+     "content": "Jadwal sebaiknya menempatkan pelatihan yang masa berlakunya habis lebih awal di Q1 dan Q2, agar tidak ada pekerja yang tidak berkompetensi."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana dengan kapasitas kelas?"
+    },
+    {
+     "role": "assistant",
+     "content": "Dengan kapasitas 25 peserta per kelas, dibutuhkan sekitar 13 kelas untuk gelombang pertama. Saya bisa sebar agar tidak mengganggu produksi."
+    },
+    {
+     "role": "user",
+     "content": "Estimasi anggaran?"
+    },
+    {
+     "role": "assistant",
+     "content": "Saya perlu biaya per peserta dari vendor. Jika Anda berikan, saya hitung. Sementara saya buat template dengan tarif asumsi yang jelas ditandai."
+    },
+    {
+     "role": "user",
+     "content": "Pakai asumsi dulu."
+    },
+    {
+     "role": "assistant",
+     "content": "Total estimasi asumsi sudah dihitung, dengan rincian per jenis pelatihan dan cadangan 10 persen untuk pelatihan ulang."
+    },
+    {
+     "role": "user",
+     "content": "Apakah ada opsi pelatihan internal untuk menghemat?"
+    },
+    {
+     "role": "assistant",
+     "content": "Induksi dan kebakaran dasar bisa dibawakan instruktur internal bersertifikat. Pelatihan yang wajib lembaga eksternal tetap harus vendor."
+    },
+    {
+     "role": "user",
+     "content": "Hitung potensi hematnya."
+    },
+    {
+     "role": "assistant",
+     "content": "Dengan asumsi tadi, potensi penghematan sekitar 15 sampai 20 persen dari total, bergantung pada ketersediaan instruktur."
+    },
+    {
+     "role": "user",
+     "content": "Buat dalam tabel."
+    },
+    {
+     "role": "assistant",
+     "content": "Tabel jadwal dan anggaran sudah siap: kolom pelatihan, peserta, kelas, bulan, biaya, dan penyedia."
+    }
+   ]
+  },
+  {
+   "owner": "bambang",
+   "taskCode": "3.4",
+   "title": "Pemantauan tindak lanjut temuan inspeksi dan audit internal",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Tolong rekap status tindak lanjut temuan inspeksi dan audit internal."
+    },
+    {
+     "role": "assistant",
+     "content": "Siap. Silakan unggah register temuannya. Saya akan hitung terbuka, tertutup, dan terlambat per departemen."
+    },
+    {
+     "role": "user",
+     "content": "Sudah saya unggah."
+    },
+    {
+     "role": "assistant",
+     "content": "Total 184 temuan: 121 tertutup, 63 terbuka, dan 27 di antaranya melewati tenggat."
+    },
+    {
+     "role": "user",
+     "content": "Yang terlambat paling banyak di mana?"
+    },
+    {
+     "role": "assistant",
+     "content": "Workshop 9, Hauling 7, Plant 6, dan sisanya tersebar. Tiga temuan terlambat berkategori risiko tinggi."
+    },
+    {
+     "role": "user",
+     "content": "Tiga itu apa saja?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pengaman mesin tidak lengkap, jalur evakuasi terhalang, dan pemeriksaan APAR kedaluwarsa. Semuanya sudah lewat lebih dari 30 hari."
+    },
+    {
+     "role": "user",
+     "content": "Buatkan draf eskalasi untuk manager departemen terkait."
+    },
+    {
+     "role": "assistant",
+     "content": "Draf berisi daftar temuan, tenggat awal, dampak risiko, dan permintaan rencana penyelesaian dalam 3 hari kerja."
+    },
+    {
+     "role": "user",
+     "content": "Jangan terlalu keras, tetap kolaboratif."
+    },
+    {
+     "role": "assistant",
+     "content": "Saya sesuaikan nadanya: mengajak mencari hambatan dan menawarkan dukungan tim Safety, tetapi tenggat tetap jelas."
+    },
+    {
+     "role": "user",
+     "content": "Apa penyebab umum keterlambatan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Umumnya menunggu anggaran, menunggu suku cadang, atau tidak jelasnya PIC. Saya sarankan tambahkan kolom penyebab keterlambatan di register."
+    },
+    {
+     "role": "user",
+     "content": "Setuju. Tambahkan."
+    },
+    {
+     "role": "assistant",
+     "content": "Kolom penyebab dan kolom tanggal komitmen baru sudah ditambahkan di template register."
+    },
+    {
+     "role": "user",
+     "content": "Buat ringkasan mingguan otomatis."
+    },
+    {
+     "role": "assistant",
+     "content": "Saya bisa menyiapkan templat ringkasan mingguan. Untuk pengiriman terjadwal, saya perlu konfirmasi Anda dulu karena itu akan jadi tugas terjadwal."
+    },
+    {
+     "role": "user",
+     "content": "Belum, siapkan template saja."
+    },
+    {
+     "role": "assistant",
+     "content": "Baik, template ringkasan mingguan sudah siap dipakai manual dan tidak ada pengiriman otomatis yang dibuat."
+    }
+   ]
+  },
+  {
+   "owner": "bambang",
+   "taskCode": "3.5",
+   "title": "Kajian kesiapan tanggap darurat (Emergency Response Team) di seluruh site",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya ingin mengkaji kesiapan tim tanggap darurat di semua site."
+    },
+    {
+     "role": "assistant",
+     "content": "Baik. Aspek yang bisa dikaji: struktur tim, kompetensi, peralatan, prosedur, simulasi, dan waktu respons."
+    },
+    {
+     "role": "user",
+     "content": "Datanya ada simulasi tiga kali tahun ini."
+    },
+    {
+     "role": "assistant",
+     "content": "Saya bisa bandingkan waktu respons dan temuan tiap simulasi. Silakan unggah laporannya."
+    },
+    {
+     "role": "user",
+     "content": "Sudah."
+    },
+    {
+     "role": "assistant",
+     "content": "Waktu respons rata-rata membaik dari 11 ke 8 menit, tetapi komunikasi antar tim masih menjadi temuan di ketiga simulasi."
+    },
+    {
+     "role": "user",
+     "content": "Peralatan bagaimana?"
+    },
+    {
+     "role": "assistant",
+     "content": "Beberapa site memiliki alat pemadam dan ambulans yang jaraknya jauh dari pit terjauh, sehingga target respons sulit dicapai."
+    },
+    {
+     "role": "user",
+     "content": "Apa rekomendasinya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Tambahkan pos siaga di pit terjauh, standarkan frekuensi radio darurat, dan lakukan simulasi dengan skenario berbeda setiap kuartal."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana dengan kompetensi anggota ERT?"
+    },
+    {
+     "role": "assistant",
+     "content": "Cek masa berlaku sertifikasi dan rotasi anggota. Jika ada anggota yang berpindah tugas, kompetensi tim bisa menurun tanpa terdeteksi."
+    },
+    {
+     "role": "user",
+     "content": "Buat matriks kesiapan per site."
+    },
+    {
+     "role": "assistant",
+     "content": "Matriks dengan lima aspek dan tiga level (siap, perlu perbaikan, belum siap) sudah saya susun. Level awal saya isi berdasarkan data, silakan validasi."
+    },
+    {
+     "role": "user",
+     "content": "Site mana yang paling butuh perhatian?"
+    },
+    {
+     "role": "assistant",
+     "content": "Berdasarkan data sample, site ketiga memiliki dua aspek \"belum siap\": komunikasi dan jarak peralatan."
+    },
+    {
+     "role": "user",
+     "content": "Buat rencana perbaikan 90 hari."
+    },
+    {
+     "role": "assistant",
+     "content": "Rencana: 30 hari pertama standarisasi komunikasi, 60 hari pos siaga, 90 hari simulasi ulang untuk mengukur perbaikan."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan estimasi kebutuhan sumber daya."
+    },
+    {
+     "role": "assistant",
+     "content": "Estimasi kebutuhan: tambahan personel siaga, radio, dan satu kendaraan respons. Rinciannya bisa dihitung setelah data harga tersedia."
+    }
+   ]
+  },
+  {
+   "owner": "dimas",
+   "taskCode": "4.1",
+   "title": "Fasilitasi workshop IBPR untuk aktivitas pengeboran dan peledakan",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya akan memfasilitasi workshop IBPR pengeboran dan peledakan. Bantu susun agendanya."
+    },
+    {
+     "role": "assistant",
+     "content": "Baik. Berapa peserta dan durasi workshop yang tersedia?"
+    },
+    {
+     "role": "user",
+     "content": "15 orang, satu hari penuh."
+    },
+    {
+     "role": "assistant",
+     "content": "Usulan: pagi pengantar dan pemetaan alur kerja, siang identifikasi bahaya per langkah, sore penilaian risiko dan pengendalian."
+    },
+    {
+     "role": "user",
+     "content": "Siapa saja peserta idealnya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pengawas pengeboran, juru ledak, operator, perwakilan perencanaan, dan perwakilan Safety agar semua sudut pandang terwakili."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana supaya diskusi tidak didominasi satu orang?"
+    },
+    {
+     "role": "assistant",
+     "content": "Gunakan teknik penulisan individual dulu di kartu, baru dibahas bersama, dan beri giliran bicara yang jelas."
+    },
+    {
+     "role": "user",
+     "content": "Buatkan template identifikasi bahaya per langkah kerja."
+    },
+    {
+     "role": "assistant",
+     "content": "Kolom: langkah kerja, bahaya, kemungkinan penyebab, dampak, risiko awal, pengendalian, dan risiko residual."
+    },
+    {
+     "role": "user",
+     "content": "Contoh bahaya khusus peledakan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Misfire, flyrock, getaran, debu dan gas hasil ledakan, serta akses orang yang tidak berwenang ke zona aman."
+    },
+    {
+     "role": "user",
+     "content": "Untuk pengeboran?"
+    },
+    {
+     "role": "assistant",
+     "content": "Kebisingan, debu silika, tertimpa material, terjepit alat, dan terjatuh dari mesin bor."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan panduan fasilitator."
+    },
+    {
+     "role": "assistant",
+     "content": "Panduan berisi aturan dasar diskusi, cara menggali akar bahaya dengan pertanyaan \"mengapa\", dan cara menyimpulkan konsensus risiko."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana mendokumentasikan hasil?"
+    },
+    {
+     "role": "assistant",
+     "content": "Gunakan satu notulen terstruktur langsung dalam template, lalu hasil divalidasi peserta di akhir sesi sebelum difinalisasi."
+    },
+    {
+     "role": "user",
+     "content": "Buat draf undangan."
+    },
+    {
+     "role": "assistant",
+     "content": "Draf undangan sudah siap berisi tujuan, waktu, lokasi, dan persiapan yang diminta dari peserta. Belum saya kirim."
+    }
+   ]
+  },
+  {
+   "owner": "dimas",
+   "taskCode": "4.2",
+   "title": "Update Job Safety Analysis (JSA) pekerjaan overburden removal",
+   "mode": "second_brain",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya perlu update JSA overburden removal setelah ada perubahan alat."
+    },
+    {
+     "role": "assistant",
+     "content": "Baik. Alat apa yang berubah dan apa perubahan metode kerjanya?"
+    },
+    {
+     "role": "user",
+     "content": "Kami ganti ke excavator ukuran lebih besar dan ada tambahan dump truck."
+    },
+    {
+     "role": "assistant",
+     "content": "Dampaknya: radius ayun lebih besar, interaksi kendaraan lebih padat, dan area manuver lebih sempit. Saya perlu tambahkan bahaya terkait itu."
+    },
+    {
+     "role": "user",
+     "content": "Silakan tambahkan."
+    },
+    {
+     "role": "assistant",
+     "content": "Ditambahkan: tertabrak saat excavator berputar, tabrakan truk di area loading, dan material jatuh dari bucket ke kabin truk."
+    },
+    {
+     "role": "user",
+     "content": "Pengendalian untuk yang pertama?"
+    },
+    {
+     "role": "assistant",
+     "content": "Zona larangan radius ayun dengan penanda fisik, pengamat khusus, dan komunikasi radio wajib sebelum mendekati alat."
+    },
+    {
+     "role": "user",
+     "content": "Untuk material jatuh ke kabin?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pola loading dari sisi samping, bucket tidak melintasi kabin, dan operator truk berada di luar atau tetap di kabin sesuai prosedur."
+    },
+    {
+     "role": "user",
+     "content": "Apakah perlu pelatihan tambahan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Ya, briefing JSA baru ke semua operator dan pengawas terkait, dengan bukti kehadiran dan pemahaman."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana pencatatan perubahan versi?"
+    },
+    {
+     "role": "assistant",
+     "content": "Naikkan nomor revisi, catat tanggal dan alasan perubahan, serta arsipkan versi lama sebagai rujukan."
+    },
+    {
+     "role": "user",
+     "content": "Siapa yang perlu menyetujui?"
+    },
+    {
+     "role": "assistant",
+     "content": "Umumnya pengawas area, Superintendent terkait, dan Safety. Sesuaikan dengan prosedur perusahaan."
+    },
+    {
+     "role": "user",
+     "content": "Buat ringkasan perubahan untuk briefing."
+    },
+    {
+     "role": "assistant",
+     "content": "Ringkasan satu halaman berisi tiga perubahan alat, bahaya baru, dan pengendalian utama dalam bahasa lapangan yang sederhana."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan gambar sketsa zona ayun."
+    },
+    {
+     "role": "assistant",
+     "content": "Saya buat sketsa sederhana zona ayun dan zona larangan sebagai ilustrasi. Silakan sesuaikan ukurannya dengan dimensi alat sebenarnya."
+    }
+   ]
+  },
+  {
+   "owner": "dimas",
+   "taskCode": "4.3",
+   "title": "Pembaruan register bahaya area coal hauling road",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya mau perbarui register bahaya coal hauling road."
+    },
+    {
+     "role": "assistant",
+     "content": "Baik. Apakah ada kondisi baru, misalnya perubahan jalur, musim hujan, atau insiden terakhir?"
+    },
+    {
+     "role": "user",
+     "content": "Musim hujan sudah mulai, dan ada pelebaran jalan."
+    },
+    {
+     "role": "assistant",
+     "content": "Bahaya baru terkait hujan: jalan licin, jarak pandang menurun, genangan, dan longsoran bahu jalan."
+    },
+    {
+     "role": "user",
+     "content": "Untuk pelebaran jalan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pekerjaan konstruksi bersamaan dengan lalu lintas, penyempitan lajur sementara, dan material galian di bahu jalan."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana menilai risiko jalan licin?"
+    },
+    {
+     "role": "assistant",
+     "content": "Gunakan data kejadian slip dan near miss sebelumnya, serta pertimbangkan kemiringan dan jenis permukaan di tiap segmen."
+    },
+    {
+     "role": "user",
+     "content": "Segmen mana yang perlu perhatian?"
+    },
+    {
+     "role": "assistant",
+     "content": "Dari catatan sample, segmen tanjakan KM 4 sampai 6 dan tikungan KM 9 memiliki catatan slip paling banyak."
+    },
+    {
+     "role": "user",
+     "content": "Pengendalian yang realistis?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pembatasan kecepatan, perawatan permukaan dan drainase, tambahan rambu, serta penghentian operasi jika curah hujan melewati ambang tertentu."
+    },
+    {
+     "role": "user",
+     "content": "Siapa yang menetapkan ambang hujan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Sebaiknya ditetapkan bersama Perencanaan dan Produksi dengan data historis. Saya bisa bantu menyusun usulan kriteria."
+    },
+    {
+     "role": "user",
+     "content": "Tolong buat usulan."
+    },
+    {
+     "role": "assistant",
+     "content": "Usulan bertingkat: kewaspadaan, kecepatan dibatasi, dan penghentian sementara berdasarkan intensitas hujan dan kondisi jalan."
+    },
+    {
+     "role": "user",
+     "content": "Masukkan ke register."
+    },
+    {
+     "role": "assistant",
+     "content": "Sudah, semua bahaya baru, penilaian, dan pengendalian ditambahkan dengan status \"menunggu validasi\"."
+    },
+    {
+     "role": "user",
+     "content": "Tandai perubahan agar mudah ditinjau."
+    },
+    {
+     "role": "assistant",
+     "content": "Baris baru dan baris yang diubah saya beri penanda warna dan kolom tanggal pembaruan."
+    }
+   ]
+  },
+  {
+   "owner": "dimas",
+   "taskCode": "4.4",
+   "title": "Pendampingan IBPR tim Pengawas Operasional (POP) di Pit Lati",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Besok saya mendampingi tim POP Pit Lati menyusun IBPR. Apa yang perlu saya siapkan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Siapkan template, contoh IBPR yang baik, data insiden area, dan daftar aktivitas rutin di pit. Perlu saya bantu susun?"
+    },
+    {
+     "role": "user",
+     "content": "Ya, mulai dari daftar aktivitas."
+    },
+    {
+     "role": "assistant",
+     "content": "Aktivitas umum pit: pengupasan tanah, pengambilan batubara, pengangkutan, pengaturan lalu lintas, perawatan jalan, dan pemompaan air."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana menjelaskan ke POP agar mudah dipahami?"
+    },
+    {
+     "role": "assistant",
+     "content": "Gunakan bahasa sederhana: bahaya adalah sesuatu yang bisa mencelakai, risiko adalah seberapa mungkin dan seberapa parah. Beri contoh dari pekerjaan mereka."
+    },
+    {
+     "role": "user",
+     "content": "Contoh yang bagus?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pompa air: bahayanya listrik dan tempat licin, risikonya tersengat atau terpeleset. Lalu tanyakan apa yang sudah mereka lakukan untuk mencegahnya."
+    },
+    {
+     "role": "user",
+     "content": "Tim biasanya kesulitan di penilaian risiko."
+    },
+    {
+     "role": "assistant",
+     "content": "Buat kartu panduan satu halaman dengan contoh penilaian untuk tiga kasus familiar sebagai acuan perbandingan."
+    },
+    {
+     "role": "user",
+     "content": "Tolong buatkan kartu itu."
+    },
+    {
+     "role": "assistant",
+     "content": "Kartu berisi skala kemungkinan dan dampak dengan tiga contoh: tersandung kabel, tertabrak kendaraan, dan terkena debu."
+    },
+    {
+     "role": "user",
+     "content": "Apa yang bisa membuat sesi tidak efektif?"
+    },
+    {
+     "role": "assistant",
+     "content": "Terlalu banyak teori, tidak melibatkan pengalaman lapangan, dan dokumen diisi sendiri oleh pendamping tanpa diskusi."
+    },
+    {
+     "role": "user",
+     "content": "Saya ingin mereka yang menulis sendiri."
+    },
+    {
+     "role": "assistant",
+     "content": "Bagus. Anda bisa jadi pemandu pertanyaan dan koreksi di akhir, bukan penulis utama."
+    },
+    {
+     "role": "user",
+     "content": "Buat daftar pertanyaan pemandu."
+    },
+    {
+     "role": "assistant",
+     "content": "Contoh: \"Apa yang bisa salah di langkah ini?\", \"Apa yang mencegahnya?\", dan \"Bagaimana jika pencegahnya gagal?\"."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana menutup sesi?"
+    },
+    {
+     "role": "assistant",
+     "content": "Rangkum hasil, sepakati tindak lanjut dan PIC, lalu jadwalkan sesi review dua minggu kemudian untuk memastikan IBPR dipakai di lapangan."
+    }
+   ]
+  },
+  {
+   "owner": "dimas",
+   "taskCode": "4.5",
+   "title": "Kompilasi laporan identifikasi bahaya dari karyawan (hazard report) mingguan",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Tolong kompilasi hazard report minggu ini."
+    },
+    {
+     "role": "assistant",
+     "content": "Siap. Silakan unggah data laporannya. Saya akan kelompokkan per kategori, lokasi, tingkat risiko, dan status."
+    },
+    {
+     "role": "user",
+     "content": "Sudah saya unggah, ada 63 laporan."
+    },
+    {
+     "role": "assistant",
+     "content": "Dari 63 laporan, 24 terkait kendaraan, 15 kondisi jalan, 12 housekeeping, dan sisanya beragam. Sebanyak 9 laporan berisiko tinggi."
+    },
+    {
+     "role": "user",
+     "content": "Yang berisiko tinggi apa saja?"
+    },
+    {
+     "role": "assistant",
+     "content": "Antara lain tanggul pengaman rusak, lampu unit mati, dan akses pejalan kaki memotong jalur truk."
+    },
+    {
+     "role": "user",
+     "content": "Apakah ada laporan yang berulang?"
+    },
+    {
+     "role": "assistant",
+     "content": "Ya, laporan lampu unit mati muncul empat kali untuk beberapa unit berbeda, mungkin ada pola masalah perawatan."
+    },
+    {
+     "role": "user",
+     "content": "Itu perlu diteruskan ke Maintenance."
+    },
+    {
+     "role": "assistant",
+     "content": "Saya buat catatan khusus beserta daftar unit dan tanggal laporan agar Maintenance bisa menelusuri."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana status tindak lanjut minggu lalu?"
+    },
+    {
+     "role": "assistant",
+     "content": "Dari 58 laporan minggu lalu, 44 sudah ditutup, 14 masih berjalan. Dua di antaranya melewati tenggat."
+    },
+    {
+     "role": "user",
+     "content": "Siapa yang menunggak?"
+    },
+    {
+     "role": "assistant",
+     "content": "Dua laporan menunggu perbaikan dari departemen Sipil. Saya cantumkan di bagian \"perlu eskalasi\"."
+    },
+    {
+     "role": "user",
+     "content": "Buat ringkasan satu halaman."
+    },
+    {
+     "role": "assistant",
+     "content": "Ringkasan: jumlah laporan, tren, kategori utama, risiko tinggi, penutupan, dan eskalasi."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan ucapan apresiasi untuk pelapor terbaik."
+    },
+    {
+     "role": "assistant",
+     "content": "Ditambahkan bagian apresiasi untuk tiga pelapor dengan laporan paling detail dan berdampak, tanpa menyebut data pribadi yang tidak perlu."
+    },
+    {
+     "role": "user",
+     "content": "Siap, saya tambahkan nama setelah konfirmasi."
+    },
+    {
+     "role": "assistant",
+     "content": "Baik, kolom nama saya kosongkan agar Anda isi setelah konfirmasi dengan pelapor."
+    }
+   ]
+  },
+  {
+   "owner": "siti",
+   "taskCode": "5.1",
+   "title": "Evaluasi permohonan Management of Change (MOC) perubahan desain jenjang tambang",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya menerima permohonan MOC perubahan desain jenjang. Bantu saya evaluasi."
+    },
+    {
+     "role": "assistant",
+     "content": "Baik. Silakan bagikan dokumen permohonannya. Saya akan cek kelengkapan, kajian risiko, dan rencana implementasinya."
+    },
+    {
+     "role": "user",
+     "content": "Sudah saya unggah."
+    },
+    {
+     "role": "assistant",
+     "content": "Perubahan: tinggi jenjang naik dari 10 ke 12 meter dan lebar berm dikurangi. Kajian risiko belum mencakup stabilitas lereng."
+    },
+    {
+     "role": "user",
+     "content": "Itu kekurangan utama?"
+    },
+    {
+     "role": "assistant",
+     "content": "Ya. Perubahan geometri jenjang langsung memengaruhi stabilitas, sehingga kajian geoteknik perlu dilampirkan."
+    },
+    {
+     "role": "user",
+     "content": "Ada kekurangan lain?"
+    },
+    {
+     "role": "assistant",
+     "content": "Tidak ada rencana pemantauan setelah perubahan dan belum jelas siapa penanggung jawab implementasi."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana dengan pelibatan pihak terkait?"
+    },
+    {
+     "role": "assistant",
+     "content": "Hanya Perencanaan yang menandatangani. Geoteknik, Produksi, dan Safety belum terlibat."
+    },
+    {
+     "role": "user",
+     "content": "Tolong buat daftar catatan evaluasi."
+    },
+    {
+     "role": "assistant",
+     "content": "Saya susun 6 catatan: kajian geoteknik, pemantauan pasca perubahan, penanggung jawab, pihak terkait, rencana komunikasi ke pekerja, dan kriteria pembatalan."
+    },
+    {
+     "role": "user",
+     "content": "Apa rekomendasi keputusan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Kembalikan untuk dilengkapi, bukan disetujui atau ditolak. Perubahan masih mungkin layak jika kajiannya lengkap."
+    },
+    {
+     "role": "user",
+     "content": "Apakah perlu pengendalian sementara selama menunggu?"
+    },
+    {
+     "role": "assistant",
+     "content": "Ya, pertahankan desain lama sampai kajian selesai dan disetujui."
+    },
+    {
+     "role": "user",
+     "content": "Buat draf surat pengembalian MOC."
+    },
+    {
+     "role": "assistant",
+     "content": "Draf berisi alasan, daftar kelengkapan, dan tenggat pengajuan ulang 10 hari kerja. Belum dikirim."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan ucapan apresiasi atas inisiatif pemohon."
+    },
+    {
+     "role": "assistant",
+     "content": "Ditambahkan, dengan nada konstruktif agar pemohon terdorong melengkapi."
+    }
+   ]
+  },
+  {
+   "owner": "siti",
+   "taskCode": "5.2",
+   "title": "Pemantauan implementasi hierarki pengendalian pada risiko kendaraan ringan",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya ingin memantau implementasi hierarki pengendalian untuk risiko kendaraan ringan."
+    },
+    {
+     "role": "assistant",
+     "content": "Baik. Urutan hierarki: eliminasi, substitusi, rekayasa teknik, administratif, dan APD. Saya bisa petakan pengendalian saat ini ke tiap level."
+    },
+    {
+     "role": "user",
+     "content": "Pengendalian saat ini: pelatihan, rambu, SIMPER, dan sabuk pengaman."
+    },
+    {
+     "role": "assistant",
+     "content": "Semuanya di level administratif dan APD. Belum ada pengendalian di level eliminasi, substitusi, atau rekayasa."
+    },
+    {
+     "role": "user",
+     "content": "Apa yang bisa ditambahkan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Eliminasi: kurangi perjalanan kendaraan ringan di area pit. Rekayasa: jalur khusus, bendera tinggi, dan sistem anti-tabrak."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana mengukur penerapannya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Gunakan indikator: persentase kendaraan dengan bendera dan lampu berfungsi, jumlah perjalanan di zona pit, dan jumlah pelanggaran kecepatan."
+    },
+    {
+     "role": "user",
+     "content": "Data pelanggaran kecepatan ada dari sistem GPS."
+    },
+    {
+     "role": "assistant",
+     "content": "Bagus. Saya bisa bantu analisis tren per unit dan per jam bila datanya diunggah."
+    },
+    {
+     "role": "user",
+     "content": "Sudah. Apa hasilnya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pelanggaran terbanyak di jam pergantian shift dan oleh sejumlah kecil unit yang sama, indikasi perilaku pengemudi tertentu."
+    },
+    {
+     "role": "user",
+     "content": "Tindakan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pembinaan individual, pembatasan kecepatan teknis di unit tertentu, dan konsekuensi sesuai prosedur disiplin keselamatan."
+    },
+    {
+     "role": "user",
+     "content": "Buat laporan pemantauan dengan rekomendasi."
+    },
+    {
+     "role": "assistant",
+     "content": "Laporan berisi pemetaan hierarki, indikator, temuan, dan tiga rekomendasi prioritas dengan PIC."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan estimasi pengurangan risiko jika diterapkan."
+    },
+    {
+     "role": "assistant",
+     "content": "Saya buat estimasi kualitatif: risiko turun dari tinggi ke sedang jika dua pengendalian rekayasa diterapkan. Ini perlu divalidasi tim HIRA."
+    },
+    {
+     "role": "user",
+     "content": "Setuju."
+    },
+    {
+     "role": "assistant",
+     "content": "Laporan sudah ditandai \"perlu validasi\" pada bagian estimasi."
+    }
+   ]
+  },
+  {
+   "owner": "siti",
+   "taskCode": "5.3",
+   "title": "Inspeksi efektivitas pengendalian risiko longsor pada lereng tambang",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya akan inspeksi efektivitas pengendalian risiko longsor. Apa fokusnya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Cek pemantauan lereng, drainase, geometri jenjang, kondisi retakan, dan prosedur peringatan dini."
+    },
+    {
+     "role": "user",
+     "content": "Buatkan checklist."
+    },
+    {
+     "role": "assistant",
+     "content": "Checklist berisi: kondisi retakan, fungsi drainase, hasil pemantauan radar atau prisma, rambu zona bahaya, dan kesiapan prosedur evakuasi."
+    },
+    {
+     "role": "user",
+     "content": "Apa tanda bahaya yang harus segera dilaporkan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Retakan baru atau melebar, genangan di crest, rembesan di muka lereng, dan material jatuh yang meningkat."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana menilai efektivitas peringatan dini?"
+    },
+    {
+     "role": "assistant",
+     "content": "Cek apakah ambang peringatan terdefinisi, apakah alarm diuji berkala, dan apakah pekerja tahu langkah evakuasi."
+    },
+    {
+     "role": "user",
+     "content": "Hasil inspeksi lapangan: dua retakan baru dan drainase tersumbat."
+    },
+    {
+     "role": "assistant",
+     "content": "Itu temuan prioritas tinggi. Segera rekomendasikan pembatasan akses area dan pembersihan drainase."
+    },
+    {
+     "role": "user",
+     "content": "Apa tindakan jangka pendek yang tepat?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pasang barikade, hentikan aktivitas di zona terdampak, tingkatkan frekuensi pemantauan, dan laporkan ke geoteknik."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana pelaporannya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Laporkan segera lewat jalur darurat internal, lalu susun laporan tertulis berisi foto, koordinat, dan tindakan yang sudah diambil."
+    },
+    {
+     "role": "user",
+     "content": "Buat template laporan temuan lereng."
+    },
+    {
+     "role": "assistant",
+     "content": "Template: lokasi, jenis temuan, foto, tingkat risiko, tindakan sementara, rekomendasi, dan PIC."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan kolom tindak lanjut verifikasi."
+    },
+    {
+     "role": "assistant",
+     "content": "Ditambahkan kolom verifikasi dengan tanggal, pemeriksa, dan hasil."
+    },
+    {
+     "role": "user",
+     "content": "Jadwalkan inspeksi lanjutan."
+    },
+    {
+     "role": "assistant",
+     "content": "Saya usulkan inspeksi ulang 3 hari setelah perbaikan dan mingguan selama sebulan. Saya tidak membuat jadwal otomatis tanpa konfirmasi Anda."
+    }
+   ]
+  },
+  {
+   "owner": "siti",
+   "taskCode": "5.4",
+   "title": "Penyusunan prosedur pengendalian risiko pekerjaan di ketinggian",
+   "mode": "second_brain",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya diminta menyusun prosedur pekerjaan di ketinggian. Bantu kerangkanya."
+    },
+    {
+     "role": "assistant",
+     "content": "Kerangka umum: tujuan, ruang lingkup, definisi, tanggung jawab, persyaratan, langkah kerja, darurat, dan dokumentasi."
+    },
+    {
+     "role": "user",
+     "content": "Definisi ketinggian di perusahaan kami mulai 1,8 meter."
+    },
+    {
+     "role": "assistant",
+     "content": "Baik, saya jadikan batas definisi. Perlu ditegaskan juga untuk area tanpa pagar pengaman atau dekat lubang."
+    },
+    {
+     "role": "user",
+     "content": "Persyaratan personel?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pemeriksaan kesehatan, pelatihan kerja di ketinggian, pemahaman penggunaan harness, dan penilaian kompetensi."
+    },
+    {
+     "role": "user",
+     "content": "Persyaratan peralatan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Harness dan lanyard bersertifikat, titik jangkar yang diuji, pemeriksaan sebelum pakai, dan jadwal inspeksi berkala."
+    },
+    {
+     "role": "user",
+     "content": "Hierarki pengendalian di prosedur?"
+    },
+    {
+     "role": "assistant",
+     "content": "Utamakan menghindari kerja di ketinggian, lalu platform kerja dan pagar, baru sistem penahan jatuh pribadi sebagai pilihan terakhir."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana prosedur penyelamatan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Harus ada rencana penyelamatan tertulis sebelum pekerjaan dimulai, peralatan penyelamatan tersedia, dan personel terlatih siaga."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan izin kerja."
+    },
+    {
+     "role": "assistant",
+     "content": "Izin kerja ketinggian mencakup lokasi, durasi, personel, peralatan, kondisi cuaca, dan tanda tangan pemberi izin."
+    },
+    {
+     "role": "user",
+     "content": "Apa yang sering terlewat di prosedur seperti ini?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pekerjaan singkat dianggap tidak perlu izin dan cuaca buruk tidak dijadikan kriteria penghentian. Sebaiknya dicantumkan eksplisit."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan kriteria penghentian kerja."
+    },
+    {
+     "role": "assistant",
+     "content": "Ditambahkan: angin kencang, hujan deras, petir, jarak pandang buruk, dan kondisi platform tidak aman."
+    },
+    {
+     "role": "user",
+     "content": "Buat draf lengkap."
+    },
+    {
+     "role": "assistant",
+     "content": "Draf lengkap sudah siap dengan lampiran form izin dan checklist pemeriksaan harness."
+    }
+   ]
+  },
+  {
+   "owner": "siti",
+   "taskCode": "5.5",
+   "title": "Rapat tindak lanjut action plan risiko residual dengan pemilik risiko",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya akan memimpin rapat tindak lanjut risiko residual dengan para pemilik risiko."
+    },
+    {
+     "role": "assistant",
+     "content": "Baik. Apakah Anda ingin saya susun agenda dan ringkasan status tiap risiko?"
+    },
+    {
+     "role": "user",
+     "content": "Ya, ada 12 risiko residual tinggi."
+    },
+    {
+     "role": "assistant",
+     "content": "Silakan unggah register. Saya akan petakan status action plan: selesai, berjalan, terlambat, dan belum dimulai."
+    },
+    {
+     "role": "user",
+     "content": "Sudah."
+    },
+    {
+     "role": "assistant",
+     "content": "Dari 12 risiko: 3 selesai, 5 berjalan, 3 terlambat, 1 belum dimulai. Risiko yang belum dimulai terkait pengelolaan air tambang."
+    },
+    {
+     "role": "user",
+     "content": "Itu perlu perhatian khusus."
+    },
+    {
+     "role": "assistant",
+     "content": "Ya, apalagi musim hujan sudah mulai. Saya sarankan bahas pertama di agenda."
+    },
+    {
+     "role": "user",
+     "content": "Susun agenda 60 menit."
+    },
+    {
+     "role": "assistant",
+     "content": "5 menit pembuka, 10 menit risiko yang belum dimulai, 25 menit risiko terlambat, 15 menit risiko berjalan, 5 menit penutup."
+    },
+    {
+     "role": "user",
+     "content": "Pertanyaan apa untuk pemilik risiko yang terlambat?"
+    },
+    {
+     "role": "assistant",
+     "content": "Apa hambatannya, dukungan apa yang dibutuhkan, dan tanggal realistis penyelesaian. Jangan hanya meminta janji tenggat baru."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana menjaga rapat tetap produktif?"
+    },
+    {
+     "role": "assistant",
+     "content": "Fokus pada keputusan dan tindakan, bukan pembahasan ulang risiko. Catat keputusan dan PIC secara langsung."
+    },
+    {
+     "role": "user",
+     "content": "Buat template catatan rapat."
+    },
+    {
+     "role": "assistant",
+     "content": "Template berisi daftar risiko, status, hambatan, keputusan, PIC, dan tenggat baru."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan bagian eskalasi."
+    },
+    {
+     "role": "assistant",
+     "content": "Ditambahkan bagian eskalasi ke Manager HIRA untuk risiko yang tetap terlambat setelah dua periode."
+    },
+    {
+     "role": "user",
+     "content": "Baik, saya butuh ringkasan paska rapat."
+    },
+    {
+     "role": "assistant",
+     "content": "Setelah rapat, kirimkan catatan Anda dan saya akan menyusun ringkasan keputusan dan tindak lanjut dalam format yang rapi."
+    }
+   ]
+  },
+  {
+   "owner": "fajar",
+   "taskCode": "6.1",
+   "title": "Pelaksanaan inspeksi keselamatan terjadwal di area workshop dan fuel station",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Besok saya inspeksi workshop dan fuel station. Bantu siapkan checklist."
+    },
+    {
+     "role": "assistant",
+     "content": "Siap. Untuk workshop: housekeeping, pengaman mesin, penanganan bahan berbahaya, APAR, dan jalur evakuasi. Untuk fuel station: pembumian, tumpahan, dan sistem pemadam."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan checklist alat angkat."
+    },
+    {
+     "role": "assistant",
+     "content": "Ditambahkan: sertifikasi alat angkat, kondisi sling, batas beban terpasang, dan area kerja bebas orang di bawah beban."
+    },
+    {
+     "role": "user",
+     "content": "Tingkat risiko temuan bagaimana menandainya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Gunakan tiga level: kritis (stop kerja), mayor (perbaikan cepat), minor (perbaikan terjadwal), dengan tenggat berbeda."
+    },
+    {
+     "role": "user",
+     "content": "Tenggat masing-masing?"
+    },
+    {
+     "role": "assistant",
+     "content": "Usulan: kritis seketika, mayor 3 hari, minor 14 hari. Sesuaikan dengan kebijakan Anda."
+    },
+    {
+     "role": "user",
+     "content": "Saya sering kekurangan waktu di lapangan."
+    },
+    {
+     "role": "assistant",
+     "content": "Saya buat versi ringkas dua halaman fokus pada item berisiko tertinggi, dengan kolom foto dan catatan cepat."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana pelaporannya agar cepat?"
+    },
+    {
+     "role": "assistant",
+     "content": "Gunakan format temuan standar: lokasi, foto, risiko, tindakan sementara, dan PIC. Saya bisa bantu merangkum dari catatan Anda setelah inspeksi."
+    },
+    {
+     "role": "user",
+     "content": "Setelah inspeksi saya kirim catatan mentah."
+    },
+    {
+     "role": "assistant",
+     "content": "Baik, saya ubah menjadi laporan terstruktur dan daftar temuan yang siap didistribusikan."
+    },
+    {
+     "role": "user",
+     "content": "Ada saran cara berdiskusi dengan pengawas workshop saat temuan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Mulai dari hal baik yang terlihat, jelaskan temuan dengan fakta dan risiko, lalu ajak mereka menentukan solusi."
+    },
+    {
+     "role": "user",
+     "content": "Bagus. Tambahkan sebagai panduan singkat."
+    },
+    {
+     "role": "assistant",
+     "content": "Panduan lima langkah komunikasi temuan sudah ditambahkan di akhir checklist."
+    },
+    {
+     "role": "user",
+     "content": "Tolong cetak-friendly."
+    },
+    {
+     "role": "assistant",
+     "content": "Format sudah dirapikan agar muat di A4 dan mudah dicetak."
+    }
+   ]
+  },
+  {
+   "owner": "fajar",
+   "taskCode": "6.2",
+   "title": "Investigasi insiden kendaraan (tabrakan dump truck dengan unit pendukung)",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya memimpin investigasi tabrakan dump truck dengan light vehicle tadi malam."
+    },
+    {
+     "role": "assistant",
+     "content": "Baik. Saya bantu menyusun rencana investigasi: pengamanan lokasi, pengumpulan bukti, wawancara, analisis akar masalah, dan rekomendasi."
+    },
+    {
+     "role": "user",
+     "content": "Bukti apa yang perlu diamankan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Foto lokasi dan posisi unit, data GPS dan FMS, rekaman radio, kondisi jalan, catatan pelatihan operator, dan log perawatan unit."
+    },
+    {
+     "role": "user",
+     "content": "Saya sudah wawancara kedua operator. Cerita mereka berbeda soal radio."
+    },
+    {
+     "role": "assistant",
+     "content": "Bandingkan dengan rekaman radio dan data sistem. Perbedaan seperti itu sering menunjukkan masalah komunikasi sebagai kontributor."
+    },
+    {
+     "role": "user",
+     "content": "Metode analisis akar masalah yang cocok?"
+    },
+    {
+     "role": "assistant",
+     "content": "5 Why atau diagram tulang ikan cukup untuk kejadian ini, dan perlu dilengkapi analisis faktor manusia, peralatan, lingkungan, dan manajemen."
+    },
+    {
+     "role": "user",
+     "content": "Dugaan awal: unit LV di blind spot dan tidak ada konfirmasi radio."
+    },
+    {
+     "role": "assistant",
+     "content": "Gali lebih jauh: mengapa LV berada di sana, apakah ada prosedur akses, dan mengapa konfirmasi radio tidak dijalankan."
+    },
+    {
+     "role": "user",
+     "content": "Ada faktor kelelahan: operator sudah 11 jam bekerja."
+    },
+    {
+     "role": "assistant",
+     "content": "Itu penting. Catat jam kerja kedua operator dan periksa apakah kebijakan batas jam kerja dipatuhi."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana menyusun rekomendasi?"
+    },
+    {
+     "role": "assistant",
+     "content": "Susun berdasarkan hierarki pengendalian, dan bedakan tindakan koreksi segera, perbaikan jangka menengah, serta perubahan sistem."
+    },
+    {
+     "role": "user",
+     "content": "Siapa yang perlu dilibatkan di review?"
+    },
+    {
+     "role": "assistant",
+     "content": "Manager Safety, Superintendent HIRA, pengawas terkait, dan perwakilan Produksi agar rekomendasi realistis."
+    },
+    {
+     "role": "user",
+     "content": "Buat kerangka laporan."
+    },
+    {
+     "role": "assistant",
+     "content": "Kerangka: ringkasan, kronologi, bukti, analisis akar masalah, faktor kontribusi, rekomendasi, PIC, dan lampiran."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan bagian pembelajaran untuk dibagikan."
+    },
+    {
+     "role": "assistant",
+     "content": "Ditambahkan satu halaman pembelajaran singkat yang bisa dibagikan sebagai safety alert tanpa menyebut nama individu."
+    }
+   ]
+  },
+  {
+   "owner": "fajar",
+   "taskCode": "6.3",
+   "title": "Pemantauan penerapan program fatigue management bagi operator hauling",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya ingin memantau fatigue management operator hauling."
+    },
+    {
+     "role": "assistant",
+     "content": "Baik. Indikator yang bisa dipantau: jam kerja dan istirahat, hasil pemeriksaan kesiapan kerja, laporan mengantuk, dan insiden saat dini hari."
+    },
+    {
+     "role": "user",
+     "content": "Data jam kerja ada di sistem."
+    },
+    {
+     "role": "assistant",
+     "content": "Saya bisa bantu analisis bila diunggah. Perlu dicek jam kerja berturut-turut, waktu istirahat antar shift, dan lembur."
+    },
+    {
+     "role": "user",
+     "content": "Sudah. Apa temuannya?"
+    },
+    {
+     "role": "assistant",
+     "content": "18 operator melebihi batas jam kerja mingguan dalam sebulan terakhir, dan 7 di antaranya istirahat antar shift kurang dari 8 jam."
+    },
+    {
+     "role": "user",
+     "content": "Itu serius."
+    },
+    {
+     "role": "assistant",
+     "content": "Ya. Sebaiknya segera dibahas dengan Produksi untuk penyesuaian roster dan penetapan batas yang tidak boleh dilanggar."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana dengan sistem deteksi kantuk?"
+    },
+    {
+     "role": "assistant",
+     "content": "Cek ketersediaan perangkat, tingkat alarm palsu, dan respons operator ketika alarm berbunyi. Data alarm bisa menunjukkan jam rawan."
+    },
+    {
+     "role": "user",
+     "content": "Jam rawannya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Dari data sample, alarm terbanyak muncul antara pukul 02.00 sampai 05.00, sesuai pola kelelahan umum."
+    },
+    {
+     "role": "user",
+     "content": "Program pendukung yang bisa ditambah?"
+    },
+    {
+     "role": "assistant",
+     "content": "Edukasi tidur sehat, area istirahat yang layak, kafein terkontrol, dan prosedur wajib berhenti jika mengantuk tanpa sanksi."
+    },
+    {
+     "role": "user",
+     "content": "Hati-hati soal sanksi."
+    },
+    {
+     "role": "assistant",
+     "content": "Benar, operator yang jujur melapor kantuk tidak boleh dihukum agar budaya pelaporan tetap sehat."
+    },
+    {
+     "role": "user",
+     "content": "Buat laporan pemantauan bulanan."
+    },
+    {
+     "role": "assistant",
+     "content": "Laporan berisi indikator, tren, temuan, rekomendasi, dan status tindak lanjut."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan grafik jam rawan."
+    },
+    {
+     "role": "assistant",
+     "content": "Grafik distribusi alarm per jam sudah ditambahkan untuk membantu diskusi dengan Produksi."
+    }
+   ]
+  },
+  {
+   "owner": "fajar",
+   "taskCode": "6.4",
+   "title": "Verifikasi izin kerja berbahaya (hot work, confined space) di lapangan",
+   "mode": "second_brain",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya akan verifikasi izin kerja berbahaya di lapangan. Apa yang harus saya cek?"
+    },
+    {
+     "role": "assistant",
+     "content": "Untuk hot work: izin valid, area bebas bahan mudah terbakar, APAR dan pengawas api siap, serta pemeriksaan gas."
+    },
+    {
+     "role": "user",
+     "content": "Untuk confined space?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pengujian atmosfer, ventilasi, pengamat di luar, rencana penyelamatan, peralatan komunikasi, dan isolasi energi."
+    },
+    {
+     "role": "user",
+     "content": "Buat checklist ringkas dua-duanya."
+    },
+    {
+     "role": "assistant",
+     "content": "Checklist dua bagian dengan kotak ya/tidak dan kolom catatan, serta item stop kerja yang ditandai merah."
+    },
+    {
+     "role": "user",
+     "content": "Apa item stop kerja?"
+    },
+    {
+     "role": "assistant",
+     "content": "Izin tidak valid atau kedaluwarsa, hasil uji gas tidak aman, pengamat tidak ada, dan peralatan penyelamatan tidak tersedia."
+    },
+    {
+     "role": "user",
+     "content": "Dalam verifikasi tadi saya temukan izin hot work tanpa pemeriksaan gas."
+    },
+    {
+     "role": "assistant",
+     "content": "Itu pelanggaran serius. Hentikan pekerjaan, lakukan uji gas, perbaiki dokumen izin, dan catat sebagai temuan."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana pelaporannya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Catat lokasi, waktu, pekerjaan, pemberi izin, dan pelaksana. Laporkan ke Manager Safety dan pengawas terkait sesuai prosedur."
+    },
+    {
+     "role": "user",
+     "content": "Perlu pelatihan ulang pemberi izin?"
+    },
+    {
+     "role": "assistant",
+     "content": "Jika ada pola kesalahan serupa, ya. Lakukan briefing ulang dan verifikasi kompetensi pemberi izin."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana mencegah terulang?"
+    },
+    {
+     "role": "assistant",
+     "content": "Sederhanakan form izin agar item gas tidak terlewat, dan terapkan pemeriksaan sepihak oleh pengawas sebelum pekerjaan dimulai."
+    },
+    {
+     "role": "user",
+     "content": "Susun rekomendasi singkat."
+    },
+    {
+     "role": "assistant",
+     "content": "Tiga rekomendasi: perbaiki form izin, briefing ulang pemberi izin, dan tingkatkan frekuensi verifikasi lapangan sebulan ke depan."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan target verifikasi."
+    },
+    {
+     "role": "assistant",
+     "content": "Target saya usulkan 10 verifikasi per minggu selama sebulan, lalu dievaluasi untuk menentukan frekuensi berikutnya."
+    }
+   ]
+  },
+  {
+   "owner": "fajar",
+   "taskCode": "6.5",
+   "title": "Briefing keselamatan shift pagi dan pengecekan kepatuhan APD",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya perlu materi briefing safety shift pagi besok."
+    },
+    {
+     "role": "assistant",
+     "content": "Tema apa yang ingin diangkat? Insiden terbaru, kondisi cuaca, atau pengingat prosedur?"
+    },
+    {
+     "role": "user",
+     "content": "Cuaca hujan dan kepatuhan APD."
+    },
+    {
+     "role": "assistant",
+     "content": "Poin hujan: jalan licin, kurangi kecepatan, jaga jarak aman, dan laporkan genangan. Poin APD: pemeriksaan kondisi, penggunaan benar, dan penggantian bila rusak."
+    },
+    {
+     "role": "user",
+     "content": "Buat singkat, 5 menit."
+    },
+    {
+     "role": "assistant",
+     "content": "Struktur 5 menit: 1 menit sapaan dan tujuan, 2 menit kondisi hari ini, 1 menit APD, 1 menit tanya jawab."
+    },
+    {
+     "role": "user",
+     "content": "Ada pertanyaan interaktif?"
+    },
+    {
+     "role": "assistant",
+     "content": "Contoh: \"Apa yang kalian lakukan jika jalan licin?\" dan \"Kapan terakhir kalian periksa sepatu safety?\"."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana pengecekan kepatuhan APD yang efektif?"
+    },
+    {
+     "role": "assistant",
+     "content": "Cek cepat di titik masuk area kerja, catat kepatuhan per kategori APD, dan beri umpan balik langsung."
+    },
+    {
+     "role": "user",
+     "content": "Buat form pencatatannya."
+    },
+    {
+     "role": "assistant",
+     "content": "Form: tanggal, area, jumlah diperiksa, kepatuhan per jenis APD, temuan, dan tindak lanjut."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana menyikapi yang tidak patuh?"
+    },
+    {
+     "role": "assistant",
+     "content": "Hentikan sementara, edukasi singkat, sediakan APD pengganti bila perlu, dan catat untuk melihat pola."
+    },
+    {
+     "role": "user",
+     "content": "Jika berulang di orang yang sama?"
+    },
+    {
+     "role": "assistant",
+     "content": "Libatkan pengawas langsung dan tinjau prosedur disiplin keselamatan secara adil dan konsisten."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan lembar absensi briefing."
+    },
+    {
+     "role": "assistant",
+     "content": "Lembar absensi ditambahkan dengan kolom nama, perusahaan, tanda tangan, dan topik briefing."
+    },
+    {
+     "role": "user",
+     "content": "Tolong ringkas jadi satu halaman."
+    },
+    {
+     "role": "assistant",
+     "content": "Materi, pertanyaan interaktif, form APD, dan absensi saya satukan dalam satu halaman A4 dua sisi."
+    }
+   ]
+  },
+  {
+   "owner": "maria",
+   "taskCode": "7.1",
+   "title": "Persiapan audit SMKP (Sistem Manajemen Keselamatan Pertambangan Minerba)",
+   "mode": "second_brain",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Audit SMKP akan dilaksanakan 6 minggu lagi. Bantu saya menyusun rencana persiapan."
+    },
+    {
+     "role": "assistant",
+     "content": "Baik. Tahapan umum: pemetaan elemen, audit internal gap, perbaikan, simulasi audit, dan finalisasi dokumen."
+    },
+    {
+     "role": "user",
+     "content": "Saya ingin mulai dari pemetaan elemen."
+    },
+    {
+     "role": "assistant",
+     "content": "Buat matriks elemen SMKP dengan kolom PIC, dokumen bukti, status kesiapan, dan celah yang diketahui."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana menilai kesiapan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Gunakan tiga level: siap, perlu perbaikan, belum siap, berdasarkan kelengkapan dan kemutakhiran bukti."
+    },
+    {
+     "role": "user",
+     "content": "Elemen yang sering bermasalah?"
+    },
+    {
+     "role": "assistant",
+     "content": "Umumnya pengendalian dokumen, tindak lanjut temuan, evaluasi kinerja, dan tinjauan manajemen."
+    },
+    {
+     "role": "user",
+     "content": "Buat jadwal 6 minggu."
+    },
+    {
+     "role": "assistant",
+     "content": "Minggu 1 pemetaan, minggu 2 sampai 3 gap audit, minggu 4 perbaikan, minggu 5 simulasi audit, minggu 6 finalisasi dan briefing."
+    },
+    {
+     "role": "user",
+     "content": "Siapa yang dilibatkan di simulasi?"
+    },
+    {
+     "role": "assistant",
+     "content": "Auditor internal, perwakilan Safety, HIRA, dan perwakilan operasional agar mengalami pertanyaan seperti audit sebenarnya."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana menangani bukti yang kurang?"
+    },
+    {
+     "role": "assistant",
+     "content": "Prioritaskan yang berisiko tinggi, tetapkan PIC dan tenggat, dan jangan membuat dokumen mundur untuk menutupi celah."
+    },
+    {
+     "role": "user",
+     "content": "Tentu, harus jujur."
+    },
+    {
+     "role": "assistant",
+     "content": "Betul. Bila ada celah yang belum bisa ditutup, lebih baik disertai rencana perbaikan yang jelas."
+    },
+    {
+     "role": "user",
+     "content": "Buat tracker kesiapan."
+    },
+    {
+     "role": "assistant",
+     "content": "Tracker dengan kolom elemen, bukti, status, PIC, tenggat, dan catatan sudah siap."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan ringkasan untuk GM Safety."
+    },
+    {
+     "role": "assistant",
+     "content": "Ringkasan satu halaman berisi status kesiapan keseluruhan, risiko terbesar, dan dukungan yang dibutuhkan."
+    }
+   ]
+  },
+  {
+   "owner": "maria",
+   "taskCode": "7.2",
+   "title": "Penyusunan laporan statistik keselamatan bulanan ke Kementerian ESDM",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya perlu menyusun laporan statistik keselamatan bulanan untuk pelaporan ke Kementerian ESDM."
+    },
+    {
+     "role": "assistant",
+     "content": "Baik. Silakan unggah data insiden, jam kerja, dan format pelaporan yang berlaku."
+    },
+    {
+     "role": "user",
+     "content": "Data sudah ada, formatnya mengikuti ketentuan yang berlaku."
+    },
+    {
+     "role": "assistant",
+     "content": "Saya akan isi sesuai format tersebut. Saya perlu memastikan klasifikasi kejadian konsisten dengan definisi di ketentuan."
+    },
+    {
+     "role": "user",
+     "content": "Ada dua kejadian yang klasifikasinya diperdebatkan."
+    },
+    {
+     "role": "assistant",
+     "content": "Sebaiknya dikonfirmasi ke Manager Safety atau berdasarkan ketentuan resmi, bukan saya yang menentukan. Saya bisa bantu menyiapkan pertanyaan."
+    },
+    {
+     "role": "user",
+     "content": "Tolong siapkan."
+    },
+    {
+     "role": "assistant",
+     "content": "Pertanyaan: apakah kejadian A termasuk cedera hilang hari kerja, dan apakah kejadian B termasuk kecelakaan tambang menurut definisi yang berlaku."
+    },
+    {
+     "role": "user",
+     "content": "Sementara itu hitung statistik lainnya."
+    },
+    {
+     "role": "assistant",
+     "content": "Jam kerja total 612.400, jumlah kejadian per kategori sudah dikelompokkan, dan rasio frekuensi dihitung dengan dua skenario klasifikasi."
+    },
+    {
+     "role": "user",
+     "content": "Dua skenario?"
+    },
+    {
+     "role": "assistant",
+     "content": "Ya, agar Anda bisa melihat dampak klasifikasi terhadap angka sebelum keputusan final diambil."
+    },
+    {
+     "role": "user",
+     "content": "Bagus. Apakah ada konsistensi dengan bulan sebelumnya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Saya cek metode perhitungan dan basis jam kerja agar sama. Ada selisih kecil di cara menghitung jam kerja kontraktor yang perlu dikonfirmasi."
+    },
+    {
+     "role": "user",
+     "content": "Konfirmasi ke tim data."
+    },
+    {
+     "role": "assistant",
+     "content": "Saya buat catatan untuk tim data berisi dua metode perhitungan dan selisih angkanya."
+    },
+    {
+     "role": "user",
+     "content": "Buat draf laporan setelah semua selesai."
+    },
+    {
+     "role": "assistant",
+     "content": "Saya siapkan draf dalam dua versi sampai klasifikasi diputuskan, dengan penanda bagian yang menunggu konfirmasi."
+    },
+    {
+     "role": "user",
+     "content": "Jangan dikirim ke siapa pun."
+    },
+    {
+     "role": "assistant",
+     "content": "Paham, laporan hanya disimpan sebagai draf. Pengiriman resmi tetap Anda lakukan setelah verifikasi."
+    }
+   ]
+  },
+  {
+   "owner": "maria",
+   "taskCode": "7.3",
+   "title": "Audit kepatuhan K3 kontraktor mitra (contractor safety audit)",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya akan audit kepatuhan K3 kontraktor angkutan. Bantu siapkan protokol auditnya."
+    },
+    {
+     "role": "assistant",
+     "content": "Aspek umum: sistem manajemen K3, kompetensi pekerja, kondisi unit, pelaporan insiden, dan kepatuhan terhadap aturan site."
+    },
+    {
+     "role": "user",
+     "content": "Buat daftar pertanyaan wawancara."
+    },
+    {
+     "role": "assistant",
+     "content": "Contoh: bagaimana prosedur pelaporan insiden, bagaimana seleksi dan pelatihan operator, bagaimana perawatan unit, dan bagaimana mereka menindaklanjuti temuan."
+    },
+    {
+     "role": "user",
+     "content": "Dokumen yang diminta?"
+    },
+    {
+     "role": "assistant",
+     "content": "Kebijakan K3, program kerja, catatan pelatihan, sertifikasi operator, hasil inspeksi unit, dan statistik insiden."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana sampling unit yang diperiksa?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pilih acak dari populasi unit, tambah beberapa unit dengan catatan temuan sebelumnya agar cakupan risikonya baik."
+    },
+    {
+     "role": "user",
+     "content": "Skor audit sebaiknya bagaimana?"
+    },
+    {
+     "role": "assistant",
+     "content": "Gunakan bobot per aspek, dengan item kritis yang jika gagal otomatis menurunkan kategori hasil, misalnya operator tanpa kompetensi."
+    },
+    {
+     "role": "user",
+     "content": "Setelah audit, apa tindak lanjutnya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Laporan temuan, rencana perbaikan dari kontraktor, tenggat, verifikasi, dan konsekuensi kontraktual jika tidak ditindaklanjuti."
+    },
+    {
+     "role": "user",
+     "content": "Hati-hati soal nada laporan agar tidak menyalahkan."
+    },
+    {
+     "role": "assistant",
+     "content": "Gunakan bahasa faktual dan fokus pada bukti serta risiko, lalu sertakan juga praktik baik yang ditemukan."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan bagian praktik baik."
+    },
+    {
+     "role": "assistant",
+     "content": "Ditambahkan bagian \"praktik baik yang teramati\" di laporan agar auditnya seimbang."
+    },
+    {
+     "role": "user",
+     "content": "Buat form temuan audit."
+    },
+    {
+     "role": "assistant",
+     "content": "Form berisi uraian temuan, bukti, persyaratan acuan, kategori (kritis, mayor, minor), dan rekomendasi."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana saya merangkum hasil untuk manajemen?"
+    },
+    {
+     "role": "assistant",
+     "content": "Ringkasan satu halaman: skor, temuan utama, risiko ke operasi, rencana perbaikan, dan rekomendasi keputusan."
+    }
+   ]
+  },
+  {
+   "owner": "maria",
+   "taskCode": "7.4",
+   "title": "Pembaruan dokumen dan prosedur sesuai regulasi keselamatan pertambangan terbaru",
+   "mode": "second_brain",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Ada perubahan regulasi keselamatan pertambangan. Saya harus memperbarui prosedur terkait."
+    },
+    {
+     "role": "assistant",
+     "content": "Baik. Regulasi mana yang berubah? Saya bisa membantu mencari sumber resminya agar rujukannya akurat."
+    },
+    {
+     "role": "user",
+     "content": "Tolong cari dulu ringkasannya."
+    },
+    {
+     "role": "assistant",
+     "content": "Saya akan mencari dari sumber resmi pemerintah dan memisahkan fakta dari tafsiran. Hasilnya akan saya sertakan dengan tautan sumbernya."
+    },
+    {
+     "role": "user",
+     "content": "Setelah itu apa?"
+    },
+    {
+     "role": "assistant",
+     "content": "Lakukan analisis kesenjangan: bandingkan persyaratan baru dengan prosedur yang berlaku dan catat bagian yang perlu diubah."
+    },
+    {
+     "role": "user",
+     "content": "Buat template analisis kesenjangan."
+    },
+    {
+     "role": "assistant",
+     "content": "Kolom: pasal, persyaratan, prosedur terkait, kesesuaian, tindakan, PIC, dan tenggat."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana menentukan prioritas revisi?"
+    },
+    {
+     "role": "assistant",
+     "content": "Prioritaskan yang tenggat kepatuhannya paling dekat dan risikonya paling tinggi jika tidak dipenuhi."
+    },
+    {
+     "role": "user",
+     "content": "Perlu konsultasi legal?"
+    },
+    {
+     "role": "assistant",
+     "content": "Untuk interpretasi yang ambigu, ya. Saya bukan penasihat hukum, jadi validasi akhir sebaiknya dari bagian legal atau regulator."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana mengelola versi dokumen?"
+    },
+    {
+     "role": "assistant",
+     "content": "Catat nomor revisi, tanggal, ringkasan perubahan, dan pihak yang menyetujui, serta tarik versi lama dari area kerja."
+    },
+    {
+     "role": "user",
+     "content": "Sosialisasi ke pekerja?"
+    },
+    {
+     "role": "assistant",
+     "content": "Siapkan ringkasan perubahan dalam bahasa sederhana, briefing ke pengawas, dan catatan bukti pemahaman."
+    },
+    {
+     "role": "user",
+     "content": "Buat ringkasan perubahan satu halaman."
+    },
+    {
+     "role": "assistant",
+     "content": "Ringkasan memuat apa yang berubah, kenapa, apa dampaknya bagi pekerja, dan kapan berlaku."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan FAQ singkat."
+    },
+    {
+     "role": "assistant",
+     "content": "FAQ lima pertanyaan sudah ditambahkan, misalnya siapa yang terdampak dan apa yang harus dilakukan mulai minggu depan."
+    }
+   ]
+  },
+  {
+   "owner": "maria",
+   "taskCode": "7.5",
+   "title": "Verifikasi kompetensi dan sertifikasi operator serta pengawas tambang",
+   "mode": "counterpart",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya perlu memverifikasi kompetensi dan sertifikasi operator dan pengawas tambang."
+    },
+    {
+     "role": "assistant",
+     "content": "Baik. Silakan unggah database personel dan sertifikasinya. Saya akan cek masa berlaku dan kesesuaian dengan jabatan."
+    },
+    {
+     "role": "user",
+     "content": "Sudah saya unggah."
+    },
+    {
+     "role": "assistant",
+     "content": "Dari data: 1.240 personel diperiksa, 86 sertifikasi kedaluwarsa dalam 60 hari, dan 14 sudah kedaluwarsa."
+    },
+    {
+     "role": "user",
+     "content": "Yang sudah kedaluwarsa itu bagaimana?"
+    },
+    {
+     "role": "assistant",
+     "content": "Mereka tidak boleh bekerja pada fungsi terkait sampai diperpanjang. Saya buat daftar per departemen dan jabatan."
+    },
+    {
+     "role": "user",
+     "content": "Apakah ada ketidaksesuaian jabatan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Ada 5 orang yang tercatat menjalankan fungsi pengawas tetapi tidak memiliki sertifikasi pengawas yang sesuai."
+    },
+    {
+     "role": "user",
+     "content": "Itu harus dieskalasi."
+    },
+    {
+     "role": "assistant",
+     "content": "Saya siapkan draf eskalasi ke Manager Safety berisi daftar, risiko, dan usulan tindakan: penghentian sementara fungsi dan percepatan sertifikasi."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana mencegah kedaluwarsa tidak terpantau?"
+    },
+    {
+     "role": "assistant",
+     "content": "Gunakan pengingat berjenjang 90, 60, dan 30 hari, serta laporan bulanan ke pengawas dan manager departemen."
+    },
+    {
+     "role": "user",
+     "content": "Bisa dibuatkan pengingat otomatis?"
+    },
+    {
+     "role": "assistant",
+     "content": "Bisa saya siapkan sebagai tugas terjadwal. Karena akan mengirim notifikasi berulang, saya perlu konfirmasi Anda dulu soal penerima dan frekuensinya."
+    },
+    {
+     "role": "user",
+     "content": "Nanti saja, saya diskusikan dulu."
+    },
+    {
+     "role": "assistant",
+     "content": "Baik, saya tidak membuat apa pun sekarang. Saya siapkan rancangan aturannya saja untuk bahan diskusi."
+    },
+    {
+     "role": "user",
+     "content": "Buat ringkasan hasil verifikasi."
+    },
+    {
+     "role": "assistant",
+     "content": "Ringkasan berisi jumlah diperiksa, kedaluwarsa, akan kedaluwarsa, ketidaksesuaian jabatan, dan rekomendasi."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan tabel per departemen."
+    },
+    {
+     "role": "assistant",
+     "content": "Tabel per departemen sudah ditambahkan dengan kolom jumlah personel, kedaluwarsa, akan kedaluwarsa, dan persentase kepatuhan."
+    }
+   ]
+  }
+ ]
+}

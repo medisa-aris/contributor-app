@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { AuditSeverity } from '@contributor/shared';
+import type { AuditSeverity } from '@bara/shared';
 import { DataSource } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 

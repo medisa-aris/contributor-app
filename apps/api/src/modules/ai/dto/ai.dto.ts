@@ -11,7 +11,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { COUNTERPART_STYLES, type ConversationMode } from '@contributor/shared';
+import { COUNTERPART_STYLES, type ConversationMode } from '@bara/shared';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { AI_LIMITS } from '../limits';
 

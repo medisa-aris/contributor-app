@@ -220,7 +220,7 @@ function requestOnce(target: URL, addresses: PinnedAddress[]): Promise<RawRespon
       port: target.port ? Number(target.port) : undefined,
       path: `${target.pathname}${target.search}`,
       headers: {
-        'User-Agent': 'ContributorAI-SourceFetcher/1.0',
+        'User-Agent': 'BeLead-SourceFetcher/1.0',
         Accept: 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.1',
         'Accept-Language': 'id,en;q=0.8',
         'Accept-Encoding': 'identity',

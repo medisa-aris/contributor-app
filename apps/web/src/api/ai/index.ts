@@ -1,4 +1,4 @@
-import type { AiTaskStatus, ConversationMode } from '@contributor/shared';
+import type { AiTaskStatus, ConversationMode } from '@bara/shared';
 import { apiDelete, apiGet, apiGetPaged, apiPatch, apiPost, apiPostForm } from '@/api/http';
 import type {
   ChatRequestPayload,

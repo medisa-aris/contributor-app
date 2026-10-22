@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiTags } from '@nestjs/swagger';
-import { AUDIT_EVENTS } from '@contributor/shared';
+import { AUDIT_EVENTS } from '@bara/shared';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { Audit } from '../../common/decorators/audit.decorator';

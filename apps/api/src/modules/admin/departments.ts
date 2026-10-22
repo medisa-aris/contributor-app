@@ -11,7 +11,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { AUDIT_EVENTS, PERMISSIONS } from '@contributor/shared';
+import { AUDIT_EVENTS, PERMISSIONS } from '@bara/shared';
 import { DataSource } from 'typeorm';
 import { CurrentAuth } from '../../common/decorators/current-auth.decorator';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
@@ -21,6 +21,7 @@ import { DATA_SOURCE } from '../../database/database.module';
 import { updatedRows } from '../../database/query-result';
 import { AuditService } from '../audit/audit.service';
 import { EffectivePermissionsService } from '../rbac/effective-permissions.service';
+import { scopeClause } from './common/data-scope';
 import { CreateDepartmentDto, UpdateDepartmentDto } from './dto/rbac.dto';
 
 interface DepartmentRow {
@@ -31,7 +32,16 @@ interface DepartmentRow {
   user_count: number;
 }
 
+interface DepartmentUser {
+  id: string;
+  display_name: string;
+  email: string;
+  job_title: string | null;
+  status: string;
+}
+
 interface DepartmentNode extends DepartmentRow {
+  users: DepartmentUser[];
   children: DepartmentNode[];
 }
 
@@ -43,7 +53,33 @@ export class DepartmentsService {
     private readonly audit: AuditService,
   ) {}
 
-  async tree(): Promise<DepartmentNode[]> {
+  /** Daftar pengguna per departemen mengikuti cakupan data `rbac.users.read` milik pemirsa. */
+  private async usersByDepartment(auth: AuthContext): Promise<Map<string, DepartmentUser[]>> {
+    const scope = await this.effective.effectiveScope(auth.user.id, PERMISSIONS.usersRead);
+    const params: unknown[] = [];
+    const clause = scopeClause(
+      { mode: scope.mode, userId: auth.user.id, departmentIds: scope.departmentIds },
+      'u.department_id',
+      params,
+    );
+    const rows = (await this.dataSource.query(
+      `SELECT u.id, u.display_name, u.email, u.job_title, u.status, u.department_id
+         FROM users u
+        WHERE u.department_id IS NOT NULL ${clause ? `AND ${clause}` : ''}
+        ORDER BY u.display_name`,
+      params,
+    )) as (DepartmentUser & { department_id: string })[];
+    const byDepartment = new Map<string, DepartmentUser[]>();
+    for (const { department_id, ...user } of rows) {
+      const list = byDepartment.get(department_id) ?? [];
+      list.push(user);
+      byDepartment.set(department_id, list);
+    }
+    return byDepartment;
+  }
+
+  async tree(auth: AuthContext): Promise<DepartmentNode[]> {
+    const usersByDepartment = await this.usersByDepartment(auth);
     const rows = (await this.dataSource.query(
       `SELECT d.id, d.name, d.code, d.parent_id,
               (SELECT count(*)::int FROM users u WHERE u.department_id = d.id) AS user_count
@@ -51,7 +87,9 @@ export class DepartmentsService {
         ORDER BY d.name`,
     )) as DepartmentRow[];
     const byId = new Map<string, DepartmentNode>();
-    for (const row of rows) byId.set(row.id, { ...row, children: [] });
+    for (const row of rows) {
+      byId.set(row.id, { ...row, users: usersByDepartment.get(row.id) ?? [], children: [] });
+    }
     const roots: DepartmentNode[] = [];
     for (const node of byId.values()) {
       if (node.parent_id && byId.has(node.parent_id)) {
@@ -101,7 +139,8 @@ export class DepartmentsService {
       const parent = (await this.dataSource.query('SELECT id FROM departments WHERE id = $1', [
         dto.parentId,
       ])) as { id: string }[];
-      if (parent.length === 0) throw new AppError(ERROR_CODES.notFound, 'Induk departemen tidak ditemukan.', 404);
+      if (parent.length === 0)
+        throw new AppError(ERROR_CODES.notFound, 'Induk departemen tidak ditemukan.', 404);
     }
     let rows: { id: string }[];
     try {
@@ -117,27 +156,42 @@ export class DepartmentsService {
     }
     const id = rows[0]?.id ?? '';
     await this.effective.bumpVersion();
-    await this.auditEvent(auth, AUDIT_EVENTS.departmentCreated, `Membuat departemen ${dto.name}`, id, {
-      name: dto.name,
-      code: dto.code,
-      parentId: dto.parentId ?? null,
-    });
-    return this.tree();
+    await this.auditEvent(
+      auth,
+      AUDIT_EVENTS.departmentCreated,
+      `Membuat departemen ${dto.name}`,
+      id,
+      {
+        name: dto.name,
+        code: dto.code,
+        parentId: dto.parentId ?? null,
+      },
+    );
+    return this.tree(auth);
   }
 
   async update(auth: AuthContext, departmentId: string, dto: UpdateDepartmentDto) {
     const exists = (await this.dataSource.query('SELECT id, name FROM departments WHERE id = $1', [
       departmentId,
     ])) as { id: string; name: string }[];
-    if (exists.length === 0) throw new AppError(ERROR_CODES.notFound, 'Departemen tidak ditemukan.', 404);
+    if (exists.length === 0)
+      throw new AppError(ERROR_CODES.notFound, 'Departemen tidak ditemukan.', 404);
 
     if (dto.parentId !== undefined && dto.parentId !== null) {
       if (dto.parentId === departmentId) {
-        throw new AppError(ERROR_CODES.validation, 'Departemen tidak dapat menjadi induk dirinya sendiri.', 400);
+        throw new AppError(
+          ERROR_CODES.validation,
+          'Departemen tidak dapat menjadi induk dirinya sendiri.',
+          400,
+        );
       }
       const subtree = await this.subtreeIds(departmentId);
       if (subtree.includes(dto.parentId)) {
-        throw new AppError(ERROR_CODES.validation, 'Induk tidak boleh berada di dalam subtree departemen ini.', 400);
+        throw new AppError(
+          ERROR_CODES.validation,
+          'Induk tidak boleh berada di dalam subtree departemen ini.',
+          400,
+        );
       }
     }
 
@@ -158,7 +212,10 @@ export class DepartmentsService {
     if (sets.length > 0) {
       sets.push('updated_at = now()');
       try {
-        await this.dataSource.query(`UPDATE departments SET ${sets.join(', ')} WHERE id = $1`, params);
+        await this.dataSource.query(
+          `UPDATE departments SET ${sets.join(', ')} WHERE id = $1`,
+          params,
+        );
       } catch (error) {
         if ((error as { code?: string }).code === '23505') {
           throw new AppError(ERROR_CODES.conflict, 'Kode departemen sudah digunakan.', 409);
@@ -166,20 +223,27 @@ export class DepartmentsService {
         throw error;
       }
       await this.effective.bumpVersion();
-      await this.auditEvent(auth, AUDIT_EVENTS.departmentUpdated, `Memperbarui departemen ${exists[0]!.name}`, departmentId, {
-        name: dto.name,
-        code: dto.code,
-        parentId: dto.parentId,
-      });
+      await this.auditEvent(
+        auth,
+        AUDIT_EVENTS.departmentUpdated,
+        `Memperbarui departemen ${exists[0]!.name}`,
+        departmentId,
+        {
+          name: dto.name,
+          code: dto.code,
+          parentId: dto.parentId,
+        },
+      );
     }
-    return this.tree();
+    return this.tree(auth);
   }
 
   async remove(auth: AuthContext, departmentId: string) {
     const exists = (await this.dataSource.query('SELECT id, name FROM departments WHERE id = $1', [
       departmentId,
     ])) as { id: string; name: string }[];
-    if (exists.length === 0) throw new AppError(ERROR_CODES.notFound, 'Departemen tidak ditemukan.', 404);
+    if (exists.length === 0)
+      throw new AppError(ERROR_CODES.notFound, 'Departemen tidak ditemukan.', 404);
     const usage = (await this.dataSource.query(
       `SELECT (SELECT count(*)::int FROM departments WHERE parent_id = $1) AS children,
               (SELECT count(*)::int FROM users WHERE department_id = $1) AS users`,
@@ -192,12 +256,21 @@ export class DepartmentsService {
       throw new AppError(ERROR_CODES.conflict, 'Departemen masih memiliki pengguna.', 409);
     }
     const deleted = updatedRows<{ id: string }>(
-      await this.dataSource.query(`DELETE FROM departments WHERE id = $1 RETURNING id`, [departmentId]),
+      await this.dataSource.query(`DELETE FROM departments WHERE id = $1 RETURNING id`, [
+        departmentId,
+      ]),
     );
-    if (deleted.length === 0) throw new AppError(ERROR_CODES.notFound, 'Departemen tidak ditemukan.', 404);
+    if (deleted.length === 0)
+      throw new AppError(ERROR_CODES.notFound, 'Departemen tidak ditemukan.', 404);
     await this.effective.bumpVersion();
-    await this.auditEvent(auth, AUDIT_EVENTS.departmentDeleted, `Menghapus departemen ${exists[0]!.name}`, departmentId, {});
-    return this.tree();
+    await this.auditEvent(
+      auth,
+      AUDIT_EVENTS.departmentDeleted,
+      `Menghapus departemen ${exists[0]!.name}`,
+      departmentId,
+      {},
+    );
+    return this.tree(auth);
   }
 }
 
@@ -208,8 +281,8 @@ export class DepartmentsController {
 
   @RequirePermission(PERMISSIONS.departmentsRead)
   @Get()
-  tree() {
-    return this.departments.tree();
+  tree(@CurrentAuth() auth: AuthContext) {
+    return this.departments.tree(auth);
   }
 
   @RequirePermission(PERMISSIONS.departmentsManage)

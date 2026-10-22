@@ -7,7 +7,7 @@ const base = {
     '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }],
   },
   moduleNameMapper: {
-    '^@contributor/shared$': '<rootDir>/../../packages/shared/src/index.ts',
+    '^@bara/shared$': '<rootDir>/../../packages/shared/src/index.ts',
   },
 };
 

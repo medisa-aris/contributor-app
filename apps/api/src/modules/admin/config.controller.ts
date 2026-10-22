@@ -7,8 +7,8 @@ import {
   Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { AUDIT_EVENTS, PERMISSIONS } from '@contributor/shared';
-import type { PublicConfigDto } from '@contributor/shared';
+import { AUDIT_EVENTS, PERMISSIONS } from '@bara/shared';
+import type { PublicConfigDto } from '@bara/shared';
 import { DataSource } from 'typeorm';
 import { Audit } from '../../common/decorators/audit.decorator';
 import { CurrentAuth } from '../../common/decorators/current-auth.decorator';
@@ -33,7 +33,7 @@ export class ConfigController {
     )) as { key: string; value: unknown }[];
     const map = new Map(rows.map((r) => [r.key, r.value]));
     return {
-      appName: String(map.get('app.name') ?? 'Contributor AI'),
+      appName: String(map.get('app.name') ?? 'BeLead AI'),
       defaultLocale: String(map.get('app.default_locale') ?? 'id'),
       defaultTheme: (map.get('app.default_theme') ?? 'system') as PublicConfigDto['defaultTheme'],
       timezone: String(map.get('app.timezone') ?? 'Asia/Jakarta'),

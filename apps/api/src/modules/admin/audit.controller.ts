@@ -1,6 +1,6 @@
 import { Controller, Get, Inject, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { PERMISSIONS } from '@contributor/shared';
+import { PERMISSIONS } from '@bara/shared';
 import { DataSource } from 'typeorm';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { DATA_SOURCE } from '../../database/database.module';

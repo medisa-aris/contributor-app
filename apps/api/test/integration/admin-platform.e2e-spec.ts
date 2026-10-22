@@ -79,7 +79,7 @@ describe('Admin platform (e2e)', () => {
 
   it('konfigurasi publik dapat diakses tanpa sesi dengan nilai default', async () => {
     const res = await request(app.getHttpServer()).get('/api/config/public').expect(200);
-    expect(res.body.data.appName).toBe('Contributor AI');
+    expect(res.body.data.appName).toBe('BeLead AI');
     expect(res.body.data.defaultLocale).toBe('id');
     expect(res.body.data.defaultTheme).toBe('system');
     expect(res.body.data.timezone).toBe('Asia/Jakarta');

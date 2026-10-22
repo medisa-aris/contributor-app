@@ -6,11 +6,13 @@ import {
   createMcpServer,
   createRestConnector,
   deleteMcpServer,
+  disconnectMcpOauth,
   deleteRestConnector,
   getProviderStatus,
   listMcpServers,
   listRestConnectors,
   mcpHealthCheck,
+  startMcpOauth,
   restHealthCheck,
   updateMcpServer,
   updateRestConnector,
@@ -126,6 +128,65 @@ async function checkMcp(row: McpServerRow): Promise<void> {
   }
 }
 
+async function connectMcp(row: McpServerRow): Promise<void> {
+  try {
+    const { authorizationUrl } = await startMcpOauth(row.id);
+    window.location.assign(authorizationUrl);
+  } catch (caught) {
+    toast.push({
+      variant: 'danger',
+      title: caught instanceof ApiError ? caught.message : t('errors.saveFailed'),
+    });
+  }
+}
+
+async function disconnectMcp(row: McpServerRow): Promise<void> {
+  try {
+    Object.assign(row, await disconnectMcpOauth(row.id));
+    toast.push({ variant: 'success', title: t('integrations.oauthDisconnected') });
+  } catch (caught) {
+    toast.push({
+      variant: 'danger',
+      title: caught instanceof ApiError ? caught.message : t('errors.saveFailed'),
+    });
+  }
+}
+
+const clientOpen = ref(false);
+const clientSaving = ref(false);
+const clientFormError = ref('');
+const clientTarget = ref<McpServerRow | null>(null);
+const clientForm = ref({ clientId: '', clientSecret: '' });
+
+function openClientDialog(row: McpServerRow): void {
+  clientTarget.value = row;
+  clientForm.value = { clientId: row.oauth_client_manual ? (row.oauth_client_id ?? '') : '', clientSecret: '' };
+  clientFormError.value = '';
+  clientOpen.value = true;
+}
+
+async function submitClient(): Promise<void> {
+  const row = clientTarget.value;
+  if (!row) return;
+  clientSaving.value = true;
+  clientFormError.value = '';
+  try {
+    Object.assign(
+      row,
+      await updateMcpServer(row.id, {
+        oauthClientId: clientForm.value.clientId.trim(),
+        oauthClientSecret: clientForm.value.clientSecret.trim() || undefined,
+      }),
+    );
+    clientOpen.value = false;
+    toast.push({ variant: 'success', title: t('integrations.oauthClientSaved') });
+  } catch (caught) {
+    clientFormError.value = caught instanceof ApiError ? caught.message : t('errors.saveFailed');
+  } finally {
+    clientSaving.value = false;
+  }
+}
+
 async function removeMcp(row: McpServerRow): Promise<void> {
   try {
     await deleteMcpServer(row.id);
@@ -217,7 +278,12 @@ function healthLabel(row: McpServerRow | RestConnectorRow): string {
 const mcpOpen = ref(false);
 const mcpSaving = ref(false);
 const mcpFormError = ref('');
-const mcpForm = ref({ code: '', name: '', description: '', baseUrl: '', authType: 'none' as 'none' | 'api_key', apiKeyEnv: '' });
+const mcpForm = ref({ code: '', name: '', description: '', baseUrl: '', authType: 'none' as 'none' | 'api_key' | 'oauth', apiKeyEnv: '', oauthClientId: '', oauthClientSecret: '' });
+
+const mcpAuthTypeOptions = computed<CaSelectOption[]>(() => [
+  ...authTypeOptions.value,
+  { value: 'oauth', label: t('integrations.authOauth') },
+]);
 
 const authTypeOptions = computed<CaSelectOption[]>(() => [
   { value: 'none', label: t('integrations.authNone') },
@@ -225,7 +291,7 @@ const authTypeOptions = computed<CaSelectOption[]>(() => [
 ]);
 
 function openMcpDialog(): void {
-  mcpForm.value = { code: '', name: '', description: '', baseUrl: '', authType: 'none', apiKeyEnv: '' };
+  mcpForm.value = { code: '', name: '', description: '', baseUrl: '', authType: 'none', apiKeyEnv: '', oauthClientId: '', oauthClientSecret: '' };
   mcpFormError.value = '';
   mcpOpen.value = true;
 }
@@ -245,6 +311,9 @@ async function submitMcp(): Promise<void> {
       baseUrl: mcpForm.value.baseUrl.trim(),
       authType: mcpForm.value.authType,
       apiKeyEnv: mcpForm.value.authType === 'api_key' ? mcpForm.value.apiKeyEnv.trim() || undefined : undefined,
+      oauthClientId: mcpForm.value.authType === 'oauth' ? mcpForm.value.oauthClientId.trim() || undefined : undefined,
+      oauthClientSecret:
+        mcpForm.value.authType === 'oauth' ? mcpForm.value.oauthClientSecret.trim() || undefined : undefined,
     });
     toast.push({ variant: 'success', title: t('integrations.created') });
     mcpOpen.value = false;
@@ -434,6 +503,22 @@ onMounted(() => {
             >
               {{ t('integrations.healthCheck') }}
             </CaButton>
+            <template v-if="(row as McpServerRow).auth_type === 'oauth'">
+              <CaButton size="small" variant="secondary" @click="openClientDialog(row as McpServerRow)">
+                {{ t('integrations.oauthClient') }}
+              </CaButton>
+              <CaButton
+                v-if="(row as McpServerRow).oauth_connected"
+                size="small"
+                variant="secondary"
+                @click="disconnectMcp(row as McpServerRow)"
+              >
+                {{ t('integrations.oauthDisconnect') }}
+              </CaButton>
+              <CaButton v-else size="small" variant="primary" @click="connectMcp(row as McpServerRow)">
+                {{ t('integrations.oauthConnect') }}
+              </CaButton>
+            </template>
             <CaButton size="small" variant="danger" @click="removeMcp(row as McpServerRow)">
               {{ t('common.delete') }}
             </CaButton>
@@ -531,7 +616,7 @@ onMounted(() => {
         </CaField>
         <CaField :label="t('integrations.formAuthType')">
           <template #default="{ id, describedBy }">
-            <CaSelect :id="id" v-model="mcpForm.authType" :aria-describedby="describedBy" :options="authTypeOptions" />
+            <CaSelect :id="id" v-model="mcpForm.authType" :aria-describedby="describedBy" :options="mcpAuthTypeOptions" />
           </template>
         </CaField>
         <CaField v-if="mcpForm.authType === 'api_key'" :label="t('integrations.formApiKeyEnv')" :hint="t('integrations.formApiKeyEnvHint')">
@@ -539,10 +624,48 @@ onMounted(() => {
             <CaInput :id="id" v-model="mcpForm.apiKeyEnv" :aria-describedby="describedBy" />
           </template>
         </CaField>
+        <template v-if="mcpForm.authType === 'oauth'">
+          <CaField :label="t('integrations.oauthClientId')">
+            <template #default="{ id, describedBy }">
+              <CaInput :id="id" v-model="mcpForm.oauthClientId" :aria-describedby="describedBy" autocomplete="off" />
+            </template>
+          </CaField>
+          <CaField :label="t('integrations.oauthClientSecret')" :hint="t('integrations.oauthClientSecretHint')">
+            <template #default="{ id, describedBy }">
+              <CaInput :id="id" v-model="mcpForm.oauthClientSecret" :aria-describedby="describedBy" type="password" autocomplete="off" />
+            </template>
+          </CaField>
+        </template>
       </form>
       <template #footer>
         <CaButton variant="secondary" @click="mcpOpen = false">{{ t('common.cancel') }}</CaButton>
         <CaButton variant="primary" :loading="mcpSaving" @click="submitMcp">
+          {{ t('common.save') }}
+        </CaButton>
+      </template>
+    </CaDialog>
+
+    <CaDialog
+      v-model:open="clientOpen"
+      :title="t('integrations.oauthClientDialogTitle')"
+      :subtitle="t('integrations.oauthClientDialogSubtitle')"
+    >
+      <p v-if="clientFormError" class="admin-error" role="alert">{{ clientFormError }}</p>
+      <form class="admin-form" @submit.prevent="submitClient">
+        <CaField :label="t('integrations.oauthClientId')">
+          <template #default="{ id, describedBy }">
+            <CaInput :id="id" v-model="clientForm.clientId" :aria-describedby="describedBy" autocomplete="off" />
+          </template>
+        </CaField>
+        <CaField :label="t('integrations.oauthClientSecret')" :hint="t('integrations.oauthClientSecretHint')">
+          <template #default="{ id, describedBy }">
+            <CaInput :id="id" v-model="clientForm.clientSecret" :aria-describedby="describedBy" type="password" autocomplete="off" />
+          </template>
+        </CaField>
+      </form>
+      <template #footer>
+        <CaButton variant="secondary" @click="clientOpen = false">{{ t('common.cancel') }}</CaButton>
+        <CaButton variant="primary" :loading="clientSaving" @click="submitClient">
           {{ t('common.save') }}
         </CaButton>
       </template>

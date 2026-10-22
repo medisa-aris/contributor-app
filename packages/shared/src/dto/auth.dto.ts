@@ -16,6 +16,7 @@ export interface AuthUserDto {
   displayName: string;
   departmentId: string | null;
   departmentName: string | null;
+  jobTitle: string | null;
   isSuperadmin: boolean;
 }
 

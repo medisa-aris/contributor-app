@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import type { DataScope } from '@contributor/shared';
-import { DATA_SCOPE_REACH } from '@contributor/shared';
+import type { DataScope } from '@bara/shared';
+import { DATA_SCOPE_REACH } from '@bara/shared';
 import { EffectivePermissionsService } from './effective-permissions.service';
 
 export interface EscalationViolation {

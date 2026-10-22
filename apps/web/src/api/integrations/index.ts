@@ -23,8 +23,10 @@ export function createMcpServer(input: {
   name: string;
   description?: string;
   baseUrl: string;
-  authType: 'none' | 'api_key';
+  authType: 'none' | 'api_key' | 'oauth';
   apiKeyEnv?: string;
+  oauthClientId?: string;
+  oauthClientSecret?: string;
 }): Promise<McpServerRow> {
   return apiPost<McpServerRow>('/integrations/mcp-servers', input);
 }
@@ -35,8 +37,10 @@ export function updateMcpServer(
     name?: string;
     description?: string;
     baseUrl?: string;
-    authType?: 'none' | 'api_key';
+    authType?: 'none' | 'api_key' | 'oauth';
     apiKeyEnv?: string;
+    oauthClientId?: string;
+    oauthClientSecret?: string;
     enabled?: boolean;
   },
 ): Promise<McpServerRow> {
@@ -49,6 +53,22 @@ export function deleteMcpServer(id: string): Promise<{ deleted: boolean }> {
 
 export function mcpHealthCheck(id: string): Promise<McpServerRow> {
   return apiPost<McpServerRow>(`/integrations/mcp-servers/${id}/health-check`);
+}
+
+export const MCP_OAUTH_CALLBACK_PATH = '/integrations/oauth/callback';
+
+export function startMcpOauth(id: string): Promise<{ authorizationUrl: string }> {
+  return apiPost<{ authorizationUrl: string }>(`/integrations/mcp-servers/${id}/oauth/start`, {
+    redirectUri: `${window.location.origin}${MCP_OAUTH_CALLBACK_PATH}`,
+  });
+}
+
+export function completeMcpOauth(input: { state: string; code: string }): Promise<McpServerRow> {
+  return apiPost<McpServerRow>('/integrations/oauth/callback', input);
+}
+
+export function disconnectMcpOauth(id: string): Promise<McpServerRow> {
+  return apiPost<McpServerRow>(`/integrations/mcp-servers/${id}/oauth/disconnect`);
 }
 
 export function listRestConnectors(query: { page: number; pageSize: number }) {

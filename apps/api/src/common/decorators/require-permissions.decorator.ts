@@ -1,5 +1,5 @@
 import { SetMetadata } from '@nestjs/common';
-import type { PermissionId } from '@contributor/shared';
+import type { PermissionId } from '@bara/shared';
 
 export const REQUIRED_PERMISSIONS_KEY = 'requiredPermissions';
 

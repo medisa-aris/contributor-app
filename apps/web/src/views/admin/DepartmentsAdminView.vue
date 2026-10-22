@@ -291,13 +291,25 @@ async function confirmDelete(): Promise<void> {
   } catch (err) {
     toast.push({
       variant: 'danger',
-      title:
-        err instanceof ApiError && err.status === 409 ? err.message : t('errors.saveFailed'),
+      title: err instanceof ApiError && err.status === 409 ? err.message : t('errors.saveFailed'),
     });
   } finally {
     saving.value = false;
   }
 }
+
+/** Divisi (sub-departemen) dari departemen terpilih, berurutan dengan kedalaman untuk indentasi. */
+const divisions = computed(() => {
+  const out: { node: AdminDepartmentNode; depth: number }[] = [];
+  function walk(nodes: AdminDepartmentNode[], depth: number): void {
+    for (const node of nodes) {
+      out.push({ node, depth });
+      walk(node.children, depth + 1);
+    }
+  }
+  if (selected.value) walk(selected.value.children, 0);
+  return out;
+});
 
 const selectedParentName = computed(() =>
   selected.value ? findParentName(tree.value, selected.value.id) : null,
@@ -388,6 +400,60 @@ onBeforeUnmount(() => {
             <dd>{{ selected.children.length }}</dd>
           </div>
         </dl>
+        <section class="dep-org__members">
+          <h4 class="dep-org__members-title">
+            {{ t('admin.departments.membersOf', { name: selected.name }) }}
+            <span class="dep-org__members-count">{{ selected.users.length }}</span>
+          </h4>
+          <ul v-if="selected.users.length > 0" class="dep-org__people">
+            <li v-for="person in selected.users" :key="person.id" class="dep-org__person">
+              <span class="dep-org__person-name">{{ person.display_name }}</span>
+              <span v-if="person.job_title" class="dep-org__person-title">{{
+                person.job_title
+              }}</span>
+            </li>
+          </ul>
+          <p v-else class="dep-org__members-empty">
+            {{
+              selected.user_count > 0
+                ? t('admin.departments.membersHidden')
+                : t('admin.departments.membersEmpty')
+            }}
+          </p>
+        </section>
+        <section v-if="divisions.length > 0" class="dep-org__divisions">
+          <h4 class="dep-org__members-title">
+            {{ t('admin.departments.divisionsTitle') }}
+            <span class="dep-org__members-count">{{ divisions.length }}</span>
+          </h4>
+          <div
+            v-for="item in divisions"
+            :key="item.node.id"
+            class="dep-org__division"
+            :style="{ marginLeft: `${item.depth * 12}px` }"
+          >
+            <div class="dep-org__division-head">
+              <span class="dep-org__division-name">{{ item.node.name }}</span>
+              <span class="admin-mono dep-org__division-code">{{ item.node.code }}</span>
+              <span class="dep-org__members-count">{{ item.node.user_count }}</span>
+            </div>
+            <ul v-if="item.node.users.length > 0" class="dep-org__people">
+              <li v-for="person in item.node.users" :key="person.id" class="dep-org__person">
+                <span class="dep-org__person-name">{{ person.display_name }}</span>
+                <span v-if="person.job_title" class="dep-org__person-title">
+                  {{ person.job_title }}
+                </span>
+              </li>
+            </ul>
+            <p v-else class="dep-org__members-empty">
+              {{
+                item.node.user_count > 0
+                  ? t('admin.departments.membersHidden')
+                  : t('admin.departments.membersEmpty')
+              }}
+            </p>
+          </div>
+        </section>
         <div v-if="canManage" class="dep-org__panel-actions">
           <CaButton size="small" variant="primary" @click="openCreate(selected)">
             {{ t('admin.departments.addChild') }}
@@ -407,7 +473,10 @@ onBeforeUnmount(() => {
         <CaField :label="t('admin.departments.formName')">
           <CaInput v-model="form.name" />
         </CaField>
-        <CaField :label="t('admin.departments.formCode')" :hint="t('admin.departments.formCodeHint')">
+        <CaField
+          :label="t('admin.departments.formCode')"
+          :hint="t('admin.departments.formCodeHint')"
+        >
           <CaInput v-model="form.code" placeholder="OPS_JKT" />
         </CaField>
         <CaField :label="t('admin.departments.formParent')">
@@ -425,11 +494,7 @@ onBeforeUnmount(() => {
       </template>
     </CaDialog>
 
-    <CaDialog
-      v-model:open="showDelete"
-      :title="t('admin.departments.deleteTitle')"
-      size="small"
-    >
+    <CaDialog v-model:open="showDelete" :title="t('admin.departments.deleteTitle')" size="small">
       <p class="dep-org__delete-text">
         {{ t('admin.departments.deleteConfirm', { name: deleting?.name ?? '' }) }}
       </p>
@@ -510,7 +575,9 @@ onBeforeUnmount(() => {
 }
 
 .dep-org__panel {
-  width: 300px;
+  width: 340px;
+  max-height: calc(100vh - 180px);
+  overflow-y: auto;
   flex-shrink: 0;
   border: 1px solid var(--ca-stroke-2);
   border-radius: var(--ca-radius-lg);
@@ -520,6 +587,88 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: var(--ca-space-8);
   align-self: flex-start;
+}
+
+.dep-org__members-title {
+  display: flex;
+  align-items: center;
+  gap: var(--ca-space-3);
+  margin: 0 0 var(--ca-space-3);
+  font-size: var(--ca-text-300);
+  font-weight: var(--ca-font-weight-semibold);
+  color: var(--ca-fg-1);
+}
+
+.dep-org__members-count {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: var(--ca-radius-circular);
+  background: var(--ca-color-brand-subtle);
+  color: var(--ca-color-brand);
+  font-size: var(--ca-text-100);
+  font-weight: var(--ca-font-weight-semibold);
+  text-align: center;
+}
+
+.dep-org__divisions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ca-space-5);
+}
+
+.dep-org__division {
+  padding: var(--ca-space-4);
+  border: 1px solid var(--ca-stroke-2);
+  border-radius: var(--ca-radius-md);
+  background: var(--ca-bg-surface-2);
+}
+
+.dep-org__division-head {
+  display: flex;
+  align-items: center;
+  gap: var(--ca-space-3);
+  margin-bottom: var(--ca-space-3);
+}
+
+.dep-org__division-name {
+  font-weight: var(--ca-font-weight-semibold);
+  color: var(--ca-fg-1);
+}
+
+.dep-org__division-code {
+  color: var(--ca-fg-3);
+  font-size: var(--ca-text-100);
+}
+
+.dep-org__people {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ca-space-2);
+}
+
+.dep-org__person {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.dep-org__person-name {
+  font-size: var(--ca-text-200);
+  color: var(--ca-fg-1);
+}
+
+.dep-org__person-title {
+  font-size: var(--ca-text-100);
+  color: var(--ca-fg-3);
+}
+
+.dep-org__members-empty {
+  margin: 0;
+  font-size: var(--ca-text-200);
+  color: var(--ca-fg-3);
 }
 
 .dep-org__panel-head {

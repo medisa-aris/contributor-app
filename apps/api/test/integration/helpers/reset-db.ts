@@ -1,6 +1,6 @@
 import { hash } from 'bcryptjs';
 import type { DataSource } from 'typeorm';
-import { ALL_PERMISSION_IDS, PERMISSION_CATALOG, SYSTEM_ROLES } from '@contributor/shared';
+import { ALL_PERMISSION_IDS, PERMISSION_CATALOG, SYSTEM_ROLES } from '@bara/shared';
 
 export const TEST_PASSWORD = 'Test123456!';
 
@@ -269,7 +269,7 @@ export async function seedTestFixtures(dataSource: DataSource): Promise<TestFixt
   // pengujian konfigurasi publik dan admin selalu berangkat dari keadaan sama.
   await dataSource.query(`
 INSERT INTO app_config (key, value, description, is_public) VALUES
-  ('app.name', '"Contributor AI"', 'Nama aplikasi yang tampil di antarmuka', true),
+  ('app.name', '"BeLead AI"', 'Nama aplikasi yang tampil di antarmuka', true),
   ('app.default_locale', '"id"', 'Bahasa antarmuka bawaan', true),
   ('app.default_theme', '"system"', 'Tema bawaan', true),
   ('app.timezone', '"Asia/Jakarta"', 'Zona waktu tampilan', true),

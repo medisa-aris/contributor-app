@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { AI_TASK_STATUSES, type AiTaskStatus, type ConversationMode } from '@contributor/shared';
+import { AI_TASK_STATUSES, type AiTaskStatus, type ConversationMode } from '@bara/shared';
 import {
   conversationDetail,
   deleteConversation,
@@ -30,6 +30,7 @@ import {
   type CaSelectOption,
   type CaTableColumn,
 } from '@/components/ui';
+import MarkdownContent from '@/components/ai/MarkdownContent.vue';
 import { formatDateTime } from '@/utils/format';
 
 const { t } = useI18n();
@@ -161,7 +162,9 @@ const taskColumns = computed<CaTableColumn[]>(() => [
   { key: 'created_at', label: t('workspace.history.columnCreated'), width: '170px' },
 ]);
 
-function statusVariant(status: AiTaskStatus): 'brand' | 'danger' | 'success' | 'warning' | 'informative' | 'neutral' {
+function statusVariant(
+  status: AiTaskStatus,
+): 'brand' | 'danger' | 'success' | 'warning' | 'informative' | 'neutral' {
   switch (status) {
     case 'completed':
       return 'success';
@@ -282,7 +285,12 @@ onMounted(() => {
         </template>
       </CaTable>
 
-      <CaPagination :page="convPage" :limit="convPageSize" :total="convTotal" @change="convGoPage" />
+      <CaPagination
+        :page="convPage"
+        :limit="convPageSize"
+        :total="convTotal"
+        @change="convGoPage"
+      />
     </template>
 
     <template v-else>
@@ -318,7 +326,12 @@ onMounted(() => {
         </template>
       </CaTable>
 
-      <CaPagination :page="taskPage" :limit="taskPageSize" :total="taskTotal" @change="taskGoPage" />
+      <CaPagination
+        :page="taskPage"
+        :limit="taskPageSize"
+        :total="taskTotal"
+        @change="taskGoPage"
+      />
     </template>
 
     <CaDialog
@@ -384,7 +397,7 @@ onMounted(() => {
         </dl>
         <template v-if="taskSelected.status === 'completed' && taskSelected.result">
           <h3 class="history__section">{{ t('workspace.subordinate.resultTitle') }}</h3>
-          <p class="history__result">{{ taskSelected.result }}</p>
+          <div class="history__result"><MarkdownContent :content="taskSelected.result" /></div>
         </template>
         <template v-if="taskSelected.status === 'failed' && taskSelected.error_message">
           <h3 class="history__section">{{ t('workspace.subordinate.errorTitle') }}</h3>
@@ -405,7 +418,9 @@ onMounted(() => {
         </ol>
       </div>
       <template #footer>
-        <CaButton variant="subtle" @click="taskDialogOpen = false">{{ t('common.close') }}</CaButton>
+        <CaButton variant="subtle" @click="taskDialogOpen = false">{{
+          t('common.close')
+        }}</CaButton>
       </template>
     </CaDialog>
   </section>
@@ -536,7 +551,6 @@ onMounted(() => {
   padding: var(--ca-space-5);
   background: var(--ca-bg-surface-3);
   border-radius: var(--ca-radius-md);
-  white-space: pre-wrap;
   word-break: break-word;
   font-size: var(--ca-text-300);
   line-height: var(--ca-line-300);

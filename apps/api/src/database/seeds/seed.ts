@@ -4,9 +4,10 @@ import {
   AUDIT_EVENTS,
   PERMISSION_CATALOG,
   SYSTEM_ROLES,
-} from '@contributor/shared';
+} from '@bara/shared';
 import { hash } from 'bcryptjs';
 import { config as loadEnv } from 'dotenv';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DataSource } from 'typeorm';
 import { buildDataSourceOptions } from '../data-source-options';
@@ -15,6 +16,85 @@ import { updatedRows } from '../query-result';
 loadEnv({ path: join(__dirname, '../../../.env') });
 
 const BCRYPT_ROUNDS = 11;
+
+// Data fiktif HSE K3L PT Berau Coal (lihat data/hse-demo.json). Hanya untuk demo.
+interface HseDemoData {
+  users: {
+    key: string;
+    displayName: string;
+    jobTitle: string;
+    departmentCode: string;
+    role: string;
+  }[];
+  conversations: {
+    owner: string;
+    taskCode: string;
+    title: string;
+    mode: 'second_brain' | 'counterpart';
+    messages: { role: 'user' | 'assistant'; content: string }[];
+  }[];
+}
+
+const HSE_DEMO = JSON.parse(
+  readFileSync(join(__dirname, 'data/hse-demo.json'), 'utf8'),
+) as HseDemoData;
+const HSE_DEMO_PASSWORD = 'HseDemo123!';
+
+// Percakapan Multi Brain dan tugas Subordinate tambahan untuk GM Safety (data fiktif).
+interface HseExtraData {
+  conversations: HseDemoData['conversations'];
+  tasks: {
+    owner: string;
+    code: string;
+    title: string;
+    instruction: string;
+    result: string;
+    steps: string[];
+    tokensIn: number;
+    tokensOut: number;
+    durationMs: number;
+  }[];
+}
+
+// 200 aktivitas contoh (percakapan Multi Brain/Partner dan tugas Subordinate) untuk seluruh akun demo.
+type BulkItem = {
+  user: string;
+  mode: 'second_brain' | 'counterpart' | 'subordinate';
+  hoursAgo: number;
+  title: string;
+} & (
+  | {
+      kind: 'conversation';
+      style: string | null;
+      messages: {
+        role: 'user' | 'assistant';
+        content: string;
+        tokensIn?: number;
+        tokensOut?: number;
+      }[];
+    }
+  | {
+      kind: 'task';
+      status: 'completed' | 'failed' | 'cancelled';
+      instruction: string;
+      result?: string;
+      error?: string;
+      steps: string[];
+      tokensIn: number;
+      tokensOut: number;
+      durationMs: number;
+    }
+);
+
+const HSE_BULK = (
+  JSON.parse(readFileSync(join(__dirname, 'data/hse-demo-bulk.json'), 'utf8')) as {
+    items: BulkItem[];
+  }
+).items;
+
+const HSE_EXTRA = JSON.parse(
+  readFileSync(join(__dirname, 'data/hse-demo-hendra.json'), 'utf8'),
+) as HseExtraData;
 
 // Kredensial demo untuk domain lokal `.local` — hanya untuk pelatihan.
 // Pembuatan akun ini otomatis dilewati saat NODE_ENV=production.
@@ -26,9 +106,10 @@ const DEMO_USERS: readonly {
   dataScope: 'global' | 'department' | 'own';
   departmentCode: string | null;
   isSuperadmin: boolean;
+  jobTitle?: string;
 }[] = [
   {
-    email: 'admin@contributor.local',
+    email: 'admin@bara.local',
     password: 'Kontrib-d98a5d6d!',
     displayName: 'Super Admin',
     role: SYSTEM_ROLES.administrator,
@@ -37,7 +118,7 @@ const DEMO_USERS: readonly {
     isSuperadmin: true,
   },
   {
-    email: 'manajer@contributor.local',
+    email: 'manajer@bara.local',
     password: 'ManajerDemo123!',
     displayName: 'Manajer Demo',
     role: SYSTEM_ROLES.manager,
@@ -46,7 +127,7 @@ const DEMO_USERS: readonly {
     isSuperadmin: false,
   },
   {
-    email: 'staf@contributor.local',
+    email: 'staf@bara.local',
     password: 'StafDemo123!',
     displayName: 'Staf Demo',
     role: SYSTEM_ROLES.staf,
@@ -54,6 +135,16 @@ const DEMO_USERS: readonly {
     departmentCode: 'IT',
     isSuperadmin: false,
   },
+  ...HSE_DEMO.users.map((user) => ({
+    email: `${user.key}@bara.local`,
+    password: HSE_DEMO_PASSWORD,
+    displayName: user.displayName,
+    role: user.role,
+    dataScope: 'department' as const,
+    departmentCode: user.departmentCode,
+    isSuperadmin: false,
+    jobTitle: user.jobTitle,
+  })),
 ];
 
 interface MenuSeed {
@@ -102,16 +193,25 @@ const NAV_TREE: readonly AppSeed[] = [
             permission: 'ai.workspace.access',
             isFuture: false,
           },
+          {
+            key: 'nav.ai-workspace.mind-map',
+            label: 'Peta Pikiran',
+            i18nKey: 'nav.aiWorkspace.mindMap',
+            icon: 'people',
+            routePath: '/workspace/mind-map',
+            permission: 'ai.mindmap.team.read',
+            isFuture: false,
+          },
         ],
       },
       {
         identifier: 'modes',
         name: 'Mode Berpikir',
-        description: 'Second Brain, Counterpart, dan Subordinate',
+        description: 'Multi Brain, Partner, dan Subordinate',
         items: [
           {
             key: 'nav.ai-workspace.second-brain',
-            label: 'Otak Kedua',
+            label: 'Multi Brain',
             i18nKey: 'nav.aiWorkspace.secondBrain',
             icon: 'brain',
             routePath: '/workspace/second-brain',
@@ -120,7 +220,7 @@ const NAV_TREE: readonly AppSeed[] = [
           },
           {
             key: 'nav.ai-workspace.counterpart',
-            label: 'Mitra Berpikir',
+            label: 'Partner',
             i18nKey: 'nav.aiWorkspace.counterpart',
             icon: 'people-chat',
             routePath: '/workspace/counterpart',
@@ -129,7 +229,7 @@ const NAV_TREE: readonly AppSeed[] = [
           },
           {
             key: 'nav.ai-workspace.subordinate',
-            label: 'Asisten Eksekusi',
+            label: 'Subordinate',
             i18nKey: 'nav.aiWorkspace.subordinate',
             icon: 'bot',
             routePath: '/workspace/subordinate',
@@ -157,15 +257,6 @@ const NAV_TREE: readonly AppSeed[] = [
     modules: [
       {
         identifier: 'content',
-          {
-            key: 'nav.ai-workspace.mind-map',
-            label: 'Peta Pikiran',
-            i18nKey: 'nav.aiWorkspace.mindMap',
-            icon: 'people',
-            routePath: '/workspace/mind-map',
-            permission: 'ai.mindmap.team.read',
-            isFuture: false,
-          },
         name: 'Konten',
         description: 'Dokumen dan koleksi sumber pengetahuan',
         items: [
@@ -476,6 +567,8 @@ const SEED_ROLES = [
       'ai.secondbrain.query',
       'ai.counterpart.analyze',
       'ai.subordinate.execute',
+      'ai.workspace.history.read',
+      'ai.mindmap.team.read',
       'knowledge.documents.read',
       'knowledge.collections.read',
       'knowledge.search.use',
@@ -488,6 +581,23 @@ const SEED_ROLES = [
       'rbac.roles.read',
       'rbac.departments.read',
       'rbac.groups.read',
+    ],
+  },
+  {
+    code: SYSTEM_ROLES.superintendent,
+    name: 'Superintendent',
+    description: 'Pengawas operasional: akses kerja AI penuh tanpa akses administrasi',
+    permissions: [
+      'ai.workspace.access',
+      'ai.secondbrain.query',
+      'ai.counterpart.analyze',
+      'ai.subordinate.execute',
+      'ai.workspace.history.read',
+      'knowledge.documents.read',
+      'knowledge.collections.read',
+      'knowledge.search.use',
+      'agents.view',
+      'agents.execute',
     ],
   },
   {
@@ -508,6 +618,13 @@ const SEED_DEPARTMENTS = [
   { code: 'HQ', name: 'Kantor Pusat', parent: null },
   { code: 'IT', name: 'Teknologi Informasi', parent: 'HQ' },
   { code: 'HR', name: 'Sumber Daya Manusia', parent: 'HQ' },
+  { code: 'HSE', name: 'HSE K3L', parent: 'HQ' },
+  { code: 'HSE-HIRA', name: 'HIRA', parent: 'HSE' },
+  { code: 'HIRA-OPS', name: 'HIRA Operasional', parent: 'HSE-HIRA' },
+  { code: 'HIRA-RCM', name: 'Risk Control & MOC', parent: 'HSE-HIRA' },
+  { code: 'HSE-SAFETY', name: 'Safety', parent: 'HSE' },
+  { code: 'SAFE-OPS', name: 'Safety Operasional & Inspeksi', parent: 'HSE-SAFETY' },
+  { code: 'SAFE-CMP', name: 'Safety Compliance & Audit', parent: 'HSE-SAFETY' },
 ] as const;
 
 async function insertOrSelect(
@@ -531,8 +648,6 @@ async function seedDemoContent(ds: DataSource): Promise<void> {
     name: string;
     description: string;
     acl: Record<string, unknown>;
-      'ai.workspace.history.read',
-      'ai.mindmap.team.read',
     documents: { title: string; locator: string; content: string }[];
   }[] = [
     {
@@ -721,6 +836,15 @@ async function seedDemoUsers(ds: DataSource): Promise<number> {
         )[0]?.id ?? null)
       : null;
 
+    // Akun demo lama memakai domain contributor.local; pindahkan ke domain baru.
+    const legacyEmail = demo.email.replace('@bara.local', '@contributor.local');
+    await ds.query(
+      `UPDATE users SET email = $1
+       WHERE lower(email) = lower($2)
+         AND NOT EXISTS (SELECT 1 FROM users WHERE lower(email) = lower($1))`,
+      [demo.email, legacyEmail],
+    );
+
     const existing = (await ds.query(`SELECT id FROM users WHERE lower(email) = lower($1)`, [
       demo.email,
     ])) as { id: string }[];
@@ -728,11 +852,18 @@ async function seedDemoUsers(ds: DataSource): Promise<number> {
     if (!userId) {
       const passwordHash = await hash(demo.password, BCRYPT_ROUNDS);
       const inserted = (await ds.query(
-        `INSERT INTO users (email, password_hash, display_name, status, is_superadmin, department_id)
-         VALUES ($1, $2, $3, 'active', $4, $5)
+        `INSERT INTO users (email, password_hash, display_name, status, is_superadmin, department_id, job_title)
+         VALUES ($1, $2, $3, 'active', $4, $5, $6)
          ON CONFLICT (email) DO NOTHING
          RETURNING id`,
-        [demo.email, passwordHash, demo.displayName, demo.isSuperadmin, departmentId],
+        [
+          demo.email,
+          passwordHash,
+          demo.displayName,
+          demo.isSuperadmin,
+          departmentId,
+          demo.jobTitle ?? null,
+        ],
       )) as { id: string }[];
       userId = inserted[0]?.id;
       if (userId) created += 1;
@@ -744,6 +875,12 @@ async function seedDemoUsers(ds: DataSource): Promise<number> {
       userId = again[0]?.id;
     }
     if (!userId) throw new Error(`Gagal membuat/memperoleh pengguna demo: ${demo.email}`);
+    if (demo.jobTitle) {
+      await ds.query(
+        `UPDATE users SET job_title = $2 WHERE id = $1 AND job_title IS DISTINCT FROM $2`,
+        [userId, demo.jobTitle],
+      );
+    }
 
     await ds.query(
       `INSERT INTO user_roles (user_id, role_id, data_scope, department_id)
@@ -760,6 +897,309 @@ async function seedDemoUsers(ds: DataSource): Promise<number> {
     console.log(`    ${demo.email} / ${demo.password} — ${demo.displayName}`);
   }
   return created;
+}
+
+/** Menyisipkan percakapan contoh; idempoten per (pengguna, judul). Waktu disebar mundur per hari. */
+async function insertDemoConversations(
+  ds: DataSource,
+  conversations: HseDemoData['conversations'],
+  newestDaysAgo: number,
+): Promise<number> {
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  let created = 0;
+  for (const [index, conv] of conversations.entries()) {
+    const owner = (await ds.query(`SELECT id FROM users WHERE lower(email) = lower($1)`, [
+      `${conv.owner}@bara.local`,
+    ])) as { id: string }[];
+    const userId = owner[0]?.id;
+    if (!userId) continue;
+
+    // Percakapan pertama paling lama, terakhir paling baru.
+    const startedAt = new Date(now - (conversations.length - index + newestDaysAgo - 1) * DAY_MS);
+    const inserted = (await ds.query(
+      `INSERT INTO conversations (user_id, mode, title, created_at, updated_at)
+       SELECT $1::uuid, $2::conversation_mode, $3::varchar, $4::timestamptz, $5::timestamptz
+        WHERE NOT EXISTS (
+          SELECT 1 FROM conversations WHERE user_id = $1::uuid AND title = $3::varchar
+        )
+       RETURNING id`,
+      [
+        userId,
+        conv.mode,
+        conv.title,
+        startedAt,
+        new Date(startedAt.getTime() + conv.messages.length * 60_000),
+      ],
+    )) as { id: string }[];
+    const conversationId = inserted[0]?.id;
+    if (!conversationId) continue;
+
+    for (const [position, message] of conv.messages.entries()) {
+      await ds.query(
+        `INSERT INTO conversation_messages (conversation_id, role, content, created_at)
+         VALUES ($1, $2, $3, $4)`,
+        [
+          conversationId,
+          message.role,
+          message.content,
+          new Date(startedAt.getTime() + position * 60_000),
+        ],
+      );
+    }
+    created += 1;
+  }
+  return created;
+}
+
+/** 35 percakapan contoh HSE K3L (20 pesan tiap percakapan); idempoten per (pengguna, judul). */
+async function seedHseConversations(ds: DataSource): Promise<number> {
+  if (process.env.NODE_ENV === 'production') {
+    console.log('  Percakapan contoh HSE: dilewati (NODE_ENV=production)');
+    return 0;
+  }
+  const created = await insertDemoConversations(ds, HSE_DEMO.conversations, 12);
+  console.log(
+    `  Percakapan contoh HSE: ${created} baru dibuat, ${HSE_DEMO.conversations.length} tersedia`,
+  );
+  return created;
+}
+
+/** 10 percakapan Multi Brain dan 10 tugas Subordinate (selesai) untuk GM Safety; idempoten per judul. */
+async function seedHendraExtras(ds: DataSource): Promise<void> {
+  if (process.env.NODE_ENV === 'production') {
+    console.log('  Data tambahan GM Safety: dilewati (NODE_ENV=production)');
+    return;
+  }
+  const conversations = await insertDemoConversations(ds, HSE_EXTRA.conversations, 1);
+
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  let tasks = 0;
+  for (const [index, task] of HSE_EXTRA.tasks.entries()) {
+    const owner = (await ds.query(`SELECT id FROM users WHERE lower(email) = lower($1)`, [
+      `${task.owner}@bara.local`,
+    ])) as { id: string }[];
+    const userId = owner[0]?.id;
+    if (!userId) continue;
+
+    const createdAt = new Date(now - (HSE_EXTRA.tasks.length - index) * DAY_MS);
+    const startedAt = new Date(createdAt.getTime() + 5_000);
+    const finishedAt = new Date(startedAt.getTime() + task.durationMs);
+    await ds.transaction(async (manager) => {
+      const inserted = (await manager.query(
+        `INSERT INTO ai_tasks
+         (user_id, title, instruction, status, result, model, tokens_in, tokens_out, duration_ms,
+          created_at, started_at, finished_at, updated_at)
+       SELECT $1::uuid, $2::varchar, $3::text, 'completed', $4::text, 'demo-seed', $5::int, $6::int,
+              $7::int, $8::timestamptz, $9::timestamptz, $10::timestamptz, $10::timestamptz
+        WHERE NOT EXISTS (
+          SELECT 1 FROM ai_tasks WHERE user_id = $1::uuid AND title = $2::varchar
+        )
+       RETURNING id`,
+        [
+          userId,
+          task.title,
+          task.instruction,
+          task.result,
+          task.tokensIn,
+          task.tokensOut,
+          task.durationMs,
+          createdAt,
+          startedAt,
+          finishedAt,
+        ],
+      )) as { id: string }[];
+      const taskId = inserted[0]?.id;
+      if (!taskId) return;
+
+      // Jejak eksekusi: 3 peristiwa siklus awal + 2 per langkah + 1 penutup (20-30 baris).
+      const events: { type: string; message: string; payload?: object }[] = [
+        { type: 'created', message: 'Tugas dibuat dan menunggu dijalankan.' },
+        { type: 'validating', message: 'Instruksi divalidasi dan disiapkan.' },
+        { type: 'running', message: 'Menghubungi penyedia AI…' },
+      ];
+      for (const step of task.steps) {
+        events.push({ type: 'progress', message: `Mulai: ${step}` });
+        events.push({ type: 'progress', message: `Selesai: ${step}` });
+      }
+      events.push({
+        type: 'completed',
+        message: 'Tugas selesai.',
+        payload: {
+          tokensIn: task.tokensIn,
+          tokensOut: task.tokensOut,
+          durationMs: task.durationMs,
+        },
+      });
+      const span = finishedAt.getTime() - createdAt.getTime();
+      for (const [position, event] of events.entries()) {
+        await manager.query(
+          `INSERT INTO ai_task_events (task_id, event_type, message, payload, created_at)
+         VALUES ($1, $2, $3, $4::jsonb, $5)`,
+          [
+            taskId,
+            event.type,
+            event.message,
+            JSON.stringify(event.payload ?? {}),
+            new Date(createdAt.getTime() + (span * position) / (events.length - 1)),
+          ],
+        );
+      }
+      tasks += 1;
+    });
+  }
+  console.log(
+    `  Data tambahan GM Safety: ${conversations} percakapan Multi Brain dan ${tasks} tugas Subordinate baru dibuat`,
+  );
+}
+
+/** 200 aktivitas contoh tersebar ke 10 akun, mode berpikir, dan 90 hari terakhir; idempoten per (pengguna, judul). */
+async function seedBulkActivity(ds: DataSource): Promise<void> {
+  if (process.env.NODE_ENV === 'production') {
+    console.log('  Aktivitas contoh: dilewati (NODE_ENV=production)');
+    return;
+  }
+  const HOUR_MS = 60 * 60 * 1000;
+  const now = Date.now();
+  const counts = { conversation: 0, task: 0 };
+
+  for (const item of HSE_BULK) {
+    const owner = (await ds.query(`SELECT id FROM users WHERE lower(email) = lower($1)`, [
+      `${item.user}@bara.local`,
+    ])) as { id: string }[];
+    const userId = owner[0]?.id;
+    if (!userId) continue;
+    const createdAt = new Date(now - item.hoursAgo * HOUR_MS);
+
+    if (item.kind === 'conversation') {
+      await ds.transaction(async (manager) => {
+        const inserted = (await manager.query(
+          `INSERT INTO conversations (user_id, mode, title, counterpart_style, created_at, updated_at)
+           SELECT $1::uuid, $2::conversation_mode, $3::varchar, $4::varchar, $5::timestamptz, $6::timestamptz
+            WHERE NOT EXISTS (
+              SELECT 1 FROM conversations WHERE user_id = $1::uuid AND title = $3::varchar
+            )
+           RETURNING id`,
+          [
+            userId,
+            item.mode,
+            item.title,
+            item.style,
+            createdAt,
+            new Date(createdAt.getTime() + item.messages.length * 90_000),
+          ],
+        )) as { id: string }[];
+        const conversationId = inserted[0]?.id;
+        if (!conversationId) return;
+        for (const [position, message] of item.messages.entries()) {
+          await manager.query(
+            `INSERT INTO conversation_messages
+               (conversation_id, role, content, model, tokens_in, tokens_out, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [
+              conversationId,
+              message.role,
+              message.content,
+              message.role === 'assistant' ? 'demo-seed' : null,
+              message.tokensIn ?? null,
+              message.tokensOut ?? null,
+              new Date(createdAt.getTime() + position * 90_000),
+            ],
+          );
+        }
+        counts.conversation += 1;
+      });
+      continue;
+    }
+
+    await ds.transaction(async (manager) => {
+      const ran = item.status !== 'cancelled';
+      const startedAt = ran ? new Date(createdAt.getTime() + 5_000) : null;
+      const finishedAt = new Date(createdAt.getTime() + 5_000 + (ran ? item.durationMs : 2_000));
+      const completed = item.status === 'completed';
+      const inserted = (await manager.query(
+        `INSERT INTO ai_tasks
+           (user_id, title, instruction, status, result, error_message, model, tokens_in, tokens_out,
+            duration_ms, created_at, started_at, finished_at, updated_at)
+         SELECT $1::uuid, $2::varchar, $3::text, $4::task_status, $5::text, $6::text, $7::varchar,
+                $8::int, $9::int, $10::int, $11::timestamptz, $12::timestamptz, $13::timestamptz,
+                $13::timestamptz
+          WHERE NOT EXISTS (
+            SELECT 1 FROM ai_tasks WHERE user_id = $1::uuid AND title = $2::varchar
+          )
+         RETURNING id`,
+        [
+          userId,
+          item.title,
+          item.instruction,
+          item.status,
+          completed ? (item.result ?? null) : null,
+          item.status === 'failed' ? (item.error ?? 'Tugas gagal.') : null,
+          ran ? 'demo-seed' : null,
+          completed ? item.tokensIn : null,
+          completed ? item.tokensOut : null,
+          completed ? item.durationMs : null,
+          createdAt,
+          startedAt,
+          finishedAt,
+        ],
+      )) as { id: string }[];
+      const taskId = inserted[0]?.id;
+      if (!taskId) return;
+
+      const events: { type: string; message: string; payload?: object }[] = [
+        { type: 'created', message: 'Tugas dibuat dan menunggu dijalankan.' },
+      ];
+      if (item.status === 'cancelled') {
+        events.push({ type: 'cancelled', message: 'Tugas dibatalkan oleh pengguna.' });
+      } else {
+        events.push(
+          { type: 'validating', message: 'Instruksi divalidasi dan disiapkan.' },
+          { type: 'running', message: 'Menghubungi penyedia AI…' },
+        );
+        // Tugas gagal berhenti di tengah langkah.
+        const steps = completed
+          ? item.steps
+          : item.steps.slice(0, Math.ceil(item.steps.length / 2));
+        for (const step of steps) {
+          events.push({ type: 'progress', message: `Mulai: ${step}` });
+          events.push({ type: 'progress', message: `Selesai: ${step}` });
+        }
+        events.push(
+          completed
+            ? {
+                type: 'completed',
+                message: 'Tugas selesai.',
+                payload: {
+                  tokensIn: item.tokensIn,
+                  tokensOut: item.tokensOut,
+                  durationMs: item.durationMs,
+                },
+              }
+            : { type: 'failed', message: (item.error ?? 'Tugas gagal.').slice(0, 300) },
+        );
+      }
+      const span = finishedAt.getTime() - createdAt.getTime();
+      for (const [position, event] of events.entries()) {
+        await manager.query(
+          `INSERT INTO ai_task_events (task_id, event_type, message, payload, created_at)
+           VALUES ($1, $2, $3, $4::jsonb, $5)`,
+          [
+            taskId,
+            event.type,
+            event.message,
+            JSON.stringify(event.payload ?? {}),
+            new Date(createdAt.getTime() + (span * position) / Math.max(events.length - 1, 1)),
+          ],
+        );
+      }
+      counts.task += 1;
+    });
+  }
+  console.log(
+    `  Aktivitas contoh: ${counts.conversation} percakapan dan ${counts.task} tugas baru dibuat (${HSE_BULK.length} tersedia)`,
+  );
 }
 
 async function seed(ds: DataSource): Promise<void> {
@@ -876,6 +1316,9 @@ async function seed(ds: DataSource): Promise<void> {
   await seedDemoContent(ds);
 
   const demoUsersCreated = await seedDemoUsers(ds);
+  await seedHseConversations(ds);
+  await seedHendraExtras(ds);
+  await seedBulkActivity(ds);
 
   if (demoUsersCreated > 0) {
     await ds.query(

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { COUNTERPART_STYLES, type ConversationMode } from '@contributor/shared';
+import { COUNTERPART_STYLES, type ConversationMode } from '@bara/shared';
 import {
   addUrlAttachment,
   conversationDetail,
@@ -67,6 +67,27 @@ const conversationId = ref<string | null>(null);
 const messages = ref<ConversationMessage[]>([]);
 const draft = ref('');
 const styleId = ref(COUNTERPART_STYLES[0]!.id);
+const SIDEBAR_COLLAPSED_KEY = 'bara.chat.sidebarCollapsed';
+
+function readSidebarCollapsed(): boolean {
+  try {
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+const sidebarCollapsed = ref(readSidebarCollapsed());
+
+function toggleSidebar(): void {
+  sidebarCollapsed.value = !sidebarCollapsed.value;
+  try {
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, sidebarCollapsed.value ? '1' : '0');
+  } catch {
+    // penyimpanan tidak tersedia; keadaan hanya berlaku pada sesi ini
+  }
+}
+
 const streaming = ref(false);
 const pendingText = ref('');
 const streamError = ref('');
@@ -793,101 +814,141 @@ onBeforeUnmount(() => {
     class="chat"
     :class="{
       'chat--no-sidebar': !canBrowseHistory,
+      'chat--sidebar-collapsed': canBrowseHistory && sidebarCollapsed,
       'chat--attachments': showAttachmentsPane,
     }"
   >
-    <aside v-if="canBrowseHistory" class="chat__sidebar">
-      <div class="chat__sidebar-head">
-        <h2 class="chat__sidebar-title">{{ t('workspace.chat.sidebarTitle') }}</h2>
-        <CaButton size="small" variant="subtle" @click="startNew">
-          {{ t('workspace.chat.newChat') }}
-        </CaButton>
-      </div>
-      <div class="chat__search">
-        <CaIcon name="search" :size="13" class="chat__search-icon" />
-        <input
-          v-model="searchQuery"
-          type="search"
-          class="chat__search-input"
-          :placeholder="t('workspace.chat.searchPlaceholder')"
-          :aria-label="t('workspace.chat.searchPlaceholder')"
-        />
-        <button
-          v-if="searchQuery"
-          type="button"
-          class="chat__search-clear"
-          :aria-label="t('shell.searchClear')"
-          @click="searchQuery = ''"
-        >
-          ×
-        </button>
-      </div>
-      <CaSpinner v-if="conversationsLoading" class="chat__sidebar-loading" />
-      <p v-else-if="conversationsError" class="chat__sidebar-error" role="alert">
-        {{ conversationsError }}
-      </p>
-      <CaEmptyState
-        v-else-if="conversations.length === 0"
-        :title="searchQuery ? t('workspace.chat.searchEmpty') : t('workspace.chat.historyEmpty')"
-      />
-      <ul v-else class="chat__list">
-        <li
-          v-for="item in conversations"
-          :key="item.id"
-          class="chat__list-item"
-          :class="{ 'chat__list-item--active': item.id === conversationId }"
-        >
-          <input
-            v-if="renamingId === item.id"
-            ref="renameInput"
-            v-model="renameDraft"
-            class="chat__rename-input"
-            :aria-label="t('workspace.chat.rename')"
-            maxlength="120"
-            @keydown.enter.prevent="commitRename(item)"
-            @keydown.esc.prevent="cancelRename"
-            @blur="commitRename(item)"
-          />
-          <button v-else type="button" class="chat__list-button" @click="openConversation(item.id)">
-            <span class="chat__list-title-row">
-              <CaIcon v-if="item.starred_at" name="star" :size="11" class="chat__list-star" />
-              <span class="chat__list-title">{{ item.title }}</span>
-            </span>
-            <span class="chat__list-time">{{ formatDateTime(item.updated_at) }}</span>
-          </button>
-          <div v-if="renamingId !== item.id" class="chat__list-actions">
+    <aside
+      v-if="canBrowseHistory"
+      class="chat__sidebar"
+      :class="{ 'chat__sidebar--collapsed': sidebarCollapsed }"
+    >
+      <button
+        v-if="sidebarCollapsed"
+        type="button"
+        class="chat__rail"
+        :aria-label="t('workspace.chat.sidebarExpand')"
+        :title="t('workspace.chat.sidebarExpand')"
+        aria-expanded="false"
+        aria-controls="chat-sidebar-body"
+        @click="toggleSidebar"
+      >
+        <CaIcon name="columns" :size="16" />
+        <span class="chat__rail-label">{{ t('workspace.chat.sidebarTitle') }}</span>
+      </button>
+      <div v-show="!sidebarCollapsed" id="chat-sidebar-body" class="chat__sidebar-body">
+        <div class="chat__sidebar-head">
+          <h2 class="chat__sidebar-title">{{ t('workspace.chat.sidebarTitle') }}</h2>
+          <div class="chat__sidebar-head-actions">
+            <CaButton size="small" variant="subtle" @click="startNew">
+              {{ t('workspace.chat.newChat') }}
+            </CaButton>
             <button
               type="button"
-              class="chat__list-action"
-              :class="{ 'chat__list-action--starred': item.starred_at }"
-              :aria-label="item.starred_at ? t('workspace.chat.unstar') : t('workspace.chat.star')"
-              :aria-pressed="Boolean(item.starred_at)"
-              :title="item.starred_at ? t('workspace.chat.unstar') : t('workspace.chat.star')"
-              @click="toggleStar(item)"
+              class="chat__toolbar-icon"
+              :aria-label="t('workspace.chat.sidebarCollapse')"
+              :title="t('workspace.chat.sidebarCollapse')"
+              aria-expanded="true"
+              aria-controls="chat-sidebar-body"
+              @click="toggleSidebar"
             >
-              <CaIcon name="star" :size="13" />
-            </button>
-            <button
-              type="button"
-              class="chat__list-action"
-              :aria-label="t('workspace.chat.rename')"
-              :title="t('workspace.chat.rename')"
-              @click="startRename(item)"
-            >
-              <CaIcon name="pencil" :size="13" />
-            </button>
-            <button
-              type="button"
-              class="chat__list-action chat__list-action--danger"
-              :aria-label="t('common.delete')"
-              :title="t('common.delete')"
-              @click="removeConversation(item.id)"
-            >
-              <CaIcon name="trash" :size="13" />
+              <CaIcon name="columns" :size="14" />
             </button>
           </div>
-        </li>
-      </ul>
+        </div>
+        <div class="chat__search">
+          <CaIcon name="search" :size="13" class="chat__search-icon" />
+          <input
+            v-model="searchQuery"
+            type="search"
+            class="chat__search-input"
+            :placeholder="t('workspace.chat.searchPlaceholder')"
+            :aria-label="t('workspace.chat.searchPlaceholder')"
+          />
+          <button
+            v-if="searchQuery"
+            type="button"
+            class="chat__search-clear"
+            :aria-label="t('shell.searchClear')"
+            @click="searchQuery = ''"
+          >
+            ×
+          </button>
+        </div>
+        <CaSpinner v-if="conversationsLoading" class="chat__sidebar-loading" />
+        <p v-else-if="conversationsError" class="chat__sidebar-error" role="alert">
+          {{ conversationsError }}
+        </p>
+        <CaEmptyState
+          v-else-if="conversations.length === 0"
+          :title="searchQuery ? t('workspace.chat.searchEmpty') : t('workspace.chat.historyEmpty')"
+        />
+        <ul v-else class="chat__list">
+          <li
+            v-for="item in conversations"
+            :key="item.id"
+            class="chat__list-item"
+            :class="{ 'chat__list-item--active': item.id === conversationId }"
+          >
+            <input
+              v-if="renamingId === item.id"
+              ref="renameInput"
+              v-model="renameDraft"
+              class="chat__rename-input"
+              :aria-label="t('workspace.chat.rename')"
+              maxlength="120"
+              @keydown.enter.prevent="commitRename(item)"
+              @keydown.esc.prevent="cancelRename"
+              @blur="commitRename(item)"
+            />
+            <button
+              v-else
+              type="button"
+              class="chat__list-button"
+              @click="openConversation(item.id)"
+            >
+              <span class="chat__list-title-row">
+                <CaIcon v-if="item.starred_at" name="star" :size="11" class="chat__list-star" />
+                <span class="chat__list-title">{{ item.title }}</span>
+              </span>
+              <span class="chat__list-time">{{ formatDateTime(item.updated_at) }}</span>
+            </button>
+            <div v-if="renamingId !== item.id" class="chat__list-actions">
+              <button
+                type="button"
+                class="chat__list-action"
+                :class="{ 'chat__list-action--starred': item.starred_at }"
+                :aria-label="
+                  item.starred_at ? t('workspace.chat.unstar') : t('workspace.chat.star')
+                "
+                :aria-pressed="Boolean(item.starred_at)"
+                :title="item.starred_at ? t('workspace.chat.unstar') : t('workspace.chat.star')"
+                @click="toggleStar(item)"
+              >
+                <CaIcon name="star" :size="13" />
+              </button>
+              <button
+                type="button"
+                class="chat__list-action"
+                :aria-label="t('workspace.chat.rename')"
+                :title="t('workspace.chat.rename')"
+                @click="startRename(item)"
+              >
+                <CaIcon name="pencil" :size="13" />
+              </button>
+              <button
+                type="button"
+                class="chat__list-action chat__list-action--danger"
+                :aria-label="t('common.delete')"
+                :title="t('common.delete')"
+                @click="removeConversation(item.id)"
+              >
+                <CaIcon name="trash" :size="13" />
+              </button>
+            </div>
+          </li>
+        </ul>
+      </div>
     </aside>
 
     <section class="chat__main">
@@ -1271,6 +1332,14 @@ onBeforeUnmount(() => {
   grid-template-columns: 280px minmax(0, 1fr) 300px;
 }
 
+.chat--sidebar-collapsed {
+  grid-template-columns: 48px minmax(0, 1fr);
+}
+
+.chat--sidebar-collapsed.chat--attachments {
+  grid-template-columns: 48px minmax(0, 1fr) 300px;
+}
+
 .chat--no-sidebar {
   grid-template-columns: minmax(0, 1fr);
 }
@@ -1287,6 +1356,50 @@ onBeforeUnmount(() => {
   border-radius: var(--ca-radius-xl);
   background: var(--ca-bg-surface);
   overflow: hidden;
+}
+
+.chat__sidebar-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.chat__sidebar-head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ca-space-1);
+}
+
+.chat__rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ca-space-4);
+  width: 100%;
+  height: 100%;
+  padding: var(--ca-space-4) 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: var(--ca-fg-3);
+}
+
+.chat__rail:hover {
+  color: var(--ca-color-brand);
+  background: var(--ca-color-brand-subtle);
+}
+
+.chat__rail:focus-visible {
+  outline: 2px solid var(--ca-color-brand);
+  outline-offset: -2px;
+}
+
+.chat__rail-label {
+  writing-mode: vertical-rl;
+  font-size: var(--ca-text-200);
+  font-weight: var(--ca-font-weight-semibold);
+  letter-spacing: 0.02em;
 }
 
 .chat__sidebar-head {
@@ -2089,9 +2202,25 @@ onBeforeUnmount(() => {
   .chat,
   .chat--attachments,
   .chat--no-sidebar,
-  .chat--no-sidebar.chat--attachments {
+  .chat--no-sidebar.chat--attachments,
+  .chat--sidebar-collapsed,
+  .chat--sidebar-collapsed.chat--attachments {
     grid-template-columns: 1fr;
     height: auto;
+  }
+
+  .chat__sidebar--collapsed {
+    max-height: none;
+  }
+
+  .chat__rail {
+    flex-direction: row;
+    justify-content: flex-start;
+    padding: var(--ca-space-3) var(--ca-space-4);
+  }
+
+  .chat__rail-label {
+    writing-mode: horizontal-tb;
   }
 
   .chat__sidebar {

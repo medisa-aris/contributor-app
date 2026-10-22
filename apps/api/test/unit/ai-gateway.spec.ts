@@ -26,16 +26,16 @@ const settings = (over: Partial<AiProviderSettings> = {}): AiProviderSettings =>
 });
 
 describe('buildSystemPrompt', () => {
-  it('mode second_brain memakai persona Otak Kedua', () => {
+  it('mode second_brain memakai persona Multi Brain', () => {
     const prompt = buildSystemPrompt('second_brain');
-    expect(prompt).toContain('Otak Kedua');
+    expect(prompt).toContain('Multi Brain');
     expect(prompt).toContain('Bahasa Indonesia');
   });
 
   it('mode counterpart menyesuaikan gaya interaksi', () => {
     const challenger = buildSystemPrompt('counterpart', 'challenger');
     const analyst = buildSystemPrompt('counterpart', 'analyst');
-    expect(challenger).toContain('Mitra Berpikir');
+    expect(challenger).toContain('Partner');
     expect(challenger).toContain('penantang asumsi');
     expect(challenger).not.toBe(analyst);
   });
@@ -45,9 +45,9 @@ describe('buildSystemPrompt', () => {
     expect(fallback).toContain(buildSystemPrompt('counterpart', 'analyst'));
   });
 
-  it('mode subordinate memakai persona Asisten Eksekusi', () => {
+  it('mode subordinate memakai persona Subordinate', () => {
     const prompt = buildSystemPrompt('subordinate');
-    expect(prompt).toContain('Asisten Eksekusi');
+    expect(prompt).toContain('Subordinate');
     expect(prompt).toContain('klarifikasi');
   });
 });

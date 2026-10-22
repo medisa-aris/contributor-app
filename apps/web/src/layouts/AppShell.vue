@@ -2,13 +2,21 @@
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter, RouterView, RouterLink } from 'vue-router';
-import type { NavMenuItemDto } from '@contributor/shared';
+import type { NavMenuItemDto } from '@bara/shared';
 import { useAuthStore } from '@/stores/auth.store';
 import { useConfigStore } from '@/stores/config.store';
 import { useNavigationStore } from '@/stores/navigation.store';
 import { useThemeStore, type ThemeMode } from '@/stores/theme.store';
 import { useUiStore } from '@/stores/ui.store';
-import { CaAvatar, CaBadge, CaBreadcrumb, CaIcon, CaIconButton, CaInput, CaMenu } from '@/components/ui';
+import {
+  CaAvatar,
+  CaBadge,
+  CaBreadcrumb,
+  CaIcon,
+  CaIconButton,
+  CaInput,
+  CaMenu,
+} from '@/components/ui';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -19,6 +27,7 @@ const navigation = useNavigationStore();
 const theme = useThemeStore();
 
 const SIDEBAR_COLLAPSE_KEY = 'ca.sidebarCollapsed';
+const appVersion = __APP_VERSION__;
 const ui = useUiStore();
 const sidebarOpen = ref(false);
 const collapsed = ref(localStorage.getItem(SIDEBAR_COLLAPSE_KEY) === '1');
@@ -115,7 +124,13 @@ const visibleApps = computed<SearchAppNode[]>(() => {
   const out: SearchAppNode[] = [];
   for (const app of navigation.applications) {
     if (app.name.toLowerCase().includes(q)) {
-      out.push({ id: app.id, name: app.name, icon: app.icon, items: app.items, modules: app.modules });
+      out.push({
+        id: app.id,
+        name: app.name,
+        icon: app.icon,
+        items: app.items,
+        modules: app.modules,
+      });
       continue;
     }
     const modules: SearchModuleNode[] = [];
@@ -149,7 +164,9 @@ const visibleApps = computed<SearchAppNode[]>(() => {
       @click="toggleCollapsed"
     >
       <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18" aria-hidden="true">
-        <path d="M7.4 4.4a.75.75 0 0 1 1.1 0l5.5 5.5a.75.75 0 0 1 0 1l-5.5 5.6a.75.75 0 1 1-1.1-1.1L12.3 10 7.4 5.5a.75.75 0 0 1 0-1.1Z" />
+        <path
+          d="M7.4 4.4a.75.75 0 0 1 1.1 0l5.5 5.5a.75.75 0 0 1 0 1l-5.5 5.6a.75.75 0 1 1-1.1-1.1L12.3 10 7.4 5.5a.75.75 0 0 1 0-1.1Z"
+        />
       </svg>
     </button>
 
@@ -160,7 +177,7 @@ const visibleApps = computed<SearchAppNode[]>(() => {
       :aria-hidden="collapsed"
     >
       <RouterLink to="/" class="shell__brand">
-        <span class="shell__logo" aria-hidden="true">C</span>
+        <span class="shell__logo" aria-hidden="true">B</span>
         <span class="shell__brand-name">{{ config.appName }}</span>
       </RouterLink>
 
@@ -173,7 +190,9 @@ const visibleApps = computed<SearchAppNode[]>(() => {
           height="16"
           aria-hidden="true"
         >
-          <path d="M8.75 3a5.75 5.75 0 1 0 0 11.5 5.75 5.75 0 0 0 0-11.5ZM1.5 8.75a7.25 7.25 0 1 1 12.9 4.5l3.07 3.06a.75.75 0 1 1-1.06 1.06l-3.07-3.07A7.25 7.25 0 0 1 1.5 8.75Z" />
+          <path
+            d="M8.75 3a5.75 5.75 0 1 0 0 11.5 5.75 5.75 0 0 0 0-11.5ZM1.5 8.75a7.25 7.25 0 1 1 12.9 4.5l3.07 3.06a.75.75 0 1 1-1.06 1.06l-3.07-3.07A7.25 7.25 0 0 1 1.5 8.75Z"
+          />
         </svg>
         <CaInput
           v-model="menuQuery"
@@ -191,7 +210,9 @@ const visibleApps = computed<SearchAppNode[]>(() => {
           @click="menuQuery = ''"
         >
           <svg viewBox="0 0 20 20" fill="currentColor" width="12" height="12" aria-hidden="true">
-            <path d="M10 8.8 5.9 4.7a.75.75 0 1 0-1.1 1L8.9 10l-4.1 4.2a.75.75 0 1 0 1 1.1L10 11.1l4.2 4.1a.75.75 0 1 0 1-1L11.1 10l4.1-4.2a.75.75 0 1 0-1.1-1L10 8.8Z" />
+            <path
+              d="M10 8.8 5.9 4.7a.75.75 0 1 0-1.1 1L8.9 10l-4.1 4.2a.75.75 0 1 0 1 1.1L10 11.1l4.2 4.1a.75.75 0 1 0 1-1L11.1 10l4.1-4.2a.75.75 0 1 0-1.1-1L10 8.8Z"
+            />
           </svg>
         </button>
       </div>
@@ -212,7 +233,9 @@ const visibleApps = computed<SearchAppNode[]>(() => {
                   :class="{ 'shell__link--active': isActive(item) }"
                 >
                   <span>{{ item.label }}</span>
-                  <CaBadge v-if="item.isFuture" size="small" variant="neutral">{{ t('common.soon') }}</CaBadge>
+                  <CaBadge v-if="item.isFuture" size="small" variant="neutral">{{
+                    t('common.soon')
+                  }}</CaBadge>
                 </RouterLink>
               </li>
               <template v-for="mod in app.modules" :key="mod.id">
@@ -225,7 +248,9 @@ const visibleApps = computed<SearchAppNode[]>(() => {
                     :class="{ 'shell__link--active': isActive(item) }"
                   >
                     <span>{{ item.label }}</span>
-                    <CaBadge v-if="item.isFuture" size="small" variant="neutral">{{ t('common.soon') }}</CaBadge>
+                    <CaBadge v-if="item.isFuture" size="small" variant="neutral">{{
+                      t('common.soon')
+                    }}</CaBadge>
                   </RouterLink>
                 </li>
               </template>
@@ -239,6 +264,21 @@ const visibleApps = computed<SearchAppNode[]>(() => {
       </nav>
 
       <div class="shell__sidebar-footer">
+        <a
+          class="shell__credit"
+          href="https://fusi24.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          :title="t('shell.developedBy') + ' Fusi Solusi'"
+        >
+          <img class="shell__credit-logo" src="/fusi-logo.png" alt="Fusi" width="28" height="28" />
+          <span class="shell__credit-text">
+            <span class="shell__credit-label">
+              {{ t('shell.developedBy') }} · v{{ appVersion }}
+            </span>
+            <span class="shell__credit-name">Fusi Solusi</span>
+          </span>
+        </a>
         <button
           type="button"
           class="shell__collapse"
@@ -247,13 +287,20 @@ const visibleApps = computed<SearchAppNode[]>(() => {
           @click="toggleCollapsed"
         >
           <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true">
-            <path d="M12.6 4.4a.75.75 0 0 0-1.1 0L6 10l5.5 5.5a.75.75 0 1 0 1.1-1L8.2 10l4.4-4.5a.75.75 0 0 0 0-1.1Z" />
+            <path
+              d="M12.6 4.4a.75.75 0 0 0-1.1 0L6 10l5.5 5.5a.75.75 0 1 0 1.1-1L8.2 10l4.4-4.5a.75.75 0 0 0 0-1.1Z"
+            />
           </svg>
         </button>
       </div>
     </aside>
 
-    <div v-if="sidebarOpen && !ui.fullscreen" class="shell__scrim" aria-hidden="true" @click="sidebarOpen = false" />
+    <div
+      v-if="sidebarOpen && !ui.fullscreen"
+      class="shell__scrim"
+      aria-hidden="true"
+      @click="sidebarOpen = false"
+    />
 
     <div class="shell__main">
       <header v-if="!ui.fullscreen" class="shell__topbar">
@@ -263,7 +310,9 @@ const visibleApps = computed<SearchAppNode[]>(() => {
           @click="sidebarOpen = !sidebarOpen"
         >
           <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
-            <path d="M2.5 5h15a.75.75 0 0 1 0 1.5h-15a.75.75 0 0 1 0-1.5Zm0 4.25h15a.75.75 0 0 1 0 1.5h-15a.75.75 0 0 1 0-1.5Zm0 4.25h15a.75.75 0 0 1 0 1.5h-15a.75.75 0 0 1 0-1.5Z" />
+            <path
+              d="M2.5 5h15a.75.75 0 0 1 0 1.5h-15a.75.75 0 0 1 0-1.5Zm0 4.25h15a.75.75 0 0 1 0 1.5h-15a.75.75 0 0 1 0-1.5Zm0 4.25h15a.75.75 0 0 1 0 1.5h-15a.75.75 0 0 1 0-1.5Z"
+            />
           </svg>
         </CaIconButton>
         <CaBreadcrumb :items="breadcrumbItems" />
@@ -281,7 +330,12 @@ const visibleApps = computed<SearchAppNode[]>(() => {
           <template #trigger>
             <button type="button" class="shell__user" :aria-label="t('shell.userMenu')">
               <CaAvatar :name="auth.user?.displayName ?? '?'" size="small" />
-              <span class="shell__user-name">{{ auth.user?.displayName }}</span>
+              <span class="shell__user-text">
+                <span class="shell__user-name">{{ auth.user?.displayName }}</span>
+                <span v-if="auth.user?.jobTitle" class="shell__user-title">{{
+                  auth.user.jobTitle
+                }}</span>
+              </span>
             </button>
           </template>
         </CaMenu>
@@ -491,7 +545,55 @@ const visibleApps = computed<SearchAppNode[]>(() => {
   padding: var(--ca-space-3);
   border-top: 1px solid var(--ca-stroke-1);
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ca-space-3);
+}
+
+.shell__credit {
+  display: flex;
+  align-items: center;
+  gap: var(--ca-space-3);
+  min-width: 0;
+  padding: var(--ca-space-1) var(--ca-space-2);
+  border-radius: var(--ca-radius-md);
+  color: var(--ca-fg-3);
+  text-decoration: none;
+}
+
+.shell__credit:hover {
+  background: var(--ca-bg-surface-2);
+}
+
+.shell__credit:focus-visible {
+  outline: 2px solid var(--ca-color-brand);
+  outline-offset: 2px;
+}
+
+.shell__credit-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  font-size: var(--ca-text-100);
+}
+
+.shell__credit-label {
+  color: var(--ca-fg-3);
+  white-space: nowrap;
+}
+
+.shell__credit-name {
+  color: var(--ca-fg-1);
+  font-size: var(--ca-text-200);
+  font-weight: var(--ca-font-weight-semibold);
+  white-space: nowrap;
+}
+
+.shell__credit-logo {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  object-fit: contain;
 }
 
 .shell__collapse {
@@ -618,8 +720,24 @@ const visibleApps = computed<SearchAppNode[]>(() => {
   background: var(--ca-bg-surface-hover);
 }
 
+.shell__user-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+}
+
+.shell__user-title {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--ca-text-100);
+  color: var(--ca-fg-3);
+}
+
 .shell__user-name {
-  max-width: 160px;
+  max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

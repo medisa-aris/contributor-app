@@ -1,8 +1,8 @@
 import { compare, hash, hashSync } from 'bcryptjs';
 import { Inject, Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { AUDIT_EVENTS } from '@contributor/shared';
-import type { AuditSeverity, MeDto, ThemePreference } from '@contributor/shared';
+import { AUDIT_EVENTS } from '@bara/shared';
+import type { AuditSeverity, MeDto, ThemePreference } from '@bara/shared';
 import { AppError, ERROR_CODES } from '../../common/errors/app-error';
 import type { AuthContext, AuthSession } from '../../common/types/auth-context';
 import { DATA_SOURCE } from '../../database/database.module';
@@ -34,6 +34,7 @@ interface ProfileRow {
   is_superadmin: boolean;
   department_id: string | null;
   department_name: string | null;
+  job_title: string | null;
   locale: string;
   theme: string;
 }
@@ -260,7 +261,7 @@ export class AuthService {
   ): Promise<MeDto> {
     const rows = (await this.dataSource.query(
       `SELECT u.email, u.display_name, u.is_superadmin, u.department_id,
-              d.name AS department_name, u.locale, u.theme
+              d.name AS department_name, u.job_title, u.locale, u.theme
          FROM users u
          LEFT JOIN departments d ON d.id = u.department_id
         WHERE u.id = $1`,
@@ -276,6 +277,7 @@ export class AuthService {
         displayName: row.display_name,
         departmentId: row.department_id,
         departmentName: row.department_name,
+        jobTitle: row.job_title,
         isSuperadmin: row.is_superadmin,
       },
       permissions: [...allowedIdentifiersSet].sort(),

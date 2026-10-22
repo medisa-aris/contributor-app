@@ -7,7 +7,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import type { DataScope } from '@contributor/shared';
+import type { DataScope } from '@bara/shared';
 import { Role } from './role.entity';
 import { User } from './user.entity';
 

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import type { NavApplicationDto, NavMenuItemDto, NavModuleDto } from '@contributor/shared';
+import type { NavApplicationDto, NavMenuItemDto, NavModuleDto } from '@bara/shared';
 import { apiGet } from '@/api/http';
 
 export interface NavLocation {

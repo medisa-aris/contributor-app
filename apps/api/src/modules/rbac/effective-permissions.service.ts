@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { DataScope } from '@contributor/shared';
-import { ALL_PERMISSION_IDS } from '@contributor/shared';
+import type { DataScope } from '@bara/shared';
+import { ALL_PERMISSION_IDS } from '@bara/shared';
 import { DataSource } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { updatedRows } from '../../database/query-result';

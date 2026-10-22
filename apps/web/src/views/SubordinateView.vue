@@ -1,8 +1,16 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { AI_TASK_STATUSES, type AiTaskStatus } from '@contributor/shared';
-import { cancelTask, createTask, listTasks, runTask, taskDetail, type TaskDetail, type TaskRow } from '@/api/ai';
+import { AI_TASK_STATUSES, type AiTaskStatus } from '@bara/shared';
+import {
+  cancelTask,
+  createTask,
+  listTasks,
+  runTask,
+  taskDetail,
+  type TaskDetail,
+  type TaskRow,
+} from '@/api/ai';
 import { ApiError } from '@/api/http';
 import { usePagedList } from '@/composables/usePagedList';
 import { useToastStore } from '@/stores/toast.store';
@@ -13,21 +21,21 @@ import {
   CaField,
   CaIcon,
   CaInput,
-  CaPageHeader,  CaPagination,
+  CaPageHeader,
+  CaPagination,
   CaSelect,
   CaTable,
   type CaSelectOption,
   type CaTableColumn,
 } from '@/components/ui';
+import MarkdownContent from '@/components/ai/MarkdownContent.vue';
 import { formatDateTime } from '@/utils/format';
 
 const { t } = useI18n();
 const toast = useToastStore();
 
-const { items, total, page, pageSize, loading, error, load, setFilter, goPage } = usePagedList<TaskRow>(
-  listTasks,
-  { pageSize: 10 },
-);
+const { items, total, page, pageSize, loading, error, load, setFilter, goPage } =
+  usePagedList<TaskRow>(listTasks, { pageSize: 10 });
 
 const statusFilter = ref('');
 const statusOptions = computed<CaSelectOption[]>(() => [
@@ -43,7 +51,9 @@ function statusLabel(status: AiTaskStatus): string {
   return t(`workspace.subordinate.status.${status}`);
 }
 
-function statusVariant(status: AiTaskStatus): 'brand' | 'danger' | 'success' | 'warning' | 'informative' | 'neutral' {
+function statusVariant(
+  status: AiTaskStatus,
+): 'brand' | 'danger' | 'success' | 'warning' | 'informative' | 'neutral' {
   switch (status) {
     case 'completed':
       return 'success';
@@ -60,7 +70,12 @@ function statusVariant(status: AiTaskStatus): 'brand' | 'danger' | 'success' | '
   }
 }
 
-const OPEN_STATUSES: readonly AiTaskStatus[] = ['created', 'validating', 'awaiting_approval', 'running'];
+const OPEN_STATUSES: readonly AiTaskStatus[] = [
+  'created',
+  'validating',
+  'awaiting_approval',
+  'running',
+];
 const RUNNABLE_STATUSES: readonly AiTaskStatus[] = ['created', 'failed', 'cancelled'];
 
 const columns = computed<CaTableColumn[]>(() => [
@@ -231,7 +246,9 @@ watch(detailOpen, (open) => {
   }
 });
 
-function eventVariant(eventType: string): 'brand' | 'danger' | 'success' | 'warning' | 'informative' | 'neutral' {
+function eventVariant(
+  eventType: string,
+): 'brand' | 'danger' | 'success' | 'warning' | 'informative' | 'neutral' {
   if (eventType === 'completed') return 'success';
   if (eventType === 'failed') return 'danger';
   if (eventType === 'cancelled') return 'warning';
@@ -381,7 +398,9 @@ onBeforeUnmount(() => {
       </div>
       <div v-else-if="detail" class="tasks__detail">
         <div class="tasks__detail-head">
-          <CaBadge :variant="statusVariant(detail.status)">{{ statusLabel(detail.status) }}</CaBadge>
+          <CaBadge :variant="statusVariant(detail.status)">{{
+            statusLabel(detail.status)
+          }}</CaBadge>
           <span class="tasks__detail-time">{{ formatDateTime(detail.created_at) }}</span>
         </div>
 
@@ -398,9 +417,7 @@ onBeforeUnmount(() => {
             <dt>{{ t('workspace.subordinate.metricsTokens') }}</dt>
             <dd>
               {{
-                detail.tokens_in === null
-                  ? '—'
-                  : `${detail.tokens_in} → ${detail.tokens_out ?? 0}`
+                detail.tokens_in === null ? '—' : `${detail.tokens_in} → ${detail.tokens_out ?? 0}`
               }}
             </dd>
           </div>
@@ -412,7 +429,7 @@ onBeforeUnmount(() => {
 
         <template v-if="detail.status === 'completed' && detail.result">
           <h3 class="tasks__section">{{ t('workspace.subordinate.resultTitle') }}</h3>
-          <p class="tasks__result">{{ detail.result }}</p>
+          <div class="tasks__result"><MarkdownContent :content="detail.result" /></div>
         </template>
 
         <template v-if="detail.status === 'failed' && detail.error_message">
@@ -423,7 +440,10 @@ onBeforeUnmount(() => {
         <h3 class="tasks__section">{{ t('workspace.subordinate.eventsTitle') }}</h3>
         <ol class="tasks__events">
           <li v-for="event in detail.events" :key="event.id" class="tasks__event">
-            <span class="tasks__event-dot" :class="`tasks__event-dot--${eventVariant(event.event_type)}`" />
+            <span
+              class="tasks__event-dot"
+              :class="`tasks__event-dot--${eventVariant(event.event_type)}`"
+            />
             <div class="tasks__event-body">
               <div class="tasks__event-head">
                 <CaBadge size="small" :variant="eventVariant(event.event_type)">
@@ -594,7 +614,6 @@ onBeforeUnmount(() => {
   padding: var(--ca-space-5);
   background: var(--ca-bg-surface-3);
   border-radius: var(--ca-radius-md);
-  white-space: pre-wrap;
   word-break: break-word;
   font-size: var(--ca-text-300);
   line-height: var(--ca-line-300);

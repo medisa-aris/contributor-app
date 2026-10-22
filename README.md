@@ -1,9 +1,9 @@
-# Contributor AI
+# BeLead AI — Berau Coal Leadership AI Companion
 
 Enterprise Employee AI Enablement Framework — aplikasi web full-stack yang menyiapkan karyawan memakai AI dalam tiga peran:
 
-- **Second Brain** — asisten pengetahuan perusahaan (SOP, kebijakan, dokumentasi) dengan sitasi sumber.
-- **Counterpart** — mitra berpikir: brainstorming, menguji asumsi, analisis akar masalah, perbandingan alternatif.
+- **Multi Brain** — asisten pengetahuan perusahaan (SOP, kebijakan, dokumentasi) dengan sitasi sumber.
+- **Partner** — mitra berpikir: brainstorming, menguji asumsi, analisis akar masalah, perbandingan alternatif.
 - **Subordinate** — asisten eksekusi tugas: analisis data, laporan, workflow multi-langkah, dengan persetujuan manusia untuk tindakan sensitif.
 
 Di atas tiga mode itu, tiga pusat menopang operasional:
@@ -12,7 +12,7 @@ Di atas tiga mode itu, tiga pusat menopang operasional:
 - **Agent Center** — katalog agen AI, eksekusi tugas, dan antrean persetujuan untuk aksi sensitif.
 - **Integration Center** — konektor MCP/REST, pemeriksaan kesehatan eksplisit, dan status kredensial boolean (tanpa membocorkan nilai).
 
-> Status: **Fase 1–6 selesai** — Fondasi + Autentikasi + RBAC + AI Workspace + Knowledge/Agent/Integration Center, terverifikasi end-to-end di browser untuk ketiga peran demo (admin, manajer, staf).
+> Status: **Fase 1–6 selesai** — Fondasi + Autentikasi + RBAC + AI Workspace + Knowledge/Agent/Integration Center, terverifikasi end-to-end di browser untuk peran demo (admin, manajer, staf, dan tim HSE K3L).
 
 ## Teknologi
 
@@ -44,11 +44,46 @@ Buka `http://localhost:5173` — login dengan salah satu akun demo (dicetak juga
 
 | Email                       | Kata sandi          | Peran         |
 | --------------------------- | ------------------- | ------------- |
-| `admin@contributor.local`   | `Kontrib-d98a5d6d!` | administrator |
-| `manajer@contributor.local` | `ManajerDemo123!`   | manager       |
-| `staf@contributor.local`    | `StafDemo123!`      | staf          |
+| `admin@bara.local`   | `Kontrib-d98a5d6d!` | administrator |
+| `manajer@bara.local` | `ManajerDemo123!`   | manager       |
+| `staf@bara.local`    | `StafDemo123!`      | staf          |
+
+Selain itu tersedia **tim HSE K3L PT Berau Coal** (data fiktif dari `apps/api/src/database/seeds/data/hse-demo.json`), semuanya memakai kata sandi `HseDemo123!`:
+
+| Email                | Jabatan                                       | Departemen   | Peran          |
+| -------------------- | --------------------------------------------- | ------------ | -------------- |
+| `hendra@bara.local`  | GM Safety                                     | `HSE`        | manager        |
+| `ratna@bara.local`   | Manager HIRA                                  | `HSE-HIRA`   | manager        |
+| `bambang@bara.local` | Manager Safety                                | `HSE-SAFETY` | manager        |
+| `dimas@bara.local`   | Superintendent HIRA Operasional               | `HIRA-OPS`   | superintendent |
+| `siti@bara.local`    | Superintendent Risk Control & MOC             | `HIRA-RCM`   | superintendent |
+| `fajar@bara.local`   | Superintendent Safety Operasional & Inspeksi  | `SAFE-OPS`   | superintendent |
+| `maria@bara.local`   | Superintendent Safety Compliance & Audit      | `SAFE-CMP`   | superintendent |
+
+Hierarki pelaporan dimodelkan lewat pohon departemen (`HSE` → `HSE-HIRA`/`HSE-SAFETY` → departemen superintendent) dan peran ber-scope `department`: GM melihat seluruh subtree, manager melihat timnya. Tiap akun HSE juga memiliki 5 percakapan contoh (20 pesan) di Riwayat Percakapan. Selain itu seed membuat **200 aktivitas contoh** (20 per akun untuk 10 akun demo): percakapan Multi Brain, percakapan Partner (4 gaya), dan tugas Subordinate, tersebar merata pada 30, 50, dan 90 hari terakhir (`data/hse-demo-bulk.json`).
+
+**Login cepat.** Di halaman login tersedia panel **Masuk cepat (demo)** — secara bawaan **tertutup**; klik judulnya untuk membuka. Isinya dikelompokkan menjadi *Akun sistem* (admin, manajer, staf) dan *Tim HSE K3L* (7 akun), bisa di-scroll, dan satu klik langsung masuk. Daftar akun ada di `LoginView.vue` dan harus selaras dengan seed. Panel ini hanya untuk demo; sembunyikan sebelum produksi.
 
 Akun demo hanya dibuat saat `NODE_ENV` **bukan** `production` — di produksi pakai `npm run db:create-admin`.
+
+## Konfigurasi
+
+Salin `apps/api/.env.example` ke `apps/api/.env` (di-gitignore). Variabel utama:
+
+| Variabel                      | Keterangan                                                                                          |
+| ----------------------------- | --------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                | Koneksi PostgreSQL (`postgres://user:sandi@host:5432/contributor_ai`; nama database tidak diubah)  |
+| `CORS_ORIGINS`                | Origin web yang diizinkan, dipisah koma (juga dipakai untuk memvalidasi redirect OAuth)             |
+| `INTEGRATIONS_ENCRYPTION_KEY` | Kunci AES-256-GCM (base64, 32 byte) untuk token OAuth MCP: `openssl rand -base64 32`                |
+| `AI_PROVIDER`, `*_API_KEY`    | Penyedia LLM dan kunci API (hanya di sisi server)                                                   |
+
+### MCP dengan OAuth (Integration Center)
+
+Server MCP dapat memakai autentikasi **OAuth** (mis. Metabase `ptbc-hse-data`): BeLead AI melakukan discovery metadata, mendaftarkan client (RFC 7591) atau memakai **client ID manual** (tombol *Client OAuth*), lalu alur otorisasi PKCE S256. Token disimpan terenkripsi dan disegarkan otomatis; hanya scope baca yang diminta. Catatan: Metabase hanya menerima redirect `https` (atau `localhost`), dan gateway dapat memblokir pendaftaran dinamis dari `localhost` — gunakan domain https atau client ID manual dari admin Metabase.
+
+## Tema dan warna
+
+Token desain ada di `apps/web/src/styles/tokens.css`. Palet merek mengikuti hijau **Berau Coal Energy** (`beraucoalenergy.co.id`): `#86c543` (aksen/bar atas), `#537a2a` (aksi utama, kontras AA terhadap teks putih), dan turunannya untuk tema terang dan gelap. Logo dan tanda resmi belum dipakai; gunakan hanya aset yang disediakan Corporate Communications.
 
 ## Perintah Penting
 

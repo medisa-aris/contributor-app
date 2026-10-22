@@ -68,8 +68,8 @@ export interface PermissionDefinition {
 /** Default catalog metadata, seeded into the permissions table (name/description stay editable in DB). */
 export const PERMISSION_CATALOG: readonly PermissionDefinition[] = [
   { id: PERMISSIONS.workspaceAccess, name: 'Akses Ruang Kerja AI', description: 'Membuka aplikasi Ruang Kerja AI', application: 'ai-workspace', module: 'workspace' },
-  { id: PERMISSIONS.secondBrainQuery, name: 'Bertanya ke Otak Kedua', description: 'Bertanya pengetahuan perusahaan lewat mode Second Brain', application: 'ai-workspace', module: 'modes' },
-  { id: PERMISSIONS.counterpartAnalyze, name: 'Berdiskusi dengan Mitra Berpikir', description: 'Analisis dan debat konsep lewat mode Counterpart', application: 'ai-workspace', module: 'modes' },
+  { id: PERMISSIONS.secondBrainQuery, name: 'Bertanya ke Multi Brain', description: 'Bertanya pengetahuan perusahaan lewat mode Multi Brain', application: 'ai-workspace', module: 'modes' },
+  { id: PERMISSIONS.counterpartAnalyze, name: 'Berdiskusi dengan Partner', description: 'Analisis dan debat konsep lewat mode Partner', application: 'ai-workspace', module: 'modes' },
   { id: PERMISSIONS.subordinateExecute, name: 'Menjalankan Tugas Asisten', description: 'Eksekusi tugas lewat mode Subordinate', application: 'ai-workspace', module: 'modes' },
   { id: PERMISSIONS.workspaceHistoryRead, name: 'Melihat Riwayat Percakapan', description: 'Riwayat percakapan dan tugas di Ruang Kerja AI', application: 'ai-workspace', module: 'modes' },
   { id: PERMISSIONS.mindMapTeamRead, name: 'Melihat Peta Pikiran Tim', description: 'Melihat judul percakapan dan tugas AI anggota tim dalam cakupan departemen', application: 'ai-workspace', module: 'workspace' },

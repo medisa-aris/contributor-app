@@ -1,4 +1,4 @@
-import type { AiTaskStatus, ConversationMode } from '@contributor/shared';
+import type { AiTaskStatus, ConversationMode } from '@bara/shared';
 
 export type ConversationSummary = {
   id: string;

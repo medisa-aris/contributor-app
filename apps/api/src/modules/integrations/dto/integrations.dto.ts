@@ -14,6 +14,7 @@ import {
 } from 'class-validator';
 
 export const CONNECTOR_AUTH_TYPES = ['none', 'api_key'] as const;
+export const MCP_AUTH_TYPES = ['none', 'api_key', 'oauth'] as const;
 const HTTP_METHODS = ['GET', 'POST'] as const;
 
 export class ToolEndpointDto {
@@ -50,13 +51,25 @@ export class CreateMcpServerDto {
   @MaxLength(500)
   baseUrl: string;
 
-  @IsIn(CONNECTOR_AUTH_TYPES)
-  authType: (typeof CONNECTOR_AUTH_TYPES)[number];
+  @IsIn(MCP_AUTH_TYPES)
+  authType: (typeof MCP_AUTH_TYPES)[number];
 
   @IsOptional()
   @IsString()
   @MaxLength(120)
   apiKeyEnv?: string;
+
+  /** Client ID OAuth yang didaftarkan manual (tanpa pendaftaran dinamis). Kosong = kembali ke pendaftaran dinamis. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  oauthClientId?: string;
+
+  /** Client secret (opsional; hanya untuk client confidential). Disimpan terenkripsi. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  oauthClientSecret?: string;
 }
 
 export class UpdateMcpServerDto {
@@ -77,13 +90,25 @@ export class UpdateMcpServerDto {
   baseUrl?: string;
 
   @IsOptional()
-  @IsIn(CONNECTOR_AUTH_TYPES)
-  authType?: (typeof CONNECTOR_AUTH_TYPES)[number];
+  @IsIn(MCP_AUTH_TYPES)
+  authType?: (typeof MCP_AUTH_TYPES)[number];
 
   @IsOptional()
   @IsString()
   @MaxLength(120)
   apiKeyEnv?: string;
+
+  /** Client ID OAuth yang didaftarkan manual (tanpa pendaftaran dinamis). Kosong = kembali ke pendaftaran dinamis. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  oauthClientId?: string;
+
+  /** Client secret (opsional; hanya untuk client confidential). Disimpan terenkripsi. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  oauthClientSecret?: string;
 
   @IsOptional()
   @IsBoolean()
@@ -160,4 +185,22 @@ export class UpdateRestConnectorDto {
   @IsOptional()
   @IsBoolean()
   enabled?: boolean;
+}
+
+export class StartMcpOauthDto {
+  @IsUrl({ require_tld: false })
+  @MaxLength(500)
+  redirectUri: string;
+}
+
+export class CompleteMcpOauthDto {
+  @IsString()
+  @MinLength(8)
+  @MaxLength(100)
+  state: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(2000)
+  code: string;
 }

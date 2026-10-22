@@ -28,7 +28,7 @@ export default tseslint.config(
     files: ['apps/web/**/*.vue'],
     languageOptions: {
       parserOptions: { parser: tseslint.parser },
-      globals: { ...globals.browser },
+      globals: { ...globals.browser, __APP_VERSION__: 'readonly' },
     },
     rules: {
       'vue/multi-word-component-names': 'off',
@@ -39,7 +39,7 @@ export default tseslint.config(
   {
     files: ['apps/web/**/*.ts'],
     languageOptions: {
-      globals: { ...globals.browser },
+      globals: { ...globals.browser, __APP_VERSION__: 'readonly' },
     },
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',

@@ -15,7 +15,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags } from '@nestjs/swagger';
-import { PERMISSIONS, type AiTaskStatus, type ConversationMode } from '@contributor/shared';
+import { PERMISSIONS, type AiTaskStatus, type ConversationMode } from '@bara/shared';
 import type { Response } from 'express';
 import { ATTACHMENT_LIMITS, AttachmentsService } from './attachments.service';
 import { CurrentAuth } from '../../common/decorators/current-auth.decorator';
@@ -52,7 +52,7 @@ export class AiController {
     private readonly tasks: TasksService,
   ) {}
 
-  /** Chat sinkron untuk mode Second Brain / Mitra Berpikir. */
+  /** Chat sinkron untuk mode Multi Brain / Partner. */
   @HttpCode(200)
   @Post('chat')
   async chat(@CurrentAuth() auth: AuthContext, @Body() dto: ChatRequestDto) {

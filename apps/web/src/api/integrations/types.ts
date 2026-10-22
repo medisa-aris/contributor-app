@@ -17,9 +17,15 @@ export type McpServerRow = {
   name: string;
   description: string | null;
   base_url: string;
-  auth_type: 'none' | 'api_key';
+  auth_type: 'none' | 'api_key' | 'oauth';
   api_key_env: string | null;
   enabled: boolean;
+  oauth_connected: boolean;
+  oauth_client_manual: boolean;
+  oauth_client_id: string | null;
+  oauth_has_secret: boolean;
+  oauth_scope: string | null;
+  oauth_connected_at: string | null;
   last_health_at: string | null;
   last_health_ok: boolean | null;
   last_health_detail: string | null;

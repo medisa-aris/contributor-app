@@ -1,11 +1,11 @@
-# Model RBAC — Contributor AI
+# Model RBAC — BeLead AI
 
 > Sumber kebenaran: `packages/shared/src/permissions.ts` (katalog), `apps/api/src/modules/rbac/*` (mesin evaluasi), migrasi `1700000000000-initial-schema.ts` (skema).
 
 ## 1. Prinsip
 
 1. **Deny-by-default** — tanpa grant eksplisit, akses ditolak. Setiap endpoint API menyatakan permission yang dibutuhkan lewat `@RequirePermission(PERMISSIONS.xxx)`.
-2. **Satu katalog** — semua identifier permission didefinisikan di `@contributor/shared` (`PERMISSION_CATALOG`, 38 entri, 5 aplikasi). Identifier adalah kontrak permanen: jangan pernah mengganti nama, hanya menambah/mendepresiasi.
+2. **Satu katalog** — semua identifier permission didefinisikan di `@bara/shared` (`PERMISSION_CATALOG`, 38 entri, 5 aplikasi). Identifier adalah kontrak permanen: jangan pernah mengganti nama, hanya menambah/mendepresiasi.
 3. **Perubahan seketika** — setiap mutasi RBAC menaikkan `rbac_meta.version`; cache otorisasi berkunci versi ini (TTL 60 dtk, versi di-cache 3 dtk) sehingga pencabutan izin berlaku dalam hitungan detik.
 4. **Satu jalur evaluasi** — UI (tombol/nav), guard API, dan layar diagnostik memakai mesin evaluasi yang sama (`policy-engine.ts`), jadi apa yang ditampilkan "Permission efektif" persis yang ditegakkan server.
 

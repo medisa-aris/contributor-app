@@ -1,5 +1,5 @@
-import type { DataScope, PolicyEffect, PolicySubjectType } from '@contributor/shared';
-import { DATA_SCOPE_REACH, matchesPermissionPattern } from '@contributor/shared';
+import type { DataScope, PolicyEffect, PolicySubjectType } from '@bara/shared';
+import { DATA_SCOPE_REACH, matchesPermissionPattern } from '@bara/shared';
 
 export interface PolicyAssignment {
   source: 'user' | 'group';

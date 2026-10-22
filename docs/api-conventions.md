@@ -1,4 +1,4 @@
-# Konvensi API — Contributor AI
+# Konvensi API — BeLead AI
 
 > Semua endpoint di bawah prefix **`/api`**. OpenAPI interaktif: `GET /api/docs` (UI Swagger), `GET /api/docs-json` (dokumen). Pemasangan pipeline identik produksi/test ada di `apps/api/src/configure-app.ts`.
 
@@ -74,7 +74,7 @@ Endpoint terkait: `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/aut
 
 - `ValidationPipe` global: `whitelist: true`, `forbidNonWhitelisted: true`, `transform: true`.
 - **Field asing ditolak 400** — DTO adalah kontrak ketat; menambah properti yang tidak dikenal tidak diabaikan.
-- DTO dibagi antara API dan klien melalui `@contributor/shared` (`dto/*.dto.ts`).
+- DTO dibagi antara API dan klien melalui `@bara/shared` (`dto/*.dto.ts`).
 
 ## 5. Konvensi Query & Penamaan
 

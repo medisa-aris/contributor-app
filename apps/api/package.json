@@ -1,8 +1,8 @@
 {
-  "name": "@contributor/api",
+  "name": "@bara/api",
   "version": "0.1.0",
   "private": true,
-  "description": "Contributor AI backend (NestJS)",
+  "description": "BeLead AI backend (NestJS)",
   "scripts": {
     "dev": "nest start --watch",
     "build": "nest build",
@@ -18,7 +18,7 @@
     "db:check": "tsx src/database/check-db.ts"
   },
   "dependencies": {
-    "@contributor/shared": "0.1.0",
+    "@bara/shared": "0.1.0",
     "@nestjs/common": "^11.1.6",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.6",

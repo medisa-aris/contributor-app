@@ -1,6 +1,6 @@
 export const id = {
   common: {
-    appName: 'Contributor AI',
+    appName: 'BeLead AI',
     loading: 'Memuat...',
     save: 'Simpan',
     cancel: 'Batal',
@@ -60,7 +60,7 @@ export const id = {
   showcase: {
     title: 'Sistem Desain Fluent',
     subtitle:
-      'Showcase token dan komponen dasar Contributor AI, dibangun mengikuti bahasa desain Microsoft Fluent 2.',
+      'Showcase token dan komponen dasar BeLead AI, dibangun mengikuti bahasa desain Microsoft Fluent 2.',
     sections: {
       colors: 'Warna',
       typography: 'Tipografi',
@@ -73,7 +73,7 @@ export const id = {
   },
   login: {
     title: 'Masuk',
-    subtitle: 'Gunakan akun perusahaan Anda untuk mengakses Contributor AI.',
+    subtitle: 'Gunakan akun perusahaan Anda untuk mengakses BeLead AI — Berau Coal Leadership AI Companion.',
     email: 'Email',
     password: 'Kata sandi',
     passwordPlaceholder: 'Masukkan kata sandi',
@@ -83,6 +83,12 @@ export const id = {
     submitting: 'Memproses...',
     errorGeneric: 'Tidak dapat masuk. Periksa kembali email dan kata sandi Anda.',
     footer: 'Akses diberikan sesuai peran dan departemen Anda.',
+    demoTitle: 'Masuk cepat (demo)',
+    demoGroupSystem: 'Akun sistem',
+    demoGroupHse: 'Tim HSE K3L',
+    demoAdmin: 'Masuk sebagai Admin',
+    demoManager: 'Masuk sebagai Manajer',
+    demoStaff: 'Masuk sebagai Staf',
   },
   shell: {
     home: 'Beranda',
@@ -95,6 +101,7 @@ export const id = {
     searchMenu: 'Cari menu…',
     searchClear: 'Bersihkan pencarian',
     searchEmpty: 'Tidak ada menu yang cocok.',
+    developedBy: 'Developed by',
     collapseSidebar: 'Ciutkan panel kiri',
     expandSidebar: 'Buka panel kiri',
   },
@@ -264,6 +271,10 @@ export const id = {
       collapseAll: 'Lipat semua',
       closeDetail: 'Tutup',
       detailNoParent: '—',
+      membersOf: 'Anggota {name}',
+      membersEmpty: 'Belum ada pengguna.',
+      membersHidden: 'Daftar pengguna tidak dapat Anda lihat.',
+      divisionsTitle: 'Divisi',
     },
     groups: {
       title: 'Grup',
@@ -551,17 +562,6 @@ export const id = {
     },
   },
   workspace: {
-    landing: {
-      title: 'Ruang Kerja AI',
-      subtitle:
-        'Tiga cara berpikir dengan AI: gali pengetahuan, uji gagasan, atau serahkan eksekusi. Pilih mode yang paling sesuai dengan kebutuhan Anda.',
-      open: 'Buka mode',
-      noAccess: 'Akun Anda belum memiliki izin ke mode AI mana pun. Hubungi administrator.',
-      secondBrain: {
-        name: 'Otak Kedua',
-        description:
-          'Tanya jawab pengetahuan perusahaan: kebijakan, proses, dan dokumen, dengan jawaban langsung dan runtut.',
-      },
     mindMap: {
       title: 'Peta Pikiran',
       description: 'Judul percakapan Multi Brain, Partner, dan tugas Subordinate tim Anda — hanya judul, tanpa isi pesan.',
@@ -595,13 +595,24 @@ export const id = {
         moreThoughts: 'dan {n} lainnya',
       },
     },
+    landing: {
+      title: 'Ruang Kerja AI',
+      subtitle:
+        'Tiga cara berpikir dengan AI: gali pengetahuan, uji gagasan, atau serahkan eksekusi. Pilih mode yang paling sesuai dengan kebutuhan Anda.',
+      open: 'Buka mode',
+      noAccess: 'Akun Anda belum memiliki izin ke mode AI mana pun. Hubungi administrator.',
+      secondBrain: {
+        name: 'Multi Brain',
+        description:
+          'Tanya jawab pengetahuan perusahaan: kebijakan, proses, dan dokumen, dengan jawaban langsung dan runtut.',
+      },
       counterpart: {
-        name: 'Mitra Berpikir',
+        name: 'Partner',
         description:
           'Diskusi dua arah untuk menguji gagasan: dari pendamping suportif sampai penantang asumsi.',
       },
       subordinate: {
-        name: 'Asisten Eksekusi',
+        name: 'Subordinate',
         description:
           'Serahkan tugas tertulis dan pantau statusnya dari antrean sampai selesai, lengkap dengan jejak eksekusi.',
       },
@@ -610,24 +621,26 @@ export const id = {
         description: 'Buka kembali percakapan dan tugas yang pernah Anda buat.',
         open: 'Lihat riwayat',
       },
-    },
-    secondBrain: {
-      title: 'Otak Kedua',
-      description:
-        'Ajukan pertanyaan seputar pengetahuan perusahaan. Jawaban disusun langsung oleh AI dan tersimpan sebagai percakapan.',
-    },
-    counterpart: {
-      title: 'Mitra Berpikir',
-      description:
-        'Ajukan gagasan atau masalah untuk didiskusikan. Pilih gaya mitra di bawah ini — AI akan menyesuaikan cara berpikirnya.',
-    },
       mindMap: {
         name: 'Peta Pikiran',
         description: 'Lihat apa yang sedang dipikirkan tim Anda lewat judul percakapan dan tugas AI mereka.',
         open: 'Buka Peta Pikiran',
       },
+    },
+    secondBrain: {
+      title: 'Multi Brain',
+      description:
+        'Ajukan pertanyaan seputar pengetahuan perusahaan. Jawaban disusun langsung oleh AI dan tersimpan sebagai percakapan.',
+    },
+    counterpart: {
+      title: 'Partner',
+      description:
+        'Ajukan gagasan atau masalah untuk didiskusikan. Pilih gaya mitra di bawah ini — AI akan menyesuaikan cara berpikirnya.',
+    },
     chat: {
       sidebarTitle: 'Percakapan',
+      sidebarCollapse: 'Ciutkan daftar percakapan',
+      sidebarExpand: 'Tampilkan daftar percakapan',
       newChat: 'Baru',
       historyEmpty: 'Belum ada percakapan pada mode ini.',
       emptyTitle: 'Mulai percakapan',
@@ -659,7 +672,7 @@ export const id = {
       tokenTotal: 'Total token: konteks {input} · output {output}',
       tokenResponse: 'Token respons: konteks {input} · output {output}',
       exportDone: 'Percakapan diekspor sebagai Markdown.',
-      exportMeta: 'Diekspor dari Contributor AI pada {date}',
+      exportMeta: 'Diekspor dari BeLead AI pada {date}',
       exportUser: 'Anda',
       exportAssistant: 'AI',
       exportFallbackTitle: 'Percakapan',
@@ -716,7 +729,7 @@ export const id = {
       },
     },
     subordinate: {
-      title: 'Asisten Eksekusi',
+      title: 'Subordinate',
       description:
         'Buat tugas tertulis untuk dikerjakan AI, jalankan, lalu pantau status dan jejak eksekusinya sampai tuntas.',
       addButton: 'Tambah tugas',
@@ -761,8 +774,8 @@ export const id = {
         'Percakapan dan tugas yang pernah Anda buat di Ruang Kerja AI. Data hanya tampil milik Anda sendiri.',
       tabConversations: 'Percakapan',
       tabTasks: 'Tugas',
-      modeSecondBrain: 'Otak Kedua',
-      modeCounterpart: 'Mitra Berpikir',
+      modeSecondBrain: 'Multi Brain',
+      modeCounterpart: 'Partner',
       columnTitle: 'Judul',
       columnMode: 'Mode',
       columnUpdated: 'Diperbarui',
@@ -943,6 +956,23 @@ export const id = {
     formAuthType: 'Jenis autentikasi',
     authNone: 'Tanpa autentikasi',
     authApiKey: 'Kunci API via variabel lingkungan',
+    authOauth: 'OAuth (login lewat server)',
+    oauthClient: 'Client OAuth',
+    oauthClientDialogTitle: 'Client OAuth manual',
+    oauthClientDialogSubtitle:
+      'Isi bila client OAuth didaftarkan manual oleh admin server. Kosongkan Client ID untuk memakai pendaftaran dinamis.',
+    oauthClientId: 'Client ID',
+    oauthClientSecret: 'Client secret (opsional)',
+    oauthClientSecretHint: 'Hanya untuk client confidential. Disimpan terenkripsi dan tidak pernah ditampilkan lagi.',
+    oauthClientSaved: 'Client OAuth disimpan. Klik Hubungkan untuk login.',
+    oauthConnect: 'Hubungkan',
+    oauthDisconnect: 'Putuskan',
+    oauthDisconnected: 'Koneksi OAuth diputus.',
+    oauthCallbackTitle: 'Menghubungkan server MCP',
+    oauthCallbackWorking: 'Menyelesaikan otorisasi...',
+    oauthCallbackDone: 'Server MCP berhasil terhubung.',
+    oauthCallbackFailed: 'Otorisasi gagal.',
+    oauthBack: 'Kembali ke Integration Center',
     formApiKeyEnv: 'Nama variabel kunci API',
     formApiKeyEnvHint: 'Misalnya TOOL_API_KEY — nilainya diisi di server, bukan di sini.',
     formEndpoints: 'Daftar endpoint',
