@@ -73,7 +73,8 @@ export const id = {
   },
   login: {
     title: 'Masuk',
-    subtitle: 'Gunakan akun perusahaan Anda untuk mengakses BeLead AI — Berau Coal Leadership AI Companion.',
+    subtitle:
+      'Gunakan akun perusahaan Anda untuk mengakses BeLead AI — Berau Coal Leadership AI Companion.',
     email: 'Email',
     password: 'Kata sandi',
     passwordPlaceholder: 'Masukkan kata sandi',
@@ -84,6 +85,7 @@ export const id = {
     errorGeneric: 'Tidak dapat masuk. Periksa kembali email dan kata sandi Anda.',
     footer: 'Akses diberikan sesuai peran dan departemen Anda.',
     demoTitle: 'Masuk cepat (demo)',
+    heroAlt: 'BeLeadAI — asisten kepemimpinan berbasis AI: Multi Brain, Partner, dan Subordinate',
     demoGroupSystem: 'Akun sistem',
     demoGroupHse: 'Tim HSE K3L',
     demoAdmin: 'Masuk sebagai Admin',
@@ -564,7 +566,8 @@ export const id = {
   workspace: {
     mindMap: {
       title: 'Peta Pikiran',
-      description: 'Judul percakapan Multi Brain, Partner, dan tugas Subordinate tim Anda — hanya judul, tanpa isi pesan.',
+      description:
+        'Judul percakapan Multi Brain, Partner, dan tugas Subordinate tim Anda — hanya judul, tanpa isi pesan.',
       tabs: { mapping: 'Pemetaan', thinking: 'Struktur Pemikiran', label: 'Peta Pikiran' },
       fullscreen: 'Layar penuh',
       exitFullscreen: 'Keluar layar penuh',
@@ -623,7 +626,8 @@ export const id = {
       },
       mindMap: {
         name: 'Peta Pikiran',
-        description: 'Lihat apa yang sedang dipikirkan tim Anda lewat judul percakapan dan tugas AI mereka.',
+        description:
+          'Lihat apa yang sedang dipikirkan tim Anda lewat judul percakapan dan tugas AI mereka.',
         open: 'Buka Peta Pikiran',
       },
     },
@@ -963,7 +967,8 @@ export const id = {
       'Isi bila client OAuth didaftarkan manual oleh admin server. Kosongkan Client ID untuk memakai pendaftaran dinamis.',
     oauthClientId: 'Client ID',
     oauthClientSecret: 'Client secret (opsional)',
-    oauthClientSecretHint: 'Hanya untuk client confidential. Disimpan terenkripsi dan tidak pernah ditampilkan lagi.',
+    oauthClientSecretHint:
+      'Hanya untuk client confidential. Disimpan terenkripsi dan tidak pernah ditampilkan lagi.',
     oauthClientSaved: 'Client OAuth disimpan. Klik Hubungkan untuk login.',
     oauthConnect: 'Hubungkan',
     oauthDisconnect: 'Putuskan',

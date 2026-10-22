@@ -56,8 +56,16 @@ const demoGroups = computed<{ title: string; accounts: DemoAccount[] }[]>(() => 
       { email: 'bambang@bara.local', label: 'Bambang Sutrisno', hint: 'Manager Safety' },
       { email: 'dimas@bara.local', label: 'Dimas Aryo Pratama', hint: 'Supt HIRA Operasional' },
       { email: 'siti@bara.local', label: 'Siti Nurhaliza Putri', hint: 'Supt Risk Control & MOC' },
-      { email: 'fajar@bara.local', label: 'Fajar Nugroho', hint: 'Supt Safety Operasional & Inspeksi' },
-      { email: 'maria@bara.local', label: 'Maria Magdalena Sinaga', hint: 'Supt Safety Compliance & Audit' },
+      {
+        email: 'fajar@bara.local',
+        label: 'Fajar Nugroho',
+        hint: 'Supt Safety Operasional & Inspeksi',
+      },
+      {
+        email: 'maria@bara.local',
+        label: 'Maria Magdalena Sinaga',
+        hint: 'Supt Safety Compliance & Audit',
+      },
     ].map((account) => ({ ...account, password: HSE_PASSWORD })),
   },
 ]);
@@ -82,8 +90,7 @@ async function submit(): Promise<void> {
     const redirect = route.query.redirect;
     await router.push(typeof redirect === 'string' && redirect.startsWith('/') ? redirect : '/');
   } catch (error) {
-    errorMessage.value =
-      error instanceof ApiError ? error.message : t('login.errorGeneric');
+    errorMessage.value = error instanceof ApiError ? error.message : t('login.errorGeneric');
   } finally {
     submitting.value = false;
   }
@@ -92,111 +99,146 @@ async function submit(): Promise<void> {
 
 <template>
   <main class="login">
-    <div class="login__card">
-      <div class="login__brand">
-        <span class="login__logo" aria-hidden="true">B</span>
-        <span class="login__app">{{ config.appName }}</span>
-      </div>
-      <h1 class="login__title">{{ t('login.title') }}</h1>
-      <p class="login__subtitle">{{ t('login.subtitle') }}</p>
+    <div class="login__panel">
+      <div class="login__card">
+        <div class="login__brand">
+          <span class="login__logo" aria-hidden="true">B</span>
+          <span class="login__app">{{ config.appName }}</span>
+        </div>
+        <h1 class="login__title">{{ t('login.title') }}</h1>
+        <p class="login__subtitle">{{ t('login.subtitle') }}</p>
 
-      <p v-if="errorMessage" class="login__error" role="alert">{{ errorMessage }}</p>
+        <p v-if="errorMessage" class="login__error" role="alert">{{ errorMessage }}</p>
 
-      <form class="login__form" @submit.prevent="submit">
-        <CaField :label="t('login.email')" required>
-          <template #default="{ id, describedBy }">
-            <CaInput
-              :id="id"
-              v-model="email"
-              :aria-describedby="describedBy"
-              type="email"
-              size="large"
-              autocomplete="username"
-              placeholder="nama@perusahaan.co.id"
-            />
-          </template>
-        </CaField>
-        <CaField :label="t('login.password')" required>
-          <template #default="{ id, describedBy }">
-            <div class="login__password">
+        <form class="login__form" @submit.prevent="submit">
+          <CaField :label="t('login.email')" required>
+            <template #default="{ id, describedBy }">
               <CaInput
                 :id="id"
-                v-model="password"
+                v-model="email"
                 :aria-describedby="describedBy"
-                :type="showPassword ? 'text' : 'password'"
+                type="email"
                 size="large"
-                autocomplete="current-password"
-                :placeholder="t('login.passwordPlaceholder')"
+                autocomplete="username"
+                placeholder="nama@perusahaan.co.id"
               />
-              <CaIconButton
-                class="login__password-toggle"
-                :label="showPassword ? t('login.hidePassword') : t('login.showPassword')"
-                :aria-pressed="showPassword"
-                size="small"
-                @click="showPassword = !showPassword"
+            </template>
+          </CaField>
+          <CaField :label="t('login.password')" required>
+            <template #default="{ id, describedBy }">
+              <div class="login__password">
+                <CaInput
+                  :id="id"
+                  v-model="password"
+                  :aria-describedby="describedBy"
+                  :type="showPassword ? 'text' : 'password'"
+                  size="large"
+                  autocomplete="current-password"
+                  :placeholder="t('login.passwordPlaceholder')"
+                />
+                <CaIconButton
+                  class="login__password-toggle"
+                  :label="showPassword ? t('login.hidePassword') : t('login.showPassword')"
+                  :aria-pressed="showPassword"
+                  size="small"
+                  @click="showPassword = !showPassword"
+                >
+                  <CaIcon :name="showPassword ? 'eye-off' : 'eye'" :size="16" />
+                </CaIconButton>
+              </div>
+            </template>
+          </CaField>
+          <CaButton
+            variant="primary"
+            size="large"
+            type="submit"
+            block
+            :loading="submitting"
+            :disabled="!canSubmit"
+          >
+            {{ submitting ? t('login.submitting') : t('login.submit') }}
+          </CaButton>
+        </form>
+        <div class="login__demo">
+          <button
+            type="button"
+            class="login__demo-toggle"
+            :aria-expanded="demoOpen"
+            aria-controls="login-demo-list"
+            @click="demoOpen = !demoOpen"
+          >
+            <span>{{ t('login.demoTitle') }}</span>
+            <CaIcon :name="demoOpen ? 'chevron-up' : 'chevron-down'" :size="16" />
+          </button>
+          <div v-show="demoOpen" id="login-demo-list" class="login__demo-list">
+            <section v-for="group in demoGroups" :key="group.title" class="login__demo-group">
+              <h2 class="login__demo-group-title">{{ group.title }}</h2>
+              <CaButton
+                v-for="account in group.accounts"
+                :key="account.email"
+                variant="secondary"
+                block
+                type="button"
+                :disabled="submitting"
+                @click="loginAsDemo(account)"
               >
-                <CaIcon :name="showPassword ? 'eye-off' : 'eye'" :size="16" />
-              </CaIconButton>
-            </div>
-          </template>
-        </CaField>
-        <CaButton
-          variant="primary"
-          size="large"
-          type="submit"
-          block
-          :loading="submitting"
-          :disabled="!canSubmit"
-        >
-          {{ submitting ? t('login.submitting') : t('login.submit') }}
-        </CaButton>
-      </form>
-      <div class="login__demo">
-        <button
-          type="button"
-          class="login__demo-toggle"
-          :aria-expanded="demoOpen"
-          aria-controls="login-demo-list"
-          @click="demoOpen = !demoOpen"
-        >
-          <span>{{ t('login.demoTitle') }}</span>
-          <CaIcon :name="demoOpen ? 'chevron-up' : 'chevron-down'" :size="16" />
-        </button>
-        <div v-show="demoOpen" id="login-demo-list" class="login__demo-list">
-          <section v-for="group in demoGroups" :key="group.title" class="login__demo-group">
-            <h2 class="login__demo-group-title">{{ group.title }}</h2>
-            <CaButton
-              v-for="account in group.accounts"
-              :key="account.email"
-              variant="secondary"
-              block
-              type="button"
-              :disabled="submitting"
-              @click="loginAsDemo(account)"
-            >
-              <span class="login__demo-account">
-                <span>{{ account.label }}</span>
-                <span v-if="account.hint" class="login__demo-hint">{{ account.hint }}</span>
-              </span>
-            </CaButton>
-          </section>
+                <span class="login__demo-account">
+                  <span>{{ account.label }}</span>
+                  <span v-if="account.hint" class="login__demo-hint">{{ account.hint }}</span>
+                </span>
+              </CaButton>
+            </section>
+          </div>
         </div>
+        <p class="login__footer">{{ t('login.footer') }}</p>
       </div>
-      <p class="login__footer">{{ t('login.footer') }}</p>
     </div>
+    <aside class="login__hero">
+      <img
+        class="login__hero-image"
+        src="/login-hero.webp"
+        :alt="t('login.heroAlt')"
+        width="1414"
+        height="2000"
+        decoding="async"
+      />
+    </aside>
   </main>
 </template>
 
 <style scoped>
 .login {
   min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--ca-space-8);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   background:
     radial-gradient(1200px 600px at 20% -10%, var(--ca-color-brand-subtle), transparent 60%),
     var(--ca-bg-canvas);
+}
+
+/* Formulir login berada di tengah area kosong di sisi kiri poster. */
+.login__panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: var(--ca-space-8);
+}
+
+.login__hero {
+  width: min(50vw, calc(100vh * 0.707));
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  background: #f7f6f2;
+  border-left: 1px solid var(--ca-stroke-2);
+}
+
+.login__hero-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .login__card {
@@ -346,5 +388,15 @@ async function submit(): Promise<void> {
   text-align: center;
   font-size: var(--ca-text-200);
   color: var(--ca-fg-4);
+}
+
+@media (max-width: 960px) {
+  .login {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .login__hero {
+    display: none;
+  }
 }
 </style>
