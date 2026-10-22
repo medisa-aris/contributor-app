@@ -562,6 +562,39 @@ export const id = {
         description:
           'Tanya jawab pengetahuan perusahaan: kebijakan, proses, dan dokumen, dengan jawaban langsung dan runtut.',
       },
+    mindMap: {
+      title: 'Peta Pikiran',
+      description: 'Judul percakapan Multi Brain, Partner, dan tugas Subordinate tim Anda — hanya judul, tanpa isi pesan.',
+      tabs: { mapping: 'Pemetaan', thinking: 'Struktur Pemikiran', label: 'Peta Pikiran' },
+      fullscreen: 'Layar penuh',
+      exitFullscreen: 'Keluar layar penuh',
+      range: { label: 'Rentang waktu', d7: '7 hari', d30: '30 hari', d90: '90 hari' },
+      modes: { second_brain: 'Multi Brain', counterpart: 'Partner', subordinate: 'Subordinate' },
+      auditNotice: 'Akses Anda ke Peta Pikiran dicatat di audit log.',
+      loadFailed: 'Gagal memuat Peta Pikiran.',
+      thoughtsCount: '{n} pikiran',
+      mapping: {
+        root: 'Semua tim',
+        back: 'Naik satu level',
+        hint: 'Klik departemen untuk masuk, klik orang untuk melihat pikirannya. Gulir untuk zoom, seret untuk menggeser.',
+        empty: 'Tidak ada anggota tim dalam cakupan Anda.',
+        members: '{n} anggota',
+        noThoughts: 'Belum ada pikiran pada rentang ini.',
+        lastActive: 'Terakhir aktif',
+        close: 'Tutup panel',
+      },
+      thinking: {
+        searchPlaceholder: 'Cari topik, mis. onboarding, anggaran, K3…',
+        hint: 'Ketik topik untuk melihat siapa saja yang sedang memikirkannya.',
+        topKeywords: 'Topik yang sedang ramai',
+        keywordsFor: 'Topik terkait',
+        results: '{n} pikiran dari {people} orang',
+        noResults: 'Tidak ada yang sedang memikirkan topik ini.',
+        center: 'Topik',
+        showThoughts: 'Lihat semua pikiran',
+        moreThoughts: 'dan {n} lainnya',
+      },
+    },
       counterpart: {
         name: 'Mitra Berpikir',
         description:
@@ -588,6 +621,11 @@ export const id = {
       description:
         'Ajukan gagasan atau masalah untuk didiskusikan. Pilih gaya mitra di bawah ini — AI akan menyesuaikan cara berpikirnya.',
     },
+      mindMap: {
+        name: 'Peta Pikiran',
+        description: 'Lihat apa yang sedang dipikirkan tim Anda lewat judul percakapan dan tugas AI mereka.',
+        open: 'Buka Peta Pikiran',
+      },
     chat: {
       sidebarTitle: 'Percakapan',
       newChat: 'Baru',

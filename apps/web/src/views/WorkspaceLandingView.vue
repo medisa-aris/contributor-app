@@ -30,6 +30,7 @@ const modes = computed(() => [
 
 const visibleModes = computed(() => modes.value.filter((mode) => auth.can(mode.permission)));
 const canHistory = computed(() => auth.can('ai.workspace.history.read'));
+const canMindMap = computed(() => auth.can('ai.mindmap.team.read'));
 </script>
 
 <template>
@@ -63,6 +64,19 @@ const canHistory = computed(() => auth.can('ai.workspace.history.read'));
       <template #footer>
         <CaButton variant="secondary" to="/workspace/history">
           {{ t('workspace.landing.history.open') }}
+        </CaButton>
+      </template>
+    </CaCard>
+
+    <CaCard
+      v-if="canMindMap"
+      class="landing__history"
+      :title="t('workspace.landing.mindMap.name')"
+      :subtitle="t('workspace.landing.mindMap.description')"
+    >
+      <template #footer>
+        <CaButton variant="secondary" to="/workspace/mind-map">
+          {{ t('workspace.landing.mindMap.open') }}
         </CaButton>
       </template>
     </CaCard>

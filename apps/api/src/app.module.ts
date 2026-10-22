@@ -8,6 +8,7 @@ import { DatabaseModule } from './database/database.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AgentsModule } from './modules/agents/agents.module';
 import { AiModule } from './modules/ai/ai.module';
+import { MindMapModule } from './modules/mind-map/mind-map.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CsrfGuard } from './modules/auth/csrf.guard';
@@ -33,6 +34,7 @@ import { RbacModule } from './modules/rbac/rbac.module';
     AiModule,
     KnowledgeModule,
     AgentsModule,
+    MindMapModule,
     IntegrationsModule,
     AuthModule,
     AdminModule,

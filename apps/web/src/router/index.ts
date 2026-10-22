@@ -80,6 +80,7 @@ export const router = createRouter({
         admin('workspace/counterpart', 'workspace-counterpart', () => import('@/views/CounterpartView.vue'), 'ai.counterpart.analyze'),
         admin('workspace/subordinate', 'workspace-subordinate', () => import('@/views/SubordinateView.vue'), 'ai.subordinate.execute'),
         admin('workspace/history', 'workspace-history', () => import('@/views/WorkspaceHistoryView.vue'), 'ai.workspace.history.read'),
+        admin('workspace/mind-map', 'workspace-mind-map', () => import('@/views/MindMapView.vue'), 'ai.mindmap.team.read'),
         admin('knowledge/documents', 'knowledge-documents', () => import('@/views/knowledge/KnowledgeDocumentsView.vue'), 'knowledge.documents.read'),
         admin('knowledge/collections', 'knowledge-collections', () => import('@/views/knowledge/KnowledgeCollectionsView.vue'), 'knowledge.collections.read'),
         admin('knowledge/search', 'knowledge-search', () => import('@/views/knowledge/KnowledgeSearchView.vue'), 'knowledge.search.use'),

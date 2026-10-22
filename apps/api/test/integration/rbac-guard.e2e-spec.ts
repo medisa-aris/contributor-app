@@ -47,7 +47,7 @@ describe('Permission guard & audit (e2e)', () => {
       .expect(200);
     expect(res.body.data.userId).toBe(fixtures.users.manager);
     expect(res.body.data.isSuperadmin).toBe(false);
-    expect(res.body.data.totalPermissions).toBe(38);
+    expect(res.body.data.totalPermissions).toBe(39);
     expect(res.body.data.allowedCount).toBeGreaterThan(0);
     expect(res.body.data.deniedCount).toBeGreaterThan(0);
   });
@@ -66,7 +66,7 @@ describe('Permission guard & audit (e2e)', () => {
       .get('/api/rbac/diagnostics/effective-permissions')
       .expect(200);
     expect(res.body.data.user.id).toBe(fixtures.users.admin);
-    expect(res.body.data.decisions.length).toBe(38);
+    expect(res.body.data.decisions.length).toBe(39);
     expect(res.body.data.allowed).toContain('rbac.roles.manage');
     const decide = res.body.data.decisions.find(
       (d: { permission: string }) => d.permission === 'rbac.roles.manage',
@@ -82,7 +82,7 @@ describe('Permission guard & audit (e2e)', () => {
     const res = await asClient(app, client)
       .get('/api/rbac/diagnostics/effective-permissions')
       .expect(200);
-    expect(res.body.data.allowed.length).toBe(38);
+    expect(res.body.data.allowed.length).toBe(39);
     const decide = res.body.data.decisions.find(
       (d: { permission: string }) => d.permission === 'rbac.policies.manage',
     );

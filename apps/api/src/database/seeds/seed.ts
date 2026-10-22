@@ -157,6 +157,15 @@ const NAV_TREE: readonly AppSeed[] = [
     modules: [
       {
         identifier: 'content',
+          {
+            key: 'nav.ai-workspace.mind-map',
+            label: 'Peta Pikiran',
+            i18nKey: 'nav.aiWorkspace.mindMap',
+            icon: 'people',
+            routePath: '/workspace/mind-map',
+            permission: 'ai.mindmap.team.read',
+            isFuture: false,
+          },
         name: 'Konten',
         description: 'Dokumen dan koleksi sumber pengetahuan',
         items: [
@@ -522,6 +531,8 @@ async function seedDemoContent(ds: DataSource): Promise<void> {
     name: string;
     description: string;
     acl: Record<string, unknown>;
+      'ai.workspace.history.read',
+      'ai.mindmap.team.read',
     documents: { title: string; locator: string; content: string }[];
   }[] = [
     {

@@ -58,6 +58,7 @@ export const AUDIT_EVENTS = {
   aiTaskCompleted: 'ai.task.completed',
   aiTaskFailed: 'ai.task.failed',
   aiTaskCancelled: 'ai.task.cancelled',
+  aiMindMapViewed: 'ai.mindmap.viewed',
 
   knowledgeSourceCreated: 'knowledge.source.created',
   knowledgeSourceUpdated: 'knowledge.source.updated',

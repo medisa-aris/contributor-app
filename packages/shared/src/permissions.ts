@@ -9,6 +9,7 @@ export const PERMISSIONS = {
   counterpartAnalyze: 'ai.counterpart.analyze',
   subordinateExecute: 'ai.subordinate.execute',
   workspaceHistoryRead: 'ai.workspace.history.read',
+  mindMapTeamRead: 'ai.mindmap.team.read',
 
   // Knowledge Center
   knowledgeDocumentsRead: 'knowledge.documents.read',
@@ -71,6 +72,7 @@ export const PERMISSION_CATALOG: readonly PermissionDefinition[] = [
   { id: PERMISSIONS.counterpartAnalyze, name: 'Berdiskusi dengan Mitra Berpikir', description: 'Analisis dan debat konsep lewat mode Counterpart', application: 'ai-workspace', module: 'modes' },
   { id: PERMISSIONS.subordinateExecute, name: 'Menjalankan Tugas Asisten', description: 'Eksekusi tugas lewat mode Subordinate', application: 'ai-workspace', module: 'modes' },
   { id: PERMISSIONS.workspaceHistoryRead, name: 'Melihat Riwayat Percakapan', description: 'Riwayat percakapan dan tugas di Ruang Kerja AI', application: 'ai-workspace', module: 'modes' },
+  { id: PERMISSIONS.mindMapTeamRead, name: 'Melihat Peta Pikiran Tim', description: 'Melihat judul percakapan dan tugas AI anggota tim dalam cakupan departemen', application: 'ai-workspace', module: 'workspace' },
   { id: PERMISSIONS.knowledgeDocumentsRead, name: 'Melihat Dokumen Pengetahuan', description: 'Daftar dan detail dokumen pengetahuan', application: 'knowledge-center', module: 'content' },
   { id: PERMISSIONS.knowledgeCollectionsRead, name: 'Melihat Koleksi Pengetahuan', description: 'Koleksi sumber pengetahuan', application: 'knowledge-center', module: 'content' },
   { id: PERMISSIONS.knowledgeCollectionsManage, name: 'Mengelola Koleksi Pengetahuan', description: 'Membuat dan mengubah koleksi sumber pengetahuan', application: 'knowledge-center', module: 'content' },

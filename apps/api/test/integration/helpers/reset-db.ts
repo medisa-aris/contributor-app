@@ -60,6 +60,7 @@ export const MANAGER_PERMISSIONS = [
   'ai.secondbrain.query',
   'ai.counterpart.analyze',
   'ai.subordinate.execute',
+  'ai.mindmap.team.read',
   'knowledge.documents.read',
   'knowledge.search.use',
   'agents.view',

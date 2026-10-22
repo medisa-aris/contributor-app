@@ -163,7 +163,7 @@ describe('Admin platform (e2e)', () => {
       .get(`/api/admin/diagnostics/users/${fixtures.users.staf}/effective-permissions`)
       .expect(200);
     expect(res.body.data.user.email).toBe('staf@test.local');
-    expect((res.body.data.decisions as unknown[]).length).toBe(38);
+    expect((res.body.data.decisions as unknown[]).length).toBe(39);
   });
 
   it('uji otorisasi mengembalikan keputusan, scope, dan rantai', async () => {

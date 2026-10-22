@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import { useConfigStore } from '@/stores/config.store';
 import { useNavigationStore } from '@/stores/navigation.store';
 import { useThemeStore, type ThemeMode } from '@/stores/theme.store';
+import { useUiStore } from '@/stores/ui.store';
 import { CaAvatar, CaBadge, CaBreadcrumb, CaIcon, CaIconButton, CaInput, CaMenu } from '@/components/ui';
 
 const { t } = useI18n();
@@ -18,6 +19,7 @@ const navigation = useNavigationStore();
 const theme = useThemeStore();
 
 const SIDEBAR_COLLAPSE_KEY = 'ca.sidebarCollapsed';
+const ui = useUiStore();
 const sidebarOpen = ref(false);
 const collapsed = ref(localStorage.getItem(SIDEBAR_COLLAPSE_KEY) === '1');
 const menuQuery = ref('');
@@ -135,11 +137,11 @@ const visibleApps = computed<SearchAppNode[]>(() => {
 </script>
 
 <template>
-  <div class="shell">
+  <div class="shell" :class="{ 'shell--immersive': ui.fullscreen }">
     <a class="shell__skip" href="#main">{{ t('shell.skipToContent') }}</a>
 
     <button
-      v-if="collapsed"
+      v-if="collapsed && !ui.fullscreen"
       type="button"
       class="shell__reopen"
       :aria-label="t('shell.expandSidebar')"
@@ -152,6 +154,7 @@ const visibleApps = computed<SearchAppNode[]>(() => {
     </button>
 
     <aside
+      v-if="!ui.fullscreen"
       class="shell__sidebar"
       :class="{ 'shell__sidebar--open': sidebarOpen, 'shell__sidebar--collapsed': collapsed }"
       :aria-hidden="collapsed"
@@ -250,10 +253,10 @@ const visibleApps = computed<SearchAppNode[]>(() => {
       </div>
     </aside>
 
-    <div v-if="sidebarOpen" class="shell__scrim" aria-hidden="true" @click="sidebarOpen = false" />
+    <div v-if="sidebarOpen && !ui.fullscreen" class="shell__scrim" aria-hidden="true" @click="sidebarOpen = false" />
 
     <div class="shell__main">
-      <header class="shell__topbar">
+      <header v-if="!ui.fullscreen" class="shell__topbar">
         <CaIconButton
           class="shell__menu-toggle"
           :label="t('shell.toggleNavigation')"
@@ -628,6 +631,11 @@ const visibleApps = computed<SearchAppNode[]>(() => {
   max-width: 1440px;
   margin: 0 auto;
   padding: var(--ca-space-6);
+}
+.shell--immersive .shell__content {
+  max-width: none;
+  margin: 0;
+  padding: 0;
 }
 
 @media (min-width: 901px) {
