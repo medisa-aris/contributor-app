@@ -7,6 +7,7 @@ export type AiTaskStatus =
   | 'validating'
   | 'awaiting_approval'
   | 'running'
+  | 'needs_input'
   | 'completed'
   | 'failed'
   | 'cancelled';
@@ -16,6 +17,7 @@ export const AI_TASK_STATUSES: readonly AiTaskStatus[] = [
   'validating',
   'awaiting_approval',
   'running',
+  'needs_input',
   'completed',
   'failed',
   'cancelled',

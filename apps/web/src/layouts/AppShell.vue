@@ -177,7 +177,7 @@ const visibleApps = computed<SearchAppNode[]>(() => {
       :aria-hidden="collapsed"
     >
       <RouterLink to="/" class="shell__brand">
-        <span class="shell__logo" aria-hidden="true">B</span>
+        <span class="shell__logo" aria-hidden="true">C</span>
         <span class="shell__brand-name">{{ config.appName }}</span>
       </RouterLink>
 

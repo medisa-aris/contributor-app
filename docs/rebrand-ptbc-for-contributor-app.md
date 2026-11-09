@@ -1,6 +1,6 @@
 # Rebrand Guidance — Contributor AI → BARA for PT Berau Coal
 
-> **Pembaruan:** nama produk final adalah **BeLead AI — Berau Coal Leadership AI Companion** (menggantikan usulan BARA di dokumen ini). Yang berubah hanya nama tampilan, prompt, dan konfigurasi `app.name`; identifier teknis (`@bara/*`, `*@bara.local`, `BARA_INFRA_*`, nama container Docker) sengaja tidak diganti.
+> **Pembaruan:** nama aplikasi kini **ContributorAI** (sebelumnya BeLead AI, dan usulan BARA di dokumen ini). Yang berubah hanya nama tampilan, prompt, dan konfigurasi `app.name`; identifier teknis (`@bara/*`, `*@bara.local`, `BARA_INFRA_*`, nama container Docker) sengaja tidak diganti.
 
 > Status: **proposal / guidance**. No code has been changed. The recommended name is **BARA**; if leadership picks another name, substitute it everywhere below (`BARA` / `bara`).
 > Facts about PT Berau Coal (values, brand assets, policies) must be confirmed with the company's Corporate Communications and HR before publishing. Nothing here is taken from official Berau material.

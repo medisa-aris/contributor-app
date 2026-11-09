@@ -111,7 +111,15 @@ export class ApprovalsQueryDto extends PaginationQueryDto {
 
 export class AgentTasksQueryDto {
   @IsOptional()
-  @IsIn(['created', 'validating', 'awaiting_approval', 'running', 'completed', 'failed', 'cancelled'])
+  @IsIn([
+    'created',
+    'validating',
+    'awaiting_approval',
+    'running',
+    'completed',
+    'failed',
+    'cancelled',
+  ])
   status?: string;
 
   @IsOptional()

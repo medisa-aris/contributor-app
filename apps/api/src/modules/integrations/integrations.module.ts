@@ -6,6 +6,6 @@ import { IntegrationsService } from './integrations.service';
 @Module({
   controllers: [IntegrationsController],
   providers: [IntegrationsService, McpOauthService],
-  exports: [IntegrationsService],
+  exports: [IntegrationsService, McpOauthService],
 })
 export class IntegrationsModule {}

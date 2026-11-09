@@ -2,7 +2,7 @@
   "name": "bara",
   "version": "0.1.7",
   "private": true,
-  "description": "BeLead AI — Berau Coal Leadership AI Companion (monorepo)",
+  "description": "ContributorAI (monorepo)",
   "engines": {
     "node": ">=22"
   },

@@ -153,7 +153,11 @@ async function resolvePublicAddresses(url: URL): Promise<PinnedAddress[]> {
     );
   }
   if (resolved.length === 0) {
-    throw new AppError(ERROR_CODES.validation, 'Nama domain sumber web tidak dapat ditemukan.', 400);
+    throw new AppError(
+      ERROR_CODES.validation,
+      'Nama domain sumber web tidak dapat ditemukan.',
+      400,
+    );
   }
   if (resolved.some((entry) => !isPublicAddress(entry.address))) {
     throw internalAddressError();
@@ -220,7 +224,7 @@ function requestOnce(target: URL, addresses: PinnedAddress[]): Promise<RawRespon
       port: target.port ? Number(target.port) : undefined,
       path: `${target.pathname}${target.search}`,
       headers: {
-        'User-Agent': 'BeLead-SourceFetcher/1.0',
+        'User-Agent': 'ContributorAI-SourceFetcher/1.0',
         Accept: 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.1',
         'Accept-Language': 'id,en;q=0.8',
         'Accept-Encoding': 'identity',
@@ -284,9 +288,7 @@ function decompressBody(body: Buffer, encoding: string | undefined): Promise<Buf
     const options = { maxOutputLength: WEB_SOURCE_LIMITS.maxDecompressedBytes };
     const callback = (error: Error | null, result: Buffer): void => {
       if (error) {
-        reject(
-          new AppError(ERROR_CODES.validation, 'Konten sumber web tidak dapat dibaca.', 400),
-        );
+        reject(new AppError(ERROR_CODES.validation, 'Konten sumber web tidak dapat dibaca.', 400));
         return;
       }
       resolve(result);

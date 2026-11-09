@@ -23,6 +23,24 @@ export function validateEnv(raw: Record<string, unknown>): Record<string, unknow
     errors.push('SESSION_COOKIE_SECURE must be "true" when NODE_ENV=production');
   }
 
+  const guardrailsKey = raw.GUARDRAILS_SECRET_KEY;
+  if (guardrailsKey && Buffer.from(String(guardrailsKey), 'base64').length !== 32) {
+    errors.push('GUARDRAILS_SECRET_KEY must be 32 bytes encoded as base64');
+  }
+
+  for (const key of [
+    'WEB_SEARCH_MAX_ATTEMPTS',
+    'WEB_SEARCH_TIMEOUT_MS',
+    'WEB_SEARCH_MAX_RESULTS',
+    'WEB_SEARCH_MAX_CALLS_PER_TURN',
+  ]) {
+    const value = raw[key];
+    if (value === undefined || value === '') continue;
+    if (!Number.isInteger(Number(value)) || Number(value) <= 0) {
+      errors.push(`${key} must be a positive integer`);
+    }
+  }
+
   if (errors.length > 0) {
     throw new Error(`Environment validation failed:\n- ${errors.join('\n- ')}`);
   }

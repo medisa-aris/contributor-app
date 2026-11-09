@@ -1,4 +1,4 @@
-# Model RBAC — BeLead AI
+# Model RBAC — ContributorAI
 
 > Sumber kebenaran: `packages/shared/src/permissions.ts` (katalog), `apps/api/src/modules/rbac/*` (mesin evaluasi), migrasi `1700000000000-initial-schema.ts` (skema).
 
@@ -36,7 +36,7 @@
 | `knowledge-center` | `knowledge.documents.read`, `knowledge.collections.read`, `knowledge.search.use` |
 | `agent-center` | `agents.view`, `agents.create`, `agents.execute`, `agents.approve` |
 | `integration-center` | `integrations.view`, `integrations.configure` |
-| `administration` | `admin.access`, `rbac.users.read`/`.manage`, `rbac.roles.read`/`.manage`, `rbac.groups.read`/`.manage`, `rbac.departments.read`/`.manage`, `rbac.policies.read`/`.manage`, `rbac.permissions.read`, `rbac.permissions.assign`, `rbac.effective.inspect`, `rbac.authz.test`, `nav.manage`, `config.read`, `config.manage`, `security.sessions.manage`, `audit.logs.read`, `providers.health.read` |
+| `administration` | `admin.access`, `rbac.users.read`/`.manage`, `rbac.roles.read`/`.manage`, `rbac.groups.read`/`.manage`, `rbac.departments.read`/`.manage`, `rbac.policies.read`/`.manage`, `rbac.permissions.read`, `rbac.permissions.assign`, `rbac.effective.inspect`, `rbac.authz.test`, `nav.manage`, `config.read`, `config.manage`, `security.sessions.manage`, `audit.logs.read`, `providers.health.read`, `ai.guardrails.manage` |
 
 Katalog di DB bisa menyimpang dari kode (mis. setelah upgrade); tombol **Sinkronkan katalog** menambahkan entri baru tanpa mengubah/menghapus yang lama.
 

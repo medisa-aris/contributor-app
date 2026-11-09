@@ -1,4 +1,4 @@
-# Konvensi API — BeLead AI
+# Konvensi API — ContributorAI
 
 > Semua endpoint di bawah prefix **`/api`**. OpenAPI interaktif: `GET /api/docs` (UI Swagger), `GET /api/docs-json` (dokumen). Pemasangan pipeline identik produksi/test ada di `apps/api/src/configure-app.ts`.
 

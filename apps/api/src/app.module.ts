@@ -8,9 +8,11 @@ import { DatabaseModule } from './database/database.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AgentsModule } from './modules/agents/agents.module';
 import { AiModule } from './modules/ai/ai.module';
+import { DocumentsModule } from './modules/documents/documents.module';
 import { MindMapModule } from './modules/mind-map/mind-map.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { ConnectorsModule } from './modules/connectors/connectors.module';
 import { CsrfGuard } from './modules/auth/csrf.guard';
 import { PermissionGuard } from './modules/auth/permission.guard';
 import { SessionAuthGuard } from './modules/auth/session-auth.guard';
@@ -32,10 +34,12 @@ import { RbacModule } from './modules/rbac/rbac.module';
     RbacModule,
     AuditModule,
     AiModule,
+    DocumentsModule,
     KnowledgeModule,
     AgentsModule,
     MindMapModule,
     IntegrationsModule,
+    ConnectorsModule,
     AuthModule,
     AdminModule,
     HealthModule,

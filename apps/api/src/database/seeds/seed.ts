@@ -1,3 +1,4 @@
+import { seedHseDemoDatabase } from './hse-demo-db';
 import {
   ALL_PERMISSION_IDS,
   APP_CONFIG_DEFINITIONS,
@@ -545,6 +546,15 @@ const NAV_TREE: readonly AppSeed[] = [
             permission: 'providers.health.read',
             isFuture: false,
           },
+          {
+            key: 'nav.administration.guardrails',
+            label: 'Guardrails',
+            i18nKey: 'nav.administration.guardrails',
+            icon: 'shield',
+            routePath: '/administration/guardrails',
+            permission: 'ai.guardrails.manage',
+            isFuture: false,
+          },
         ],
       },
     ],
@@ -567,6 +577,9 @@ const SEED_ROLES = [
       'ai.secondbrain.query',
       'ai.counterpart.analyze',
       'ai.subordinate.execute',
+      'ai.agents.manage',
+      'connectors.use',
+      'ai.websearch.use',
       'ai.workspace.history.read',
       'ai.mindmap.team.read',
       'knowledge.documents.read',
@@ -592,6 +605,8 @@ const SEED_ROLES = [
       'ai.secondbrain.query',
       'ai.counterpart.analyze',
       'ai.subordinate.execute',
+      'ai.agents.manage',
+      'connectors.use',
       'ai.workspace.history.read',
       'knowledge.documents.read',
       'knowledge.collections.read',
@@ -1319,6 +1334,14 @@ async function seed(ds: DataSource): Promise<void> {
   await seedHseConversations(ds);
   await seedHendraExtras(ds);
   await seedBulkActivity(ds);
+  if (process.env.NODE_ENV !== 'production') {
+    const demoDb = await seedHseDemoDatabase(ds);
+    console.log(
+      demoDb.skippedReason
+        ? `Database demo hse_demo: dilewati (${demoDb.skippedReason})`
+        : `Database demo hse_demo ${demoDb.created ? 'dibuat' : 'sudah ada'}; konektor ${demoDb.connectorId}`,
+    );
+  }
 
   if (demoUsersCreated > 0) {
     await ds.query(

@@ -4,7 +4,7 @@ import type { PublicConfigDto } from '@bara/shared';
 import { apiGet } from '@/api/http';
 
 export const useConfigStore = defineStore('config', () => {
-  const appName = ref('BeLead AI');
+  const appName = ref('ContributorAI');
   const timezone = ref('Asia/Jakarta');
   const showTokenUsage = ref(true);
   const loaded = ref(false);

@@ -1,4 +1,4 @@
-# Runbook — BeLead AI
+# Runbook — ContributorAI
 
 Panduan operasional harian: menjalankan, memverifikasi, dan memulihkan sistem. Riwayat desain ada di [`architecture.md`](architecture.md); aturan izin di [`rbac.md`](rbac.md).
 
@@ -33,6 +33,10 @@ Cek cepat: `http://localhost:3000/api/health` → `{"data":{"status":"ok",...}}`
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
 | `infra/.env`    | kredensial Postgres/Redis untuk host remote                                                                                                       | diabaikan |
 | `apps/api/.env` | `DATABASE_URL`, `TEST_DATABASE_URL`, `CORS_ORIGINS`, cookie, `AI_PROVIDER`/`AI_MODEL`/`AI_BASE_URL`, (opsional) `REDIS_URL`, `OPENROUTER_API_KEY` | diabaikan |
+
+Pencarian web: `TAVILY_API_KEY`, `FIRECRAWL_API_KEY`, `BRAVE_SEARCH_API_KEY`, `WEB_SEARCH_MAX_ATTEMPTS`, `WEB_SEARCH_TIMEOUT_MS`, `WEB_SEARCH_MAX_RESULTS`, dan `WEB_SEARCH_MAX_CALLS_PER_TURN` di `apps/api/.env` (perlu restart API). Penyedia tanpa key dilewati. Urutan prioritas diatur di menu Provider AI dan tidak perlu restart.
+
+Guardrails: `GUARDRAILS_SECRET_KEY` (32 byte base64, `openssl rand -base64 32`) di `apps/api/.env` (perlu restart API). Tanpa kunci, Guardrails tidak bisa diaktifkan. Pengaturannya di menu Guardrails dan tidak perlu restart. Jangan mengganti kunci saat ada percakapan aktif: kamus lama di `guardrail_terms` tidak bisa dibuka lagi dan permintaan pada percakapan itu akan gagal; kosongkan tabel itu bila kunci harus diganti.
 
 Aturan: rahasia **hanya** di `.env` server-side. `OPENROUTER_API_KEY` tidak boleh masuk repo, argumen CLI, log, atau bundle frontend. Template ada di `*.env.example` (placeholder saja).
 

@@ -1,9 +1,12 @@
 import { AppError, ERROR_CODES } from '../../../common/errors/app-error';
-import { iterateSse } from './sse';
-import type {
-  AiProviderAdapter,
-  ChatRequestOptions,
-  ChatResult,
+import { fetchProvider, iterateSse } from './sse';
+import {
+  parseToolInput,
+  type AiProviderAdapter,
+  type ChatMessage,
+  type ChatRequestOptions,
+  type ChatResult,
+  type ChatToolCall,
 } from './types';
 
 interface OpenAiCompatibleConfig {
@@ -12,15 +15,22 @@ interface OpenAiCompatibleConfig {
   fetchImpl?: typeof fetch;
 }
 
+interface OpenAiToolCallDelta {
+  index?: number;
+  id?: string;
+  function?: { name?: string; arguments?: string };
+}
+
 interface OpenAiChoiceMessage {
   role?: string;
-  content?: string | Array<{ type?: string; text?: string }>;
+  content?: string | Array<{ type?: string; text?: string }> | null;
+  tool_calls?: OpenAiToolCallDelta[];
 }
 
 interface OpenAiChunk {
   model?: string;
   choices?: Array<{
-    delta?: { content?: string; role?: string };
+    delta?: { content?: string; role?: string; tool_calls?: OpenAiToolCallDelta[] };
     message?: OpenAiChoiceMessage;
   }>;
   usage?: { prompt_tokens?: number; completion_tokens?: number };
@@ -34,6 +44,36 @@ function messageText(message: OpenAiChoiceMessage | undefined): string {
     return content.map((part) => part.text ?? '').join('');
   }
   return '';
+}
+
+type OpenAiMessage = { role: string; content: unknown; [key: string]: unknown };
+
+/**
+ * Ubah pesan netral menjadi format chat/completions:
+ * asisten dengan toolCalls → `tool_calls` (argumen string JSON), pesan `tool` → role `tool`.
+ */
+export function toOpenAiMessages(messages: ChatMessage[]): OpenAiMessage[] {
+  return messages.map((message): OpenAiMessage => {
+    if (message.role === 'tool') {
+      return {
+        role: 'tool',
+        tool_call_id: message.toolCallId ?? '',
+        content: message.content,
+      };
+    }
+    if (message.role === 'assistant' && message.toolCalls && message.toolCalls.length > 0) {
+      return {
+        role: 'assistant',
+        content: message.content.trim() ? message.content : null,
+        tool_calls: message.toolCalls.map((call) => ({
+          id: call.id,
+          type: 'function',
+          function: { name: call.name, arguments: JSON.stringify(call.input ?? {}) },
+        })),
+      };
+    }
+    return { role: message.role, content: message.content };
+  });
 }
 
 /** Adapter untuk endpoint kompatibel OpenAI (/chat/completions): OpenRouter, OpenAI, Ollama. */
@@ -56,10 +96,7 @@ export class OpenAiCompatibleProvider implements AiProviderAdapter {
   }
 
   private body(options: ChatRequestOptions, stream: boolean): Record<string, unknown> {
-    const messages: Array<{ role: string; content: unknown }> = options.messages.map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    const messages = toOpenAiMessages(options.messages);
     if (options.images && options.images.length > 0) {
       for (let index = messages.length - 1; index >= 0; index -= 1) {
         if (messages[index]!.role !== 'user') continue;
@@ -84,6 +121,18 @@ export class OpenAiCompatibleProvider implements AiProviderAdapter {
       max_tokens: options.maxTokens,
       ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
       messages: [{ role: 'system', content: options.systemPrompt }, ...messages],
+      ...(options.tools && options.tools.length > 0
+        ? {
+            tools: options.tools.map((tool) => ({
+              type: 'function',
+              function: {
+                name: tool.name,
+                description: tool.description,
+                parameters: tool.inputSchema,
+              },
+            })),
+          }
+        : {}),
     };
   }
 
@@ -104,7 +153,7 @@ export class OpenAiCompatibleProvider implements AiProviderAdapter {
   }
 
   async chat(options: ChatRequestOptions): Promise<ChatResult> {
-    const response = await this.fetchImpl(this.endpoint('/chat/completions'), {
+    const response = await fetchProvider(this.fetchImpl, this.endpoint('/chat/completions'), {
       method: 'POST',
       headers: this.headers(),
       body: JSON.stringify(this.body(options, false)),
@@ -116,20 +165,33 @@ export class OpenAiCompatibleProvider implements AiProviderAdapter {
       choices?: Array<{ message?: OpenAiChoiceMessage }>;
       usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
-    const content = messageText(json.choices?.[0]?.message).trim();
-    if (!content) {
-      throw new AppError(ERROR_CODES.aiUpstreamError, 'Penyedia AI mengembalikan jawaban kosong.', 502);
+    const message = json.choices?.[0]?.message;
+    const content = messageText(message).trim();
+    const toolCalls: ChatToolCall[] = (message?.tool_calls ?? [])
+      .filter((call) => call.function?.name)
+      .map((call) => ({
+        id: call.id ?? '',
+        name: call.function?.name ?? '',
+        input: parseToolInput(call.function?.arguments ?? ''),
+      }));
+    if (!content && toolCalls.length === 0) {
+      throw new AppError(
+        ERROR_CODES.aiUpstreamError,
+        'Penyedia AI mengembalikan jawaban kosong.',
+        502,
+      );
     }
     return {
       content,
       model: json.model ?? options.model,
       tokensIn: json.usage?.prompt_tokens ?? null,
       tokensOut: json.usage?.completion_tokens ?? null,
+      ...(toolCalls.length > 0 ? { toolCalls } : {}),
     };
   }
 
   async *stream(options: ChatRequestOptions): AsyncGenerator<string, ChatResult> {
-    const response = await this.fetchImpl(this.endpoint('/chat/completions'), {
+    const response = await fetchProvider(this.fetchImpl, this.endpoint('/chat/completions'), {
       method: 'POST',
       headers: this.headers(),
       body: JSON.stringify(this.body(options, true)),
@@ -141,6 +203,7 @@ export class OpenAiCompatibleProvider implements AiProviderAdapter {
     let model = options.model;
     let tokensIn: number | null = null;
     let tokensOut: number | null = null;
+    const pendingTools = new Map<number, { id: string; name: string; args: string }>();
     for await (const raw of iterateSse(response)) {
       const chunk = raw as OpenAiChunk;
       if (typeof chunk.model === 'string' && chunk.model) model = chunk.model;
@@ -149,15 +212,30 @@ export class OpenAiCompatibleProvider implements AiProviderAdapter {
         text += delta.content;
         yield delta.content;
       }
+      for (const call of delta?.tool_calls ?? []) {
+        const index = call.index ?? 0;
+        const pending = pendingTools.get(index) ?? { id: '', name: '', args: '' };
+        if (call.id) pending.id = call.id;
+        if (call.function?.name) pending.name = call.function.name;
+        if (call.function?.arguments) pending.args += call.function.arguments;
+        pendingTools.set(index, pending);
+      }
       if (chunk.usage) {
         tokensIn = chunk.usage.prompt_tokens ?? tokensIn;
         tokensOut = chunk.usage.completion_tokens ?? tokensOut;
       }
     }
     const content = text.trim();
-    if (!content) {
-      throw new AppError(ERROR_CODES.aiUpstreamError, 'Penyedia AI mengembalikan jawaban kosong.', 502);
+    const toolCalls: ChatToolCall[] = [...pendingTools.values()]
+      .filter((tool) => tool.name)
+      .map((tool) => ({ id: tool.id, name: tool.name, input: parseToolInput(tool.args) }));
+    if (!content && toolCalls.length === 0) {
+      throw new AppError(
+        ERROR_CODES.aiUpstreamError,
+        'Penyedia AI mengembalikan jawaban kosong.',
+        502,
+      );
     }
-    return { content, model, tokensIn, tokensOut };
+    return { content, model, tokensIn, tokensOut, ...(toolCalls.length > 0 ? { toolCalls } : {}) };
   }
 }

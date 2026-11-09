@@ -1,4 +1,4 @@
-# Arsitektur BeLead AI
+# Arsitektur ContributorAI
 
 > Fase 1–6: Fondasi + Autentikasi + RBAC + AI Workspace + tiga pusat (Knowledge, Agent, Integration). Dokumen ini menjelaskan struktur, alur, dan keputusan desain utama.
 
@@ -111,6 +111,28 @@ Tiga mode interaksi AI, masing-masing dikunci permission tersendiri di bawah apl
 **Integration Center** (`integrations/`). Dua jenis konektor: **MCP server** (URL endpoint, jenis transport) dan **REST connector** (base URL + daftar endpoint peralatan `GET|POST` yang diparsing dari teks `METHOD /path`). Kesehatan dicek eksplisit lewat tombol "Periksa kesehatan" (bukan latar) dan hasilnya (`last_health_ok/at`) ditampilkan sebagai lencana. Status kredensial provider AI disajikan **boolean terkonfigurasi/belum** — nama variabel env boleh tampil, nilai rahasia tidak pernah keluar dari server.
 
 Ketiga pusat mengikuti konvensi yang sama: guard permission per endpoint, amplop `paginated()` untuk daftar, audit event untuk mutasi, dan DTO query ketat (`whitelist + forbidNonWhitelisted`) — parameter filter baru harus dideklarasikan eksplisit di DTO turunan `PaginationQueryDto`.
+
+### 3.7 Pencarian Web
+
+Opsi "Cari di web" tersedia per percakapan (Multi Brain, Partner) dan per tugas (Subordinate), bawaannya nonaktif. Saat aktif, model mendapat tool `web_search` dan `web_read` lewat tool loop yang sama dengan konektor (`ai/web-search/`).
+
+- **Izin**: `ai.websearch.use`. UI menyembunyikan opsi tanpa izin; server menolak `webSearch: true` dengan 403 dan tidak membangun tool tanpa izin. Tugas memeriksa ulang izin pemilik setiap kali dijalankan.
+- **Penyedia**: Tavily, Firecrawl, Brave Search. API key dan batas ada di `.env`; urutan prioritas ada di `app_config` (`ai.web_search_priority`) dan diatur admin dengan seret-lepas di menu Provider AI (`config.manage`), berlaku tanpa restart.
+- **Failover**: gangguan teknis (jaringan, batas waktu, 408, 429, 5xx, Tavily 434) diulang sampai 3 percobaan per penyedia. Masalah token atau langganan (key kosong, 401, 402, 403, Tavily 432/433, kode Brave `SUBSCRIPTION_TOKEN_INVALID`/`QUOTA_LIMITED`) langsung pindah ke penyedia berikutnya tanpa diulang. Tombol Stop menghentikan rantai.
+- **`web_read`**: URL internal ditolak (`assertPublicUrl`). Halaman dibaca lewat penyedia yang mendukung ekstraksi (Tavily, Firecrawl), lalu crawler bawaan sebagai cadangan.
+- **Keamanan data**: hasil web diperlakukan sebagai data tidak tepercaya. Audit `ai.web_search.called` hanya mencatat metadata (penyedia, percobaan, jumlah hasil), bukan kata kunci, karena percakapan bersifat privat.
+
+### 3.8 Guardrails
+
+Data pribadi dimasking sebelum keluar ke penyedia LLM dan dikembalikan saat jawaban tiba. `GuardedProvider` membungkus adapter di `AiGatewayService.resolveAdapter()`, sehingga semua proses tercakup tanpa kode tambahan di pemanggil. Nonaktif secara bawaan; hanya pemegang `ai.guardrails.manage` yang bisa mengubahnya di menu Guardrails.
+
+- **Token:** karakter pertama tetap, 3 karakter pertama digeser +1, lalu HMAC 12 karakter (`Medisa` → `MNFE…`). Email menjadi `token@token.com`. Hash tidak bisa dibalik, jadi unmask memakai peta di memori per permintaan.
+- **Deteksi** (`guardrails/detectors.ts`): kolom tabel/CSV/JSON, `kunci: nilai`, pola tetap, kata pemicu, nama pengguna aplikasi, dan istilah dari admin. Katalog kategori ada di `packages/shared/src/guardrails.ts`.
+- **Kamus:** nilai tanpa pola disimpan terenkripsi di `guardrail_terms` per percakapan atau tugas, karena hasil tool tidak ikut riwayat giliran berikutnya.
+- **Tool:** argumen tool internal di-unmask; `web_search` dan `web_read` (`keepMasked`) tetap memakai token.
+- **Info di pesan:** jumlah per kategori disimpan di `conversation_messages.guardrails` dan ditampilkan di atas tanggal jawaban.
+- **Gagal tertutup:** bila masking gagal atau kunci hilang, permintaan dibatalkan dan tidak ada data terkirim.
+- **Batasan:** nama di kalimat bebas tanpa petunjuk bisa lolos; gambar tidak bisa dimasking (diblokir bila opsinya aktif); token adalah pseudonimisasi, bukan anonimisasi. Audit hanya mencatat jumlah per kategori.
 
 ## 4. Frontend (apps/web)
 

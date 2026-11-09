@@ -181,7 +181,8 @@ function setFocus(id: string): void {
 
 function nodeRadius(d: Datum, isCenter: boolean): number {
   if (isCenter) return 36;
-  if (d.kind === 'person') return Math.min(7 + Math.sqrt(d.total) * 2.4, 24);
+  // Semua donat person berukuran sama; komposisi mode ditunjukkan oleh irisan donat.
+  if (d.kind === 'person') return 20;
   return Math.min(15 + Math.sqrt(d.total) * 1.6, 34);
 }
 
@@ -237,11 +238,12 @@ function draw(): void {
     d3.zoomIdentity.translate(width / 2 - cx * scale, height / 2 - cy * scale).scale(scale),
   );
 
-  layer
+  const links = root.links() as d3.HierarchyPointLink<Datum>[];
+  const linkPaths = layer
     .append('g')
     .attr('fill', 'none')
     .selectAll('path')
-    .data(root.links() as d3.HierarchyPointLink<Datum>[])
+    .data(links)
     .join('path')
     .attr(
       'd',
@@ -250,12 +252,24 @@ function draw(): void {
         .angle((n) => n.x)
         .radius((n) => n.y) as unknown as string,
     )
-    .style('stroke', 'var(--ca-stroke-2)')
-    .style('stroke-width', 1.4)
-    .style('opacity', 0)
-    .transition()
-    .duration(450)
-    .style('opacity', 0.8);
+    .style('stroke', 'var(--ca-color-brand)')
+    .style('stroke-width', 1.8)
+    .style('stroke-dasharray', '6 6')
+    .style('opacity', 0);
+  linkPaths.transition().duration(450).style('opacity', 0.55);
+
+  // Dash bergeser dari simpul tengah (awal path) ke ujung; dilewati bila pengguna meminta gerak minimal.
+  if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    linkPaths.each(function () {
+      d3.select(this)
+        .append('animate')
+        .attr('attributeName', 'stroke-dashoffset')
+        .attr('from', 0)
+        .attr('to', -12)
+        .attr('dur', '0.8s')
+        .attr('repeatCount', 'indefinite');
+    });
+  }
 
   const nodes = layer
     .append('g')
@@ -321,7 +335,7 @@ function draw(): void {
           .text(initials(person.displayName))
           .attr('text-anchor', 'middle')
           .attr('dy', '0.35em')
-          .style('font-size', '9px')
+          .style('font-size', '13px')
           .style('font-weight', 600)
           .style('fill', 'var(--ca-fg-1)')
           .style('pointer-events', 'none');

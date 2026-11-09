@@ -1,5 +1,6 @@
 import { apiDelete, apiGet, apiGetPaged, apiPatch, apiPost, apiPut, type PaginatedResult } from '@/api/http';
 import type { PagedQuery } from '@/composables/usePagedList';
+import type { GuardrailSettingsDto } from '@bara/shared';
 import type {
   AdminConfigEntry,
   AdminNavApplication,
@@ -30,6 +31,30 @@ export function revokeSession(id: string): Promise<unknown> {
 
 export function getProviders(): Promise<AdminProvidersOverview> {
   return apiGet<AdminProvidersOverview>('/admin/providers');
+}
+
+export interface WebSearchProvider {
+  id: 'tavily' | 'firecrawl' | 'brave';
+  name: string;
+  configured: boolean;
+}
+
+export function getWebSearchProviders(): Promise<WebSearchProvider[]> {
+  return apiGet<WebSearchProvider[]>('/admin/web-search/providers');
+}
+
+export function setWebSearchPriority(order: WebSearchProvider['id'][]): Promise<WebSearchProvider[]> {
+  return apiPut<WebSearchProvider[]>('/admin/web-search/priority', { order });
+}
+
+export function getGuardrails(): Promise<GuardrailSettingsDto> {
+  return apiGet<GuardrailSettingsDto>('/admin/guardrails');
+}
+
+export function updateGuardrails(
+  settings: Omit<GuardrailSettingsDto, 'keyConfigured'>,
+): Promise<GuardrailSettingsDto> {
+  return apiPut<GuardrailSettingsDto>('/admin/guardrails', settings);
 }
 
 export function getAdminNavTree(): Promise<AdminNavTree> {

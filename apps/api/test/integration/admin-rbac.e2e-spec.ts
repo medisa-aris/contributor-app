@@ -1,3 +1,4 @@
+import { ALL_PERMISSION_IDS } from '@bara/shared';
 import type { INestApplication } from '@nestjs/common';
 import type { DataSource } from 'typeorm';
 import { ERROR_CODES } from '../../src/common/errors/app-error';
@@ -43,16 +44,16 @@ describe('Admin RBAC (e2e)', () => {
     expect(roles).toHaveLength(4);
     const administrator = roles.find((r) => r.code === 'administrator');
     expect(administrator?.is_system).toBe(true);
-    expect(administrator?.permission_count).toBe(39);
+    expect(administrator?.permission_count).toBe(ALL_PERMISSION_IDS.length);
     const hr = roles.find((r) => r.code === 'hr_admin');
     expect(hr?.is_system).toBe(false);
     expect(hr?.permission_count).toBe(4);
   });
 
-  it('katalog permission berisi 39 identifier aktif', async () => {
+  it('katalog permission berisi semua identifier aktif', async () => {
     const res = await asClient(app, admin).get('/api/admin/permissions').expect(200);
     const items = res.body.data as { identifier: string; role_count: number }[];
-    expect(items).toHaveLength(39);
+    expect(items).toHaveLength(ALL_PERMISSION_IDS.length);
     const adminAccess = items.find((i) => i.identifier === 'admin.access');
     expect(adminAccess?.role_count).toBeGreaterThanOrEqual(2);
   });

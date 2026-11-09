@@ -24,6 +24,9 @@ import { useAuthStore } from '@/stores/auth.store';
 import { useToastStore } from '@/stores/toast.store';
 import { usePagedList } from '@/composables/usePagedList';
 import { formatDateTime } from '@/utils/format';
+import ConnectorGrantsDialog from '@/components/integrations/ConnectorGrantsDialog.vue';
+import DbConnectorsSection from '@/components/integrations/DbConnectorsSection.vue';
+import McpToolsDialog from '@/components/integrations/McpToolsDialog.vue';
 import {
   CaBadge,
   CaButton,
@@ -108,6 +111,23 @@ async function toggleMcp(row: McpServerRow, enabled: boolean): Promise<void> {
 }
 
 const healthRunning = ref<Set<string>>(new Set());
+
+// --- Akses (grant) server MCP ---
+const mcpGrantsOpen = ref(false);
+const mcpGrantsFor = ref<McpServerRow | null>(null);
+
+function openMcpGrants(row: McpServerRow): void {
+  mcpGrantsFor.value = row;
+  mcpGrantsOpen.value = true;
+}
+
+const mcpToolsOpen = ref(false);
+const mcpToolsFor = ref<McpServerRow | null>(null);
+
+function openMcpTools(row: McpServerRow): void {
+  mcpToolsFor.value = row;
+  mcpToolsOpen.value = true;
+}
 
 async function checkMcp(row: McpServerRow): Promise<void> {
   const next = new Set(healthRunning.value);
@@ -519,13 +539,36 @@ onMounted(() => {
                 {{ t('integrations.oauthConnect') }}
               </CaButton>
             </template>
+            <CaButton size="small" variant="secondary" @click="openMcpTools(row as McpServerRow)">
+              {{ t('connectors.mcpTools') }}
+            </CaButton>
+            <CaButton size="small" variant="primary" @click="openMcpGrants(row as McpServerRow)">
+              {{ t('connectors.access') }}
+            </CaButton>
             <CaButton size="small" variant="danger" @click="removeMcp(row as McpServerRow)">
               {{ t('common.delete') }}
             </CaButton>
           </div>
         </template>
       </CaTable>
+      <ConnectorGrantsDialog
+        v-if="mcpGrantsFor"
+        v-model:open="mcpGrantsOpen"
+        connector-type="mcp"
+        :connector-id="mcpGrantsFor.id"
+        :connector-name="mcpGrantsFor.name"
+        :can-configure="canConfigure"
+      />
+      <McpToolsDialog
+        v-if="mcpToolsFor"
+        v-model:open="mcpToolsOpen"
+        :server-id="mcpToolsFor.id"
+        :server-name="mcpToolsFor.name"
+        :can-configure="canConfigure"
+      />
     </section>
+
+    <DbConnectorsSection v-if="canView" :can-configure="canConfigure" />
 
     <section>
       <div class="int-section-head">

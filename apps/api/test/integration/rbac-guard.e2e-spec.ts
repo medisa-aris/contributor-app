@@ -1,9 +1,15 @@
+import { ALL_PERMISSION_IDS } from '@bara/shared';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import type { DataSource } from 'typeorm';
 import { ERROR_CODES } from '../../src/common/errors/app-error';
 import { asClient, loginAs } from './helpers/auth-as';
-import { resetDatabase, seedTestFixtures, TEST_PASSWORD, type TestFixtures } from './helpers/reset-db';
+import {
+  resetDatabase,
+  seedTestFixtures,
+  TEST_PASSWORD,
+  type TestFixtures,
+} from './helpers/reset-db';
 import { createTestApp } from './helpers/test-app';
 
 describe('Permission guard & audit (e2e)', () => {
@@ -24,17 +30,13 @@ describe('Permission guard & audit (e2e)', () => {
   });
 
   it('tanpa sesi, endpoint ber-permission tetap 401 (bukan 403)', async () => {
-    const res = await request(app.getHttpServer())
-      .get('/api/rbac/diagnostics/summary')
-      .expect(401);
+    const res = await request(app.getHttpServer()).get('/api/rbac/diagnostics/summary').expect(401);
     expect(res.body.error.code).toBe(ERROR_CODES.unauthenticated);
   });
 
   it('staf tanpa admin.access ditolak 403 dengan detail missing', async () => {
     const client = await loginAs(app, 'staf@test.local');
-    const res = await asClient(app, client)
-      .get('/api/rbac/diagnostics/summary')
-      .expect(403);
+    const res = await asClient(app, client).get('/api/rbac/diagnostics/summary').expect(403);
     expect(res.body.error.code).toBe(ERROR_CODES.forbidden);
     expect(res.body.error.details.required).toContain('admin.access');
     expect(res.body.error.details.missing).toContain('admin.access');
@@ -42,12 +44,10 @@ describe('Permission guard & audit (e2e)', () => {
 
   it('manajer dengan admin.access dapat mengakses summary', async () => {
     const client = await loginAs(app, 'manager@test.local');
-    const res = await asClient(app, client)
-      .get('/api/rbac/diagnostics/summary')
-      .expect(200);
+    const res = await asClient(app, client).get('/api/rbac/diagnostics/summary').expect(200);
     expect(res.body.data.userId).toBe(fixtures.users.manager);
     expect(res.body.data.isSuperadmin).toBe(false);
-    expect(res.body.data.totalPermissions).toBe(39);
+    expect(res.body.data.totalPermissions).toBe(ALL_PERMISSION_IDS.length);
     expect(res.body.data.allowedCount).toBeGreaterThan(0);
     expect(res.body.data.deniedCount).toBeGreaterThan(0);
   });
@@ -66,7 +66,7 @@ describe('Permission guard & audit (e2e)', () => {
       .get('/api/rbac/diagnostics/effective-permissions')
       .expect(200);
     expect(res.body.data.user.id).toBe(fixtures.users.admin);
-    expect(res.body.data.decisions.length).toBe(39);
+    expect(res.body.data.decisions.length).toBe(ALL_PERMISSION_IDS.length);
     expect(res.body.data.allowed).toContain('rbac.roles.manage');
     const decide = res.body.data.decisions.find(
       (d: { permission: string }) => d.permission === 'rbac.roles.manage',
@@ -82,13 +82,12 @@ describe('Permission guard & audit (e2e)', () => {
     const res = await asClient(app, client)
       .get('/api/rbac/diagnostics/effective-permissions')
       .expect(200);
-    expect(res.body.data.allowed.length).toBe(39);
+    expect(res.body.data.allowed.length).toBe(ALL_PERMISSION_IDS.length);
     const decide = res.body.data.decisions.find(
       (d: { permission: string }) => d.permission === 'rbac.policies.manage',
     );
     expect(decide.reason).toBe('superadmin');
   });
-
 
   it('logout dan logout-all tercatat di audit_events dengan severity benar', async () => {
     const logoutClient = await loginAs(app, 'staf@test.local');
@@ -133,7 +132,12 @@ describe('Permission guard & audit (e2e)', () => {
     const rows = (await dataSource.query(
       `SELECT actor_ip, actor_user_agent, request_id, actor_user_id FROM audit_events
         WHERE event_key = 'auth.session.revoked'`,
-    )) as { actor_ip: string | null; actor_user_agent: string | null; request_id: string | null; actor_user_id: string }[];
+    )) as {
+      actor_ip: string | null;
+      actor_user_agent: string | null;
+      request_id: string | null;
+      actor_user_id: string;
+    }[];
     expect(rows.length).toBe(1);
     const row = rows[0]!;
     expect(row.actor_user_id).toBe(fixtures.users.staf);
@@ -143,9 +147,7 @@ describe('Permission guard & audit (e2e)', () => {
 
   it('id sesi tidak valid ditolak 404 (bukan 500)', async () => {
     const client = await loginAs(app, 'staf@test.local');
-    const res = await asClient(app, client)
-      .delete('/api/auth/sessions/bukan-uuid')
-      .expect(404);
+    const res = await asClient(app, client).delete('/api/auth/sessions/bukan-uuid').expect(404);
     expect(res.body.error.code).toBe(ERROR_CODES.notFound);
   });
 

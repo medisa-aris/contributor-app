@@ -70,6 +70,7 @@ export const router = createRouter({
         admin('administration/config', 'admin-config', () => import('@/views/admin/ConfigAdminView.vue'), 'config.read'),
         admin('administration/sessions', 'admin-sessions', () => import('@/views/admin/SessionsAdminView.vue'), 'security.sessions.manage'),
         admin('administration/providers', 'admin-providers', () => import('@/views/admin/ProvidersAdminView.vue'), 'providers.health.read'),
+        admin('administration/guardrails', 'admin-guardrails', () => import('@/views/admin/GuardrailsAdminView.vue'), 'ai.guardrails.manage'),
         {
           path: 'workspace',
           name: 'workspace',
@@ -80,6 +81,7 @@ export const router = createRouter({
         admin('workspace/counterpart', 'workspace-counterpart', () => import('@/views/CounterpartView.vue'), 'ai.counterpart.analyze'),
         admin('workspace/subordinate', 'workspace-subordinate', () => import('@/views/SubordinateView.vue'), 'ai.subordinate.execute'),
         admin('workspace/history', 'workspace-history', () => import('@/views/WorkspaceHistoryView.vue'), 'ai.workspace.history.read'),
+        admin('workspace/documents', 'workspace-documents', () => import('@/views/MyDocumentsView.vue'), 'ai.documents.manage'),
         admin('workspace/mind-map', 'workspace-mind-map', () => import('@/views/MindMapView.vue'), 'ai.mindmap.team.read'),
         admin('knowledge/documents', 'knowledge-documents', () => import('@/views/knowledge/KnowledgeDocumentsView.vue'), 'knowledge.documents.read'),
         admin('knowledge/collections', 'knowledge-collections', () => import('@/views/knowledge/KnowledgeCollectionsView.vue'), 'knowledge.collections.read'),

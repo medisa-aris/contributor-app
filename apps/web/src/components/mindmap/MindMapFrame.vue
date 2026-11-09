@@ -1,16 +1,14 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { CaIcon, CaTabs } from '@/components/ui';
 import type { MindMapMode, MindMapQuery } from '@/api/mindmap/types';
-import { useUiStore } from '@/stores/ui.store';
+import { useFullscreen } from '@/composables/useFullscreen';
 import MappingTab from './MappingTab.vue';
 import ThoughtStructureTab from './ThoughtStructureTab.vue';
 import { MODE_COLORS, MODE_ORDER } from './mode-colors';
 
 const { t } = useI18n();
-const ui = useUiStore();
-
 const tab = ref<'mapping' | 'thinking'>('mapping');
 const tabs = computed(() => [
   { key: 'mapping', label: t('workspace.mindMap.tabs.mapping') },
@@ -41,32 +39,7 @@ function setDays(value: number): void {
   applyQuery();
 }
 
-async function setFullscreen(value: boolean): Promise<void> {
-  ui.setFullscreen(value);
-  try {
-    if (value && !document.fullscreenElement) await document.documentElement.requestFullscreen?.();
-    else if (!value && document.fullscreenElement) await document.exitFullscreen?.();
-  } catch {
-    // Layar penuh peramban opsional; tata letak tetap bekerja tanpanya.
-  }
-}
-
-function onFullscreenChange(): void {
-  if (!document.fullscreenElement && ui.fullscreen) ui.setFullscreen(false);
-}
-function onKeydown(event: KeyboardEvent): void {
-  if (event.key === 'Escape' && ui.fullscreen) void setFullscreen(false);
-}
-
-onMounted(() => {
-  document.addEventListener('fullscreenchange', onFullscreenChange);
-  document.addEventListener('keydown', onKeydown);
-});
-onBeforeUnmount(() => {
-  document.removeEventListener('fullscreenchange', onFullscreenChange);
-  document.removeEventListener('keydown', onKeydown);
-  void setFullscreen(false);
-});
+const { ui, setFullscreen } = useFullscreen();
 </script>
 
 <template>

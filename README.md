@@ -1,4 +1,4 @@
-# BeLead AI — Berau Coal Leadership AI Companion
+# ContributorAI
 
 Enterprise Employee AI Enablement Framework — aplikasi web full-stack yang menyiapkan karyawan memakai AI dalam tiga peran:
 
@@ -79,7 +79,7 @@ Salin `apps/api/.env.example` ke `apps/api/.env` (di-gitignore). Variabel utama:
 
 ### MCP dengan OAuth (Integration Center)
 
-Server MCP dapat memakai autentikasi **OAuth** (mis. Metabase `ptbc-hse-data`): BeLead AI melakukan discovery metadata, mendaftarkan client (RFC 7591) atau memakai **client ID manual** (tombol *Client OAuth*), lalu alur otorisasi PKCE S256. Token disimpan terenkripsi dan disegarkan otomatis; hanya scope baca yang diminta. Catatan: Metabase hanya menerima redirect `https` (atau `localhost`), dan gateway dapat memblokir pendaftaran dinamis dari `localhost` — gunakan domain https atau client ID manual dari admin Metabase.
+Server MCP dapat memakai autentikasi **OAuth** (mis. Metabase `ptbc-hse-data`): ContributorAI melakukan discovery metadata, mendaftarkan client (RFC 7591) atau memakai **client ID manual** (tombol *Client OAuth*), lalu alur otorisasi PKCE S256. Token disimpan terenkripsi dan disegarkan otomatis; hanya scope baca yang diminta. Catatan: Metabase hanya menerima redirect `https` (atau `localhost`), dan gateway dapat memblokir pendaftaran dinamis dari `localhost` — gunakan domain https atau client ID manual dari admin Metabase.
 
 ## Tema dan warna
 

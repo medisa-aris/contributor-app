@@ -19,6 +19,14 @@ export interface AppConfig {
   openaiApiKey: string | null;
   anthropicApiKey: string | null;
   ollamaBaseUrl: string | null;
+  tavilyApiKey: string | null;
+  firecrawlApiKey: string | null;
+  braveSearchApiKey: string | null;
+  guardrailsSecretKey: string | null;
+  webSearchMaxAttempts: number;
+  webSearchTimeoutMs: number;
+  webSearchMaxResults: number;
+  webSearchMaxCallsPerTurn: number;
 }
 
 function parseBoolean(value: string | undefined, fallback: boolean): boolean {
@@ -49,5 +57,13 @@ export default (): { app: AppConfig } => ({
     openaiApiKey: process.env.OPENAI_API_KEY ?? null,
     anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? null,
     ollamaBaseUrl: process.env.OLLAMA_BASE_URL ?? null,
+    tavilyApiKey: process.env.TAVILY_API_KEY?.trim() || null,
+    firecrawlApiKey: process.env.FIRECRAWL_API_KEY?.trim() || null,
+    braveSearchApiKey: process.env.BRAVE_SEARCH_API_KEY?.trim() || null,
+    guardrailsSecretKey: process.env.GUARDRAILS_SECRET_KEY?.trim() || null,
+    webSearchMaxAttempts: Number(process.env.WEB_SEARCH_MAX_ATTEMPTS || 3),
+    webSearchTimeoutMs: Number(process.env.WEB_SEARCH_TIMEOUT_MS || 15000),
+    webSearchMaxResults: Number(process.env.WEB_SEARCH_MAX_RESULTS || 5),
+    webSearchMaxCallsPerTurn: Number(process.env.WEB_SEARCH_MAX_CALLS_PER_TURN || 5),
   },
 });

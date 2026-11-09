@@ -9,7 +9,7 @@ import { DATA_SOURCE } from '../../database/database.module';
 const FETCH_TIMEOUT_MS = 10_000;
 const STATE_TTL_MINUTES = 10;
 const REFRESH_SKEW_MS = 60_000;
-const CLIENT_NAME = 'BeLead AI';
+const CLIENT_NAME = 'ContributorAI';
 export const OAUTH_CALLBACK_PATH = '/integrations/oauth/callback';
 
 /** Cakupan baca-saja yang diminta bila server menyediakannya (prinsip hak akses minimum). */
@@ -261,7 +261,7 @@ export class McpOauthService {
     this.assertSafeUrl(url);
     const response = await fetch(url, {
       ...init,
-      headers: { Accept: 'application/json', 'User-Agent': 'BeLead-OAuth/1.0', ...(init?.headers ?? {}) },
+      headers: { Accept: 'application/json', 'User-Agent': 'ContributorAI-OAuth/1.0', ...(init?.headers ?? {}) },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       redirect: 'error',
     });

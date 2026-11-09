@@ -7,7 +7,7 @@ import {
   Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { AUDIT_EVENTS, PERMISSIONS } from '@bara/shared';
+import { AUDIT_EVENTS, isGuardrailConfigKey, PERMISSIONS } from '@bara/shared';
 import type { PublicConfigDto } from '@bara/shared';
 import { DataSource } from 'typeorm';
 import { Audit } from '../../common/decorators/audit.decorator';
@@ -33,7 +33,7 @@ export class ConfigController {
     )) as { key: string; value: unknown }[];
     const map = new Map(rows.map((r) => [r.key, r.value]));
     return {
-      appName: String(map.get('app.name') ?? 'BeLead AI'),
+      appName: String(map.get('app.name') ?? 'ContributorAI'),
       defaultLocale: String(map.get('app.default_locale') ?? 'id'),
       defaultTheme: (map.get('app.default_theme') ?? 'system') as PublicConfigDto['defaultTheme'],
       timezone: String(map.get('app.timezone') ?? 'Asia/Jakarta'),
@@ -45,7 +45,8 @@ export class ConfigController {
   @Get('admin/config')
   async list() {
     return (await this.dataSource.query(
-      `SELECT key, value, description, is_public, updated_at, updated_by FROM app_config ORDER BY key`,
+      `SELECT key, value, description, is_public, updated_at, updated_by
+         FROM app_config WHERE key NOT LIKE 'ai.guardrails_%' ORDER BY key`,
     )) as unknown[];
   }
 
@@ -57,6 +58,9 @@ export class ConfigController {
     @Param('key') key: string,
     @Body() dto: ConfigUpdateDto,
   ) {
+    if (isGuardrailConfigKey(key)) {
+      throw new AppError(ERROR_CODES.forbidden, 'Pengaturan Guardrails hanya dapat diubah di menu Guardrails.', 403);
+    }
     const rows = updatedRows<{ key: string }>(
       await this.dataSource.query(
         `UPDATE app_config SET value = $2::jsonb, updated_at = now(), updated_by = $3

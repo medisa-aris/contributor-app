@@ -1,9 +1,14 @@
 <script setup lang="ts">
+import { GUARDRAIL_CATEGORIES } from '@bara/shared';
+import type { ToolTraceStep } from '@/api/ai';
+import ToolTraceList from './ToolTraceList.vue';
 import { computed, onBeforeUnmount, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { CaIcon } from '@/components/ui';
 import { writeClipboard } from '@/utils/clipboard';
 import { formatDateTime, formatNumber } from '@/utils/format';
+import type { UserDocument } from '@/api/documents';
+import DocumentCard from './DocumentCard.vue';
 import MarkdownContent from './MarkdownContent.vue';
 
 const props = withDefaults(
@@ -17,6 +22,11 @@ const props = withDefaults(
     showTokens?: boolean;
     pending?: boolean;
     canRegenerate?: boolean;
+    documents?: UserDocument[];
+    activeDocumentId?: string | null;
+    toolSteps?: ToolTraceStep[];
+    busyApprovalId?: string | null;
+    guardrails?: Record<string, number> | null;
   }>(),
   {
     model: null,
@@ -26,10 +36,19 @@ const props = withDefaults(
     showTokens: false,
     pending: false,
     canRegenerate: false,
+    documents: () => [],
+    activeDocumentId: null,
+    toolSteps: () => [],
+    busyApprovalId: null,
+    guardrails: null,
   },
 );
 
-const emit = defineEmits<{ regenerate: [] }>();
+const emit = defineEmits<{
+  regenerate: [];
+  openDocument: [doc: UserDocument];
+  decide: [payload: { approvalId: string; decision: 'approved' | 'rejected' }];
+}>();
 
 const { t } = useI18n();
 
@@ -41,6 +60,40 @@ const showTokenMeta = computed(
     props.role === 'assistant' &&
     (props.tokensIn !== null || props.tokensOut !== null),
 );
+
+const webInfo = computed(() => {
+  if (props.role !== 'assistant' || props.pending) return '';
+  const steps = props.toolSteps.filter((s) => s.name === 'web_search' || s.name === 'web_read');
+  if (steps.length === 0) return '';
+  const done = steps.filter((s) => s.status === 'ok');
+  if (done.length === 0) return t('workspace.chat.webFailed');
+  const searches = done.filter((s) => s.name === 'web_search').length;
+  const pages = done.length - searches;
+  const sources = [...new Set(done.map((s) => s.source).filter(Boolean))];
+  return [
+    t('workspace.chat.webUsed'),
+    ...(searches > 0 ? [t('workspace.chat.webSearches', { n: searches })] : []),
+    ...(pages > 0 ? [t('workspace.chat.webPages', { n: pages })] : []),
+    ...(sources.length > 0 ? [sources.join(', ')] : []),
+  ].join(' · ');
+});
+
+const guardInfo = computed(() => {
+  if (props.role !== 'assistant' || props.pending || !props.guardrails) return '';
+  const entries = Object.entries(props.guardrails).filter(([, count]) => count > 0);
+  if (entries.length === 0) return '';
+  const total = entries.reduce((sum, [, count]) => sum + count, 0);
+  const labels = entries.map(
+    ([id]) =>
+      GUARDRAIL_CATEGORIES.find((category) => category.id === id)?.label ??
+      t('workspace.chat.guardCustom'),
+  );
+  return [
+    t('workspace.chat.guardMasked'),
+    t('workspace.chat.guardCount', { n: formatNumber(total) }),
+    labels.join(', '),
+  ].join(' · ');
+});
 
 let copiedTimer: number | undefined;
 
@@ -61,6 +114,13 @@ onBeforeUnmount(() => {
 <template>
   <article class="msg" :class="[`msg--${role}`, { 'msg--pending': pending }]">
     <div class="msg__body">
+      <ToolTraceList
+        v-if="role === 'assistant' && toolSteps.length > 0"
+        :steps="toolSteps"
+        :busy-approval-id="busyApprovalId"
+        :readonly="pending"
+        @decide="emit('decide', $event)"
+      />
       <p v-if="role === 'user'" class="msg__plain">{{ content }}</p>
       <div
         v-else-if="pending && !content"
@@ -73,7 +133,24 @@ onBeforeUnmount(() => {
         <span />
       </div>
       <MarkdownContent v-else :content="content" :pending="pending" />
+      <div v-if="documents.length > 0" class="msg__docs">
+        <DocumentCard
+          v-for="doc in documents"
+          :key="doc.id"
+          :doc="doc"
+          :active="doc.id === activeDocumentId"
+          @open="emit('openDocument', doc)"
+        />
+      </div>
     </div>
+    <p v-if="webInfo" class="msg__web">
+      <CaIcon name="search" :size="12" />
+      <span>{{ webInfo }}</span>
+    </p>
+    <p v-if="guardInfo" class="msg__web">
+      <CaIcon name="shield" :size="12" />
+      <span>{{ guardInfo }}</span>
+    </p>
     <footer class="msg__footer">
       <div v-if="role === 'assistant'" class="msg__meta">
         <span v-if="model" class="msg__model">{{ model }}</span>
@@ -132,6 +209,22 @@ onBeforeUnmount(() => {
   font-size: var(--ca-text-300);
   line-height: var(--ca-line-300);
   color: var(--ca-fg-1);
+}
+
+.msg__docs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ca-space-2);
+  margin-top: var(--ca-space-3);
+}
+
+.msg__web {
+  display: flex;
+  align-items: center;
+  gap: var(--ca-space-1);
+  margin: var(--ca-space-3) 0 0;
+  font-size: var(--ca-text-100);
+  color: var(--ca-fg-2);
 }
 
 .msg__footer {

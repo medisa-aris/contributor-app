@@ -23,7 +23,7 @@ describe('MarkdownContent', () => {
   });
 
   it('membuka tautan di tab baru dengan rel aman', () => {
-    const wrapper = mountMarkdown('[BeLead AI](https://example.com)');
+    const wrapper = mountMarkdown('[ContributorAI](https://example.com)');
     const link = wrapper.find('a');
     expect(link.attributes('target')).toBe('_blank');
     expect(link.attributes('rel')).toContain('noopener');

@@ -1,5 +1,5 @@
 import { ApiError, apiUrl, getCsrfToken } from '@/api/http';
-import type { ChatRequestPayload, StreamErrorInfo, StreamEvent } from './types';
+import type { ChatRequestPayload, StreamErrorInfo, StreamEvent, ToolTraceStep } from './types';
 
 /**
  * Chat streaming (SSE) ke POST /ai/chat/stream.
@@ -27,6 +27,7 @@ export async function chatStream(
       prompt: payload.prompt,
       conversationId: payload.conversationId,
       counterpartStyle: payload.counterpartStyle,
+      webSearch: payload.webSearch,
     }),
     signal,
   });
@@ -86,6 +87,9 @@ function dispatch(block: string, onEvent: (event: StreamEvent) => void): void {
       break;
     case 'delta':
       onEvent({ type: 'delta', text: String(body.text ?? '') });
+      break;
+    case 'tool':
+      onEvent({ type: 'tool', step: body as unknown as ToolTraceStep });
       break;
     case 'done':
       onEvent({
