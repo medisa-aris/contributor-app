@@ -23,6 +23,14 @@ export function validateEnv(raw: Record<string, unknown>): Record<string, unknow
     errors.push('SESSION_COOKIE_SECURE must be "true" when NODE_ENV=production');
   }
 
+  const appEnv = raw.APP_ENV;
+  if (appEnv !== undefined && appEnv !== '' && !['DEV', 'PROD'].includes(String(appEnv).trim().toUpperCase())) {
+    errors.push('APP_ENV must be "DEV" or "PROD"');
+  }
+  if (nodeEnv === 'production' && String(appEnv ?? '').trim().toUpperCase() === 'DEV') {
+    errors.push('APP_ENV must not be "DEV" when NODE_ENV=production');
+  }
+
   const guardrailsKey = raw.GUARDRAILS_SECRET_KEY;
   if (guardrailsKey && Buffer.from(String(guardrailsKey), 'base64').length !== 32) {
     errors.push('GUARDRAILS_SECRET_KEY must be 32 bytes encoded as base64');

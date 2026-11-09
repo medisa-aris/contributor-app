@@ -50,4 +50,5 @@ export interface PublicConfigDto {
   defaultTheme: ThemePreference;
   timezone: string;
   showTokenUsage: boolean;
+  environment: 'DEV' | 'PROD';
 }

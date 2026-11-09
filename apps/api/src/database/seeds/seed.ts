@@ -1,3 +1,4 @@
+import { resolveAppEnv } from '../../config/configuration';
 import { seedHseDemoDatabase } from './hse-demo-db';
 import {
   ALL_PERMISSION_IDS,
@@ -98,7 +99,7 @@ const HSE_EXTRA = JSON.parse(
 ) as HseExtraData;
 
 // Kredensial demo untuk domain lokal `.local` — hanya untuk pelatihan.
-// Pembuatan akun ini otomatis dilewati saat NODE_ENV=production.
+// Pembuatan akun ini otomatis dilewati pada lingkungan PROD.
 const DEMO_USERS: readonly {
   email: string;
   password: string;
@@ -827,8 +828,11 @@ async function seedDemoContent(ds: DataSource): Promise<void> {
 }
 
 async function seedDemoUsers(ds: DataSource): Promise<number> {
-  if (process.env.NODE_ENV === 'production') {
-    console.log('  Akun demo: dilewati (NODE_ENV=production)');
+  if (
+    process.env.NODE_ENV === 'production' ||
+    resolveAppEnv(process.env.APP_ENV, process.env.NODE_ENV) === 'PROD'
+  ) {
+    console.log('  Akun demo: dilewati (lingkungan PROD)');
     return 0;
   }
 

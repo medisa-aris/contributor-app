@@ -1,10 +1,16 @@
 import { ALL_PERMISSION_IDS } from '@bara/shared';
 import type { INestApplication } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import request from 'supertest';
 import type { DataSource } from 'typeorm';
 import { ERROR_CODES } from '../../src/common/errors/app-error';
 import { asClient, loginAs, type AuthedClient } from './helpers/auth-as';
-import { resetDatabase, seedTestFixtures, type TestFixtures } from './helpers/reset-db';
+import {
+  resetDatabase,
+  seedTestFixtures,
+  TEST_PASSWORD,
+  type TestFixtures,
+} from './helpers/reset-db';
 import { createTestApp } from './helpers/test-app';
 
 describe('Admin platform (e2e)', () => {
@@ -85,6 +91,35 @@ describe('Admin platform (e2e)', () => {
     expect(res.body.data.defaultTheme).toBe('system');
     expect(res.body.data.timezone).toBe('Asia/Jakarta');
     expect(res.body.data.showTokenUsage).toBe(true);
+    expect(res.body.data.environment).toBe('DEV');
+  });
+
+  it('PROD: lingkungan terbaca dan akun demo tidak bisa masuk', async () => {
+    await dataSource.query(
+      `UPDATE users SET email = 'demo-uji@bara.local' WHERE email = 'staf@test.local'`,
+    );
+    const login = () =>
+      request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({ email: 'demo-uji@bara.local', password: TEST_PASSWORD });
+    await login().expect(200);
+
+    const config = app.get(ConfigService);
+    const original = config.get.bind(config) as (key: string, ...rest: unknown[]) => unknown;
+    const spy = jest
+      .spyOn(config, 'get')
+      .mockImplementation(((key: string, ...rest: unknown[]) =>
+        key === 'app.appEnv' ? 'PROD' : original(key, ...rest)) as typeof config.get);
+    try {
+      const res = await request(app.getHttpServer()).get('/api/config/public').expect(200);
+      expect(res.body.data.environment).toBe('PROD');
+      await login().expect(401);
+    } finally {
+      spy.mockRestore();
+      await dataSource.query(
+        `UPDATE users SET email = 'staf@test.local' WHERE email = 'demo-uji@bara.local'`,
+      );
+    }
   });
 
   it('konfigurasi privat diubah dan tercatat; kunci tidak dikenal 404', async () => {

@@ -34,6 +34,13 @@ Cek cepat: `http://localhost:3000/api/health` → `{"data":{"status":"ok",...}}`
 | `infra/.env`    | kredensial Postgres/Redis untuk host remote                                                                                                       | diabaikan |
 | `apps/api/.env` | `DATABASE_URL`, `TEST_DATABASE_URL`, `CORS_ORIGINS`, cookie, `AI_PROVIDER`/`AI_MODEL`/`AI_BASE_URL`, (opsional) `REDIS_URL`, `OPENROUTER_API_KEY` | diabaikan |
 
+Penanda lingkungan: `APP_ENV=DEV` atau `APP_ENV=PROD` di `apps/api/.env` (perlu restart API). Bila kosong, `NODE_ENV=production` dianggap `PROD`, selain itu `DEV`; API menolak start bila `APP_ENV=DEV` bersama `NODE_ENV=production`. Login cepat dilindungi berlapis:
+
+- **Build:** `npm run build` selalu membuang login cepat dari bundle, apa pun isi `.env`. Build gagal bila penanda kodenya masih ditemukan. Untuk server demo: `APP_ENV=DEV npm run build`, dan jangan pakai hasilnya di produksi.
+- **Dev server:** `npm run dev` mengikuti `APP_ENV` di `apps/api/.env`; hanya nilai `DEV` yang memuatnya.
+- **API:** pada `PROD`, login akun `@bara.local` dan `@contributor.local` ditolak 401 walau akunnya ada di database, dan seed tidak membuatnya. Jangan memakai domain ini untuk `ADMIN_EMAIL`. Sesi akun demo yang sudah aktif tetap berlaku sampai habis, jadi hapus akun itu bila database DEV dipakai untuk PROD.
+
+
 Pencarian web: `TAVILY_API_KEY`, `FIRECRAWL_API_KEY`, `BRAVE_SEARCH_API_KEY`, `WEB_SEARCH_MAX_ATTEMPTS`, `WEB_SEARCH_TIMEOUT_MS`, `WEB_SEARCH_MAX_RESULTS`, dan `WEB_SEARCH_MAX_CALLS_PER_TURN` di `apps/api/.env` (perlu restart API). Penyedia tanpa key dilewati. Urutan prioritas diatur di menu Provider AI dan tidak perlu restart.
 
 Guardrails: `GUARDRAILS_SECRET_KEY` (32 byte base64, `openssl rand -base64 32`) di `apps/api/.env` (perlu restart API). Tanpa kunci, Guardrails tidak bisa diaktifkan. Pengaturannya di menu Guardrails dan tidak perlu restart. Jangan mengganti kunci saat ada percakapan aktif: kamus lama di `guardrail_terms` tidak bisa dibuka lagi dan permintaan pada percakapan itu akan gagal; kosongkan tabel itu bila kunci harus diganti.
@@ -107,7 +114,7 @@ Konfigurasi runtime non-rahasia (mis. `security.lockout_threshold`, `security.se
 ## 8. Keamanan Operasional
 
 - Jangan pernah menyalin nilai dari `apps/api/.env` ke tiket, chat, atau log.
-- Akun demo `@bara.local` (dibuat `db:seed`, kata sandi tercetak di layar) hanya untuk pelatihan lokal — seed melewatinya otomatis saat `NODE_ENV=production`; di produksi bootstrap lewat `db:create-admin`.
+- Akun demo `@bara.local` (dibuat `db:seed`, kata sandi tercetak di layar) hanya untuk pelatihan lokal — seed melewatinya otomatis pada lingkungan PROD; di produksi bootstrap lewat `db:create-admin`.
 - Rotasi kunci `OPENROUTER_API_KEY`: ubah di `.env`, restart API — tidak ada penyimpanan lain.
 - Bootstrap superadmin produksi lewat `db:create-admin`; setelah itu ganti kata sandi via UI.
 - Semua keputusan tolak tercatat (`security.authorization.denied`, `security.privilege_escalation_blocked`) — pantau lewat Log Audit dengan filter severity `warn`/`critical`.

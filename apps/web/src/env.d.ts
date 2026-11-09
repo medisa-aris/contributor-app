@@ -8,3 +8,4 @@ declare module '*.vue' {
 
 /** Versi aplikasi dari apps/web/package.json (disuntikkan oleh Vite). */
 declare const __APP_VERSION__: string;
+declare const __QUICK_LOGIN__: boolean;

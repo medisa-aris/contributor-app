@@ -2,6 +2,8 @@ import { resolve } from 'node:path';
 
 export interface AppConfig {
   nodeEnv: string;
+  /** Penanda lingkungan aplikasi: DEV menampilkan login cepat, PROD tidak. */
+  appEnv: 'DEV' | 'PROD';
   port: number;
   databaseUrl: string;
   testDatabaseUrl: string | null;
@@ -34,9 +36,17 @@ function parseBoolean(value: string | undefined, fallback: boolean): boolean {
   return value.toLowerCase() === 'true';
 }
 
+/** APP_ENV menang; bila kosong, NODE_ENV=production dianggap PROD agar login cepat tidak bocor. */
+export function resolveAppEnv(appEnv: string | undefined, nodeEnv: string | undefined): 'DEV' | 'PROD' {
+  const value = appEnv?.trim().toUpperCase();
+  if (value === 'DEV' || value === 'PROD') return value;
+  return nodeEnv === 'production' ? 'PROD' : 'DEV';
+}
+
 export default (): { app: AppConfig } => ({
   app: {
     nodeEnv: process.env.NODE_ENV ?? 'development',
+    appEnv: resolveAppEnv(process.env.APP_ENV, process.env.NODE_ENV),
     port: Number(process.env.PORT ?? 3000),
     databaseUrl: process.env.DATABASE_URL ?? '',
     testDatabaseUrl: process.env.TEST_DATABASE_URL ?? null,

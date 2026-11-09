@@ -6,6 +6,7 @@ import {
   Param,
   Put,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ApiTags } from '@nestjs/swagger';
 import { AUDIT_EVENTS, isGuardrailConfigKey, PERMISSIONS } from '@bara/shared';
 import type { PublicConfigDto } from '@bara/shared';
@@ -23,7 +24,10 @@ import { ConfigUpdateDto } from './dto/misc.dto';
 @ApiTags('config')
 @Controller()
 export class ConfigController {
-  constructor(@Inject(DATA_SOURCE) private readonly dataSource: DataSource) {}
+  constructor(
+    @Inject(DATA_SOURCE) private readonly dataSource: DataSource,
+    private readonly config: ConfigService,
+  ) {}
 
   @Public()
   @Get('config/public')
@@ -38,6 +42,7 @@ export class ConfigController {
       defaultTheme: (map.get('app.default_theme') ?? 'system') as PublicConfigDto['defaultTheme'],
       timezone: String(map.get('app.timezone') ?? 'Asia/Jakarta'),
       showTokenUsage: map.get('ai.show_token_usage') !== false,
+      environment: this.config.get<'DEV' | 'PROD'>('app.appEnv') ?? 'PROD',
     };
   }
 

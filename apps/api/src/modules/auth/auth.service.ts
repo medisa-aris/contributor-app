@@ -1,5 +1,6 @@
 import { compare, hash, hashSync } from 'bcryptjs';
 import { Inject, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import { AUDIT_EVENTS } from '@bara/shared';
 import type { AuditSeverity, MeDto, ThemePreference } from '@bara/shared';
@@ -14,6 +15,8 @@ import { SessionService } from './session.service';
 
 const BCRYPT_ROUNDS = 11;
 const DEFAULT_ABSOLUTE_HOURS = 168;
+/** Domain akun demo dari seed; kata sandinya tercatat di kode sumber. */
+const DEMO_EMAIL_DOMAINS = ['@bara.local', '@contributor.local'];
 const DUMMY_HASH = hashSync('timing-equalizer-placeholder', BCRYPT_ROUNDS);
 
 interface UserAuthRow {
@@ -54,6 +57,7 @@ export class AuthService {
     private readonly lockout: LoginLockoutService,
     private readonly effective: EffectivePermissionsService,
     private readonly audit: AuditService,
+    private readonly config: ConfigService,
   ) {}
 
   private async auditLogin(
@@ -87,6 +91,25 @@ export class AuthService {
     userAgent: string | null,
   ): Promise<LoginResult> {
     const email = emailRaw.trim().toLowerCase();
+    // Kata sandi akun demo tercatat di kode sumber, jadi akun ini tidak boleh dipakai di PROD.
+    if (
+      this.config.get<string>('app.appEnv') !== 'DEV' &&
+      DEMO_EMAIL_DOMAINS.some((domain) => email.endsWith(domain))
+    ) {
+      await compare(password, DUMMY_HASH);
+      await this.lockout.record(email, null, ip, false, 'unknown_user');
+      await this.auditLogin(
+        AUDIT_EVENTS.authLoginFailed,
+        'warn',
+        `Login ditolak (akun demo di PROD): ${email}`,
+        null,
+        email,
+        ip,
+        userAgent,
+        { reason: 'demo_account' },
+      );
+      throw new AppError(ERROR_CODES.invalidCredentials, 'Email atau kata sandi salah', 401);
+    }
     const rows = (await this.dataSource.query(
       `SELECT id, email, password_hash, display_name, status, is_superadmin,
               department_id, token_version, locked_until

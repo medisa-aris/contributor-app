@@ -84,12 +84,6 @@ export const id = {
     submitting: 'Memproses...',
     errorGeneric: 'Tidak dapat masuk. Periksa kembali email dan kata sandi Anda.',
     footer: 'Akses diberikan sesuai peran dan departemen Anda.',
-    demoTitle: 'Masuk cepat (demo)',
-    demoGroupSystem: 'Akun sistem',
-    demoGroupHse: 'Tim HSE K3L',
-    demoAdmin: 'Masuk sebagai Admin',
-    demoManager: 'Masuk sebagai Manajer',
-    demoStaff: 'Masuk sebagai Staf',
   },
   shell: {
     home: 'Beranda',
