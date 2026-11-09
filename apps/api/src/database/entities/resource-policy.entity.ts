@@ -6,7 +6,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import type { PolicyEffect, PolicySubjectType } from '@contributor/shared';
+import type { PolicyEffect, PolicySubjectType } from '@bara/shared';
 
 @Entity('resource_policies')
 export class ResourcePolicy {

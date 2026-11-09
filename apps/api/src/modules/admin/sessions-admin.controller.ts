@@ -8,7 +8,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { AUDIT_EVENTS, PERMISSIONS } from '@contributor/shared';
+import { AUDIT_EVENTS, PERMISSIONS } from '@bara/shared';
 import { DataSource } from 'typeorm';
 import { Audit } from '../../common/decorators/audit.decorator';
 import { CurrentAuth } from '../../common/decorators/current-auth.decorator';

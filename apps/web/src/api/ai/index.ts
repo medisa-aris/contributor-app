@@ -1,5 +1,6 @@
-import type { AiTaskStatus, ConversationMode } from '@contributor/shared';
-import { apiDelete, apiGet, apiGetPaged, apiPatch, apiPost, apiPostForm } from '@/api/http';
+import type { AiTaskStatus, ConversationMode } from '@bara/shared';
+import { apiDelete, apiGet, apiGetPaged, apiPatch, apiPost, apiPostForm, apiPut } from '@/api/http';
+import type { ConnectorAccess, ConnectorAttachment, ConnectorType } from '@/api/connectors/types';
 import type {
   ChatRequestPayload,
   ChatSendResult,
@@ -16,6 +17,7 @@ export async function sendChat(payload: ChatRequestPayload): Promise<ChatSendRes
     prompt: payload.prompt,
     conversationId: payload.conversationId,
     counterpartStyle: payload.counterpartStyle,
+    webSearch: payload.webSearch,
   });
 }
 
@@ -101,7 +103,15 @@ export function deleteAttachment(
   );
 }
 
-export function createTask(input: { title: string; instruction: string }): Promise<TaskRow> {
+export function webSearchStatus(): Promise<{ available: boolean }> {
+  return apiGet<{ available: boolean }>('/ai/web-search/status');
+}
+
+export function createTask(input: {
+  title: string;
+  instruction: string;
+  webSearch?: boolean;
+}): Promise<TaskRow> {
   return apiPost<TaskRow>('/ai/tasks', input);
 }
 
@@ -126,3 +136,35 @@ export function cancelTask(id: string): Promise<TaskRow> {
 }
 
 export * from './types';
+
+export function listConversationConnectors(id: string): Promise<ConversationConnector[]> {
+  return apiGet<ConversationConnector[]>(`/ai/conversations/${id}/connectors`);
+}
+
+export function setConversationConnectors(
+  id: string,
+  connectors: ConnectorAttachment[],
+): Promise<ConversationConnector[]> {
+  return apiPut<ConversationConnector[]>(`/ai/conversations/${id}/connectors`, { connectors });
+}
+
+export function decideConversationApproval(
+  conversationId: string,
+  approvalId: string,
+  decision: 'approved' | 'rejected',
+  note?: string,
+): Promise<ConversationDetail> {
+  return apiPost<ConversationDetail>(
+    `/ai/conversations/${conversationId}/tool-approvals/${approvalId}/decide`,
+    { decision, ...(note ? { note } : {}) },
+  );
+}
+
+export type ConversationConnector = {
+  connectorType: ConnectorType;
+  connectorId: string;
+  access: ConnectorAccess;
+  name: string;
+  engine: string;
+  granted: boolean;
+};

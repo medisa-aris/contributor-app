@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { RouterLink } from 'vue-router';
-import type { NavMenuItemDto } from '@contributor/shared';
+import type { NavMenuItemDto } from '@bara/shared';
 import { useAuthStore } from '@/stores/auth.store';
 import { useNavigationStore } from '@/stores/navigation.store';
 import { CaBadge, CaEmptyState } from '@/components/ui';

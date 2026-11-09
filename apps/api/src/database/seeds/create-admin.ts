@@ -1,4 +1,4 @@
-import { AUDIT_EVENTS, SYSTEM_ROLES } from '@contributor/shared';
+import { AUDIT_EVENTS, SYSTEM_ROLES } from '@bara/shared';
 import { hash } from 'bcryptjs';
 import { isEmail } from 'class-validator';
 import { config as loadEnv } from 'dotenv';

@@ -11,7 +11,7 @@ import {
   Put,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { AUDIT_EVENTS, isKnownPermissionId, PERMISSIONS } from '@contributor/shared';
+import { AUDIT_EVENTS, isKnownPermissionId, PERMISSIONS } from '@bara/shared';
 import { DataSource } from 'typeorm';
 import { CurrentAuth } from '../../common/decorators/current-auth.decorator';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';

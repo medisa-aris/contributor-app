@@ -4,6 +4,7 @@ export * from './enums';
 export * from './audit-events';
 export * from './ai-modes';
 export * from './config-keys';
+export * from './guardrails';
 export * from './dto/common.dto';
 export * from './dto/auth.dto';
 export * from './dto/user.dto';

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, defineAsyncComponent, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { ApiError } from '@/api/http';
@@ -14,6 +14,11 @@ const router = useRouter();
 const auth = useAuthStore();
 const config = useConfigStore();
 const navigation = useNavigationStore();
+
+// Cabang ini dibuang saat build bila `__QUICK_LOGIN__` false, beserta seluruh modulnya.
+const devPanel = __QUICK_LOGIN__
+  ? defineAsyncComponent(() => import('@/components/auth/QuickLogin.vue'))
+  : null;
 
 const email = ref('');
 const password = ref('');
@@ -40,8 +45,7 @@ async function submit(): Promise<void> {
     const redirect = route.query.redirect;
     await router.push(typeof redirect === 'string' && redirect.startsWith('/') ? redirect : '/');
   } catch (error) {
-    errorMessage.value =
-      error instanceof ApiError ? error.message : t('login.errorGeneric');
+    errorMessage.value = error instanceof ApiError ? error.message : t('login.errorGeneric');
   } finally {
     submitting.value = false;
   }
@@ -109,6 +113,7 @@ async function submit(): Promise<void> {
           {{ submitting ? t('login.submitting') : t('login.submit') }}
         </CaButton>
       </form>
+      <component :is="devPanel" v-if="devPanel" />
       <p class="login__footer">{{ t('login.footer') }}</p>
     </div>
   </main>
@@ -131,6 +136,7 @@ async function submit(): Promise<void> {
   max-width: 400px;
   background: var(--ca-bg-surface);
   border: 1px solid var(--ca-stroke-2);
+  border-top: 4px solid var(--ca-brand-60);
   border-radius: var(--ca-radius-xl);
   box-shadow: var(--ca-shadow-8);
   padding: var(--ca-space-12) var(--ca-space-10);

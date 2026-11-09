@@ -1,11 +1,12 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AUDIT_EVENTS } from '@contributor/shared';
+import { AUDIT_EVENTS } from '@bara/shared';
 import { DataSource } from 'typeorm';
 import type { AuthContext } from '../../common/types/auth-context';
 import { AppError, ERROR_CODES } from '../../common/errors/app-error';
 import { DATA_SOURCE } from '../../database/database.module';
 import { AuditService } from '../audit/audit.service';
+import { McpOauthService } from './mcp-oauth.service';
 import type {
   CreateMcpServerDto,
   CreateRestConnectorDto,
@@ -19,15 +20,27 @@ export interface McpServerRow {
   name: string;
   description: string | null;
   base_url: string;
-  auth_type: 'none' | 'api_key';
+  auth_type: 'none' | 'api_key' | 'oauth';
   api_key_env: string | null;
   enabled: boolean;
+  oauth_connected: boolean;
+  oauth_client_manual: boolean;
+  oauth_client_id: string | null;
+  oauth_has_secret: boolean;
+  oauth_scope: string | null;
+  oauth_connected_at: string | null;
   last_health_at: string | null;
   last_health_ok: boolean | null;
   last_health_detail: string | null;
   created_at: string;
   updated_at: string;
 }
+
+/** Kolom publik MCP server: token OAuth tidak pernah ikut keluar. */
+const MCP_COLUMNS = `id, code, name, description, base_url, auth_type, api_key_env, enabled,
+  (oauth_access_token IS NOT NULL) AS oauth_connected, oauth_client_manual,
+  oauth_client_id, (oauth_client_secret IS NOT NULL) AS oauth_has_secret, oauth_scope, oauth_connected_at,
+  last_health_at, last_health_ok, last_health_detail, created_at, updated_at`;
 
 export interface RestConnectorRow {
   id: string;
@@ -56,6 +69,7 @@ export class IntegrationsService {
     @Inject(DATA_SOURCE) private readonly dataSource: DataSource,
     private readonly config: ConfigService,
     private readonly audit: AuditService,
+    private readonly oauth: McpOauthService,
   ) {}
 
   /** Konfigurasi provider AI aktif — tanpa kredensial, hanya status terkonfigurasi. */
@@ -101,7 +115,7 @@ export class IntegrationsService {
       `SELECT count(*)::int AS total FROM mcp_servers`,
     )) as { total: number }[];
     const items = (await this.dataSource.query(
-      `SELECT * FROM mcp_servers ORDER BY name LIMIT $1 OFFSET $2`,
+      `SELECT ${MCP_COLUMNS} FROM mcp_servers ORDER BY name LIMIT $1 OFFSET $2`,
       [options.take, options.skip],
     )) as McpServerRow[];
     return { items, total: totalRows[0]?.total ?? 0 };
@@ -114,6 +128,9 @@ export class IntegrationsService {
          VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
         [dto.code, dto.name, dto.description ?? null, dto.baseUrl, dto.authType, dto.apiKeyEnv ?? null],
       )) as { id: string }[];
+      if (dto.oauthClientId) {
+        await this.oauth.setManualClient(rows[0]!.id, dto.oauthClientId, dto.oauthClientSecret);
+      }
       await this.audit.record({
         eventKey: AUDIT_EVENTS.mcpServerCreated,
         severity: 'info',
@@ -158,6 +175,9 @@ export class IntegrationsService {
         params,
       );
     }
+    if (dto.oauthClientId !== undefined) {
+      await this.oauth.setManualClient(serverId, dto.oauthClientId, dto.oauthClientSecret);
+    }
     await this.audit.record({
       eventKey: AUDIT_EVENTS.mcpServerUpdated,
       severity: 'info',
@@ -167,7 +187,7 @@ export class IntegrationsService {
       actorIp: auth.session.ip,
       entityType: 'mcp_server',
       entityId: serverId,
-      payload: { fields: Object.keys(dto) },
+      payload: { fields: Object.keys(dto).filter((f) => f !== 'oauthClientSecret') },
     });
     return this.mcpDetail(serverId);
   }
@@ -190,12 +210,54 @@ export class IntegrationsService {
 
   async mcpHealthCheck(auth: AuthContext, serverId: string): Promise<McpServerRow> {
     const server = await this.mcpDetail(serverId);
-    const result = await this.probe(server.base_url, server.auth_type, server.api_key_env);
+    const result = await this.probe(server.base_url, server.auth_type, server.api_key_env, serverId);
     return this.recordHealth('mcp_servers', auth, serverId, server.name, result);
   }
 
+  async startMcpOauth(auth: AuthContext, serverId: string, redirectUri: string) {
+    const server = await this.mcpDetail(serverId);
+    if (server.auth_type !== 'oauth') {
+      throw new AppError(ERROR_CODES.validation, 'Server ini tidak memakai autentikasi OAuth.', 400);
+    }
+    return this.oauth.start(serverId, auth.user.id, redirectUri);
+  }
+
+  async completeMcpOauth(auth: AuthContext, state: string, code: string): Promise<McpServerRow> {
+    const serverId = await this.oauth.complete(auth.user.id, state, code);
+    const server = await this.mcpDetail(serverId);
+    await this.audit.record({
+      eventKey: AUDIT_EVENTS.mcpServerUpdated,
+      severity: 'info',
+      summary: `Menghubungkan MCP server "${server.name}" via OAuth`,
+      actorUserId: auth.user.id,
+      actorLabel: auth.user.email,
+      actorIp: auth.session.ip,
+      entityType: 'mcp_server',
+      entityId: serverId,
+      payload: { oauth: 'connected' },
+    });
+    return server;
+  }
+
+  async disconnectMcpOauth(auth: AuthContext, serverId: string): Promise<McpServerRow> {
+    const server = await this.mcpDetail(serverId);
+    await this.oauth.disconnect(serverId);
+    await this.audit.record({
+      eventKey: AUDIT_EVENTS.mcpServerUpdated,
+      severity: 'warn',
+      summary: `Memutus koneksi OAuth MCP server "${server.name}"`,
+      actorUserId: auth.user.id,
+      actorLabel: auth.user.email,
+      actorIp: auth.session.ip,
+      entityType: 'mcp_server',
+      entityId: serverId,
+      payload: { oauth: 'disconnected' },
+    });
+    return this.mcpDetail(serverId);
+  }
+
   private async mcpDetail(serverId: string): Promise<McpServerRow> {
-    const rows = (await this.dataSource.query(`SELECT * FROM mcp_servers WHERE id = $1`, [
+    const rows = (await this.dataSource.query(`SELECT ${MCP_COLUMNS} FROM mcp_servers WHERE id = $1`, [
       serverId,
     ])) as McpServerRow[];
     if (rows.length === 0) {
@@ -330,18 +392,29 @@ export class IntegrationsService {
   /** Uji ketercapaian HTTP server-side; kredensial (bila ada) dikirim sebagai header, tidak pernah dicatat. */
   private async probe(
     baseUrl: string,
-    authType: 'none' | 'api_key',
+    authType: 'none' | 'api_key' | 'oauth',
     apiKeyEnv: string | null,
+    oauthServerId?: string,
   ): Promise<{ ok: boolean; detail: string }> {
     const startedAt = Date.now();
+    let credentialsSent = false;
     try {
-      const headers: Record<string, string> = { 'User-Agent': 'contributor-ai-healthcheck/1.0' };
+      const headers: Record<string, string> = { 'User-Agent': 'bara-healthcheck/1.0' };
+      if (authType === 'oauth' && oauthServerId) {
+        const token = await this.oauth.getAccessToken(oauthServerId);
+        if (!token) {
+          return { ok: false, detail: 'Belum terhubung via OAuth (atau token kedaluwarsa). Klik "Hubungkan".' };
+        }
+        headers.Authorization = `Bearer ${token}`;
+        credentialsSent = true;
+      }
       if (authType === 'api_key' && apiKeyEnv) {
         const key = process.env[apiKeyEnv];
         if (!key) {
           return { ok: false, detail: `Variabel lingkungan ${apiKeyEnv} belum diatur di server.` };
         }
         headers.Authorization = `Bearer ${key}`;
+        credentialsSent = true;
       }
       const response = await fetch(baseUrl, {
         method: 'GET',
@@ -350,7 +423,8 @@ export class IntegrationsService {
         redirect: 'follow',
       });
       const detail = `HTTP ${response.status} dalam ${Date.now() - startedAt} ms`;
-      return { ok: response.ok || response.status < 500, detail };
+      const rejected = credentialsSent && (response.status === 401 || response.status === 403);
+      return { ok: !rejected && (response.ok || response.status < 500), detail };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Kesalahan jaringan.';
       this.logger.warn(`Health check ${baseUrl} gagal: ${message}`);

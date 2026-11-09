@@ -11,7 +11,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { COUNTERPART_STYLES, type ConversationMode } from '@contributor/shared';
+import { COUNTERPART_STYLES, type ConversationMode } from '@bara/shared';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { AI_LIMITS } from '../limits';
 
@@ -38,6 +38,10 @@ export class ChatRequestDto {
   @IsOptional()
   @IsIn(COUNTERPART_STYLE_IDS)
   counterpartStyle?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  webSearch?: boolean;
 }
 
 export class CreateConversationDto {
@@ -90,11 +94,23 @@ export class CreateTaskDto {
   @MinLength(5)
   @MaxLength(AI_LIMITS.maxTaskInstructionLength)
   instruction: string;
+
+  @IsOptional()
+  @IsBoolean()
+  webSearch?: boolean;
 }
 
 export class TaskListQueryDto {
   @IsOptional()
-  @IsIn(['created', 'validating', 'awaiting_approval', 'running', 'completed', 'failed', 'cancelled'])
+  @IsIn([
+    'created',
+    'validating',
+    'awaiting_approval',
+    'running',
+    'completed',
+    'failed',
+    'cancelled',
+  ])
   status?: string;
 
   @IsOptional()
@@ -113,4 +129,16 @@ export class TaskListQueryDto {
   get skip(): number {
     return (this.page - 1) * this.pageSize;
   }
+}
+
+export { SetConnectorAttachmentsDto as SetConversationConnectorsDto } from '../../connectors/dto/connectors.dto';
+
+export class DecideToolApprovalDto {
+  @IsIn(['approved', 'rejected'])
+  decision: 'approved' | 'rejected';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  note?: string;
 }

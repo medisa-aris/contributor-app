@@ -11,15 +11,17 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { PERMISSIONS } from '@contributor/shared';
+import { PERMISSIONS } from '@bara/shared';
 import { CurrentAuth } from '../../common/decorators/current-auth.decorator';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import type { AuthContext } from '../../common/types/auth-context';
 import { paginated } from '../admin/common/pagination';
 import {
+  CompleteMcpOauthDto,
   CreateMcpServerDto,
   CreateRestConnectorDto,
+  StartMcpOauthDto,
   UpdateMcpServerDto,
   UpdateRestConnectorDto,
 } from './dto/integrations.dto';
@@ -66,6 +68,34 @@ export class IntegrationsController {
     @Body() dto: UpdateMcpServerDto,
   ) {
     return this.integrations.updateMcpServer(auth, id, dto);
+  }
+
+  @RequirePermission(PERMISSIONS.integrationsConfigure)
+  @HttpCode(200)
+  @Post('mcp-servers/:id/oauth/start')
+  startMcpOauth(
+    @CurrentAuth() auth: AuthContext,
+    @Param('id', new ParseUUIDPipe({ errorHttpStatusCode: 404 })) id: string,
+    @Body() dto: StartMcpOauthDto,
+  ) {
+    return this.integrations.startMcpOauth(auth, id, dto.redirectUri);
+  }
+
+  @RequirePermission(PERMISSIONS.integrationsConfigure)
+  @HttpCode(200)
+  @Post('oauth/callback')
+  completeMcpOauth(@CurrentAuth() auth: AuthContext, @Body() dto: CompleteMcpOauthDto) {
+    return this.integrations.completeMcpOauth(auth, dto.state, dto.code);
+  }
+
+  @RequirePermission(PERMISSIONS.integrationsConfigure)
+  @HttpCode(200)
+  @Post('mcp-servers/:id/oauth/disconnect')
+  disconnectMcpOauth(
+    @CurrentAuth() auth: AuthContext,
+    @Param('id', new ParseUUIDPipe({ errorHttpStatusCode: 404 })) id: string,
+  ) {
+    return this.integrations.disconnectMcpOauth(auth, id);
   }
 
   @RequirePermission(PERMISSIONS.integrationsConfigure)

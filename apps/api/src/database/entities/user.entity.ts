@@ -8,7 +8,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import type { UserStatus } from '@contributor/shared';
+import type { UserStatus } from '@bara/shared';
 import { Department } from './department.entity';
 
 @Entity('users')

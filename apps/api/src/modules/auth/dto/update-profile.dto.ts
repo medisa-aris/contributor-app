@@ -1,5 +1,5 @@
 import { IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
-import { THEMES, type ThemePreference } from '@contributor/shared';
+import { THEMES, type ThemePreference } from '@bara/shared';
 
 export class UpdateProfileDto {
   @IsOptional()

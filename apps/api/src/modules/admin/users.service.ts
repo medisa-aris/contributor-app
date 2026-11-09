@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { AUDIT_EVENTS, type DataScope } from '@contributor/shared';
+import { AUDIT_EVENTS, type DataScope } from '@bara/shared';
 import { hash } from 'bcryptjs';
 import { DataSource } from 'typeorm';
 import type { AuthContext } from '../../common/types/auth-context';

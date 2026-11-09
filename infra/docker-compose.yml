@@ -1,9 +1,9 @@
-name: contributor-ai
+name: bara
 
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: contributor-ai-postgres
+    container_name: bara-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ca
@@ -22,7 +22,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: contributor-ai-redis
+    container_name: bara-redis
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
     ports:

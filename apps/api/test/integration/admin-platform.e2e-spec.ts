@@ -1,9 +1,16 @@
+import { ALL_PERMISSION_IDS } from '@bara/shared';
 import type { INestApplication } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import request from 'supertest';
 import type { DataSource } from 'typeorm';
 import { ERROR_CODES } from '../../src/common/errors/app-error';
 import { asClient, loginAs, type AuthedClient } from './helpers/auth-as';
-import { resetDatabase, seedTestFixtures, type TestFixtures } from './helpers/reset-db';
+import {
+  resetDatabase,
+  seedTestFixtures,
+  TEST_PASSWORD,
+  type TestFixtures,
+} from './helpers/reset-db';
 import { createTestApp } from './helpers/test-app';
 
 describe('Admin platform (e2e)', () => {
@@ -79,11 +86,40 @@ describe('Admin platform (e2e)', () => {
 
   it('konfigurasi publik dapat diakses tanpa sesi dengan nilai default', async () => {
     const res = await request(app.getHttpServer()).get('/api/config/public').expect(200);
-    expect(res.body.data.appName).toBe('Contributor AI');
+    expect(res.body.data.appName).toBe('ContributorAI');
     expect(res.body.data.defaultLocale).toBe('id');
     expect(res.body.data.defaultTheme).toBe('system');
     expect(res.body.data.timezone).toBe('Asia/Jakarta');
     expect(res.body.data.showTokenUsage).toBe(true);
+    expect(res.body.data.environment).toBe('DEV');
+  });
+
+  it('PROD: lingkungan terbaca dan akun demo tidak bisa masuk', async () => {
+    await dataSource.query(
+      `UPDATE users SET email = 'demo-uji@bara.local' WHERE email = 'staf@test.local'`,
+    );
+    const login = () =>
+      request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({ email: 'demo-uji@bara.local', password: TEST_PASSWORD });
+    await login().expect(200);
+
+    const config = app.get(ConfigService);
+    const original = config.get.bind(config) as (key: string, ...rest: unknown[]) => unknown;
+    const spy = jest
+      .spyOn(config, 'get')
+      .mockImplementation(((key: string, ...rest: unknown[]) =>
+        key === 'app.appEnv' ? 'PROD' : original(key, ...rest)) as typeof config.get);
+    try {
+      const res = await request(app.getHttpServer()).get('/api/config/public').expect(200);
+      expect(res.body.data.environment).toBe('PROD');
+      await login().expect(401);
+    } finally {
+      spy.mockRestore();
+      await dataSource.query(
+        `UPDATE users SET email = 'staf@test.local' WHERE email = 'demo-uji@bara.local'`,
+      );
+    }
   });
 
   it('konfigurasi privat diubah dan tercatat; kunci tidak dikenal 404', async () => {
@@ -108,9 +144,7 @@ describe('Admin platform (e2e)', () => {
       .expect(200);
     expect(audit.body.meta.total).toBe(1);
 
-    await asClient(app, admin)
-      .put('/api/admin/config/tidak.ada', { value: 1 })
-      .expect(404);
+    await asClient(app, admin).put('/api/admin/config/tidak.ada', { value: 1 }).expect(404);
   });
 
   it('toggle tampilkan token diatur admin dan tercermin pada konfigurasi publik', async () => {
@@ -134,18 +168,14 @@ describe('Admin platform (e2e)', () => {
   it('staf tidak dapat melihat maupun mengubah konfigurasi (403)', async () => {
     const staf = await loginAs(app, 'staf@test.local');
     await asClient(app, staf).get('/api/admin/config').expect(403);
-    await asClient(app, staf)
-      .put('/api/admin/config/security.test_knob', { value: 9 })
-      .expect(403);
+    await asClient(app, staf).put('/api/admin/config/security.test_knob', { value: 9 }).expect(403);
   });
 
   it('status provider tidak pernah membocorkan kredensial', async () => {
     const res = await asClient(app, admin).get('/api/admin/providers').expect(200);
     expect(res.body.data.defaultProvider).toBe('openrouter');
     const names = (res.body.data.providers as { name: string }[]).map((p) => p.name);
-    expect(names).toEqual(
-      expect.arrayContaining(['openrouter', 'ollama', 'openai', 'anthropic']),
-    );
+    expect(names).toEqual(expect.arrayContaining(['openrouter', 'ollama', 'openai', 'anthropic']));
     const raw = JSON.stringify(res.body);
     expect(raw).not.toContain('sk-');
     expect(raw).not.toContain('apiKey');
@@ -163,7 +193,7 @@ describe('Admin platform (e2e)', () => {
       .get(`/api/admin/diagnostics/users/${fixtures.users.staf}/effective-permissions`)
       .expect(200);
     expect(res.body.data.user.email).toBe('staf@test.local');
-    expect((res.body.data.decisions as unknown[]).length).toBe(38);
+    expect((res.body.data.decisions as unknown[]).length).toBe(ALL_PERMISSION_IDS.length);
   });
 
   it('uji otorisasi mengembalikan keputusan, scope, dan rantai', async () => {
@@ -211,7 +241,10 @@ describe('Admin platform (e2e)', () => {
 
     const staf = await loginAs(app, 'staf@test.local');
     const stafNav = await asClient(app, staf).get('/api/navigation').expect(200);
-    type NavApp = { identifier: string; modules: { items: { key: string; isFuture: boolean }[] }[] };
+    type NavApp = {
+      identifier: string;
+      modules: { items: { key: string; isFuture: boolean }[] }[];
+    };
     const stafApps = stafNav.body.data as NavApp[];
     const testAppForStaf = stafApps.find((a) => a.identifier === 'test-app');
     expect(testAppForStaf).toBeDefined();
@@ -318,9 +351,7 @@ describe('Admin platform (e2e)', () => {
       .put('/api/admin/nav/reorder', { items: [{ id: crudItemId, type: 'bogus', sortOrder: 1 }] })
       .expect(400);
 
-    await asClient(app, admin)
-      .delete(`/api/admin/nav/features/${crudFeatureId}`)
-      .expect(409);
+    await asClient(app, admin).delete(`/api/admin/nav/features/${crudFeatureId}`).expect(409);
     await asClient(app, admin).delete(`/api/admin/nav/menu-items/${crudItemId}`).expect(200);
     await asClient(app, admin).delete(`/api/admin/nav/features/${crudFeatureId}`).expect(200);
     await asClient(app, admin).delete(`/api/admin/nav/modules/${crudModuleId}`).expect(200);

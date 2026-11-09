@@ -1,4 +1,4 @@
-import type { ApiEnvelope, ApiErrorBody } from '@contributor/shared';
+import type { ApiEnvelope, ApiErrorBody } from '@bara/shared';
 
 export class ApiError extends Error {
   constructor(

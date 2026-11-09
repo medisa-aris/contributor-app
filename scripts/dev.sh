@@ -8,7 +8,7 @@ if [ ! -f apps/api/.env ]; then
 fi
 
 echo ">> Checking database connectivity..."
-npm run db:check -w @contributor/api
+npm run db:check -w @bara/api
 
 echo ">> Starting dev processes (shared watch + API + Web)..."
 npm run dev

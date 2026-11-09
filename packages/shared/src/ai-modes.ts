@@ -1,12 +1,13 @@
 /** Mode percakapan di Ruang Kerja AI. */
 export type ConversationMode = 'second_brain' | 'counterpart';
 
-/** Status siklus hidup tugas Asisten Eksekusi. */
+/** Status siklus hidup tugas Subordinate. */
 export type AiTaskStatus =
   | 'created'
   | 'validating'
   | 'awaiting_approval'
   | 'running'
+  | 'needs_input'
   | 'completed'
   | 'failed'
   | 'cancelled';
@@ -16,12 +17,13 @@ export const AI_TASK_STATUSES: readonly AiTaskStatus[] = [
   'validating',
   'awaiting_approval',
   'running',
+  'needs_input',
   'completed',
   'failed',
   'cancelled',
 ];
 
-/** Gaya interaksi untuk mode Mitra Berpikir. */
+/** Gaya interaksi untuk mode Partner. */
 export interface CounterpartStyle {
   id: string;
   name: string;

@@ -1,5 +1,5 @@
 import { SetMetadata } from '@nestjs/common';
-import type { AuditSeverity } from '@contributor/shared';
+import type { AuditSeverity } from '@bara/shared';
 
 export const AUDIT_EVENT_KEY = 'auditEvent';
 

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { AUDIT_EVENTS, PERMISSIONS } from '@contributor/shared';
+import { AUDIT_EVENTS, PERMISSIONS } from '@bara/shared';
 import { DataSource } from 'typeorm';
 import type { AuthContext } from '../../common/types/auth-context';
 import { AppError, ERROR_CODES } from '../../common/errors/app-error';
@@ -51,6 +51,9 @@ const AGENT_SELECT = `
          (SELECT count(*)::int FROM ai_tasks t WHERE t.agent_id = a.id) AS task_count
     FROM agents a`;
 
+/** Agent Center admin hanya mengelola template; agent pribadi milik user tidak tampil di sini. */
+const TEMPLATE_ONLY = `a.owner_user_id IS NULL`;
+
 const APPROVAL_SELECT = `
   SELECT ap.id, ap.task_id, ap.agent_id, ag.name AS agent_name, ap.requester_id,
          u.email AS requester_email, ap.summary, ap.status,
@@ -69,19 +72,25 @@ export class AgentsService {
     private readonly effective: EffectivePermissionsService,
   ) {}
 
-  async list(options: { skip: number; take: number }): Promise<{ items: AgentRow[]; total: number }> {
+  async list(options: {
+    skip: number;
+    take: number;
+  }): Promise<{ items: AgentRow[]; total: number }> {
     const totalRows = (await this.dataSource.query(
-      `SELECT count(*)::int AS total FROM agents`,
+      `SELECT count(*)::int AS total FROM agents a WHERE ${TEMPLATE_ONLY}`,
     )) as { total: number }[];
     const items = (await this.dataSource.query(
-      `${AGENT_SELECT} ORDER BY a.name LIMIT $1 OFFSET $2`,
+      `${AGENT_SELECT} WHERE ${TEMPLATE_ONLY} ORDER BY a.name LIMIT $1 OFFSET $2`,
       [options.take, options.skip],
     )) as AgentRow[];
     return { items, total: totalRows[0]?.total ?? 0 };
   }
 
   async detail(agentId: string): Promise<AgentRow> {
-    const rows = (await this.dataSource.query(`${AGENT_SELECT} WHERE a.id = $1`, [agentId])) as AgentRow[];
+    const rows = (await this.dataSource.query(
+      `${AGENT_SELECT} WHERE a.id = $1 AND ${TEMPLATE_ONLY}`,
+      [agentId],
+    )) as AgentRow[];
     if (rows.length === 0) {
       throw new AppError(ERROR_CODES.notFound, 'Agen tidak ditemukan.', 404);
     }
@@ -91,8 +100,8 @@ export class AgentsService {
   async create(auth: AuthContext, dto: CreateAgentDto): Promise<AgentRow> {
     try {
       const rows = (await this.dataSource.query(
-        `INSERT INTO agents (code, name, description, instruction, tool_allowlist, require_approval)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+        `INSERT INTO agents (code, name, description, instruction, tool_allowlist, require_approval, is_template)
+         VALUES ($1, $2, $3, $4, $5, $6, true) RETURNING id`,
         [
           dto.code,
           dto.name,
@@ -195,7 +204,13 @@ export class AgentsService {
     const taskRows = (await this.dataSource.query(
       `INSERT INTO ai_tasks (user_id, agent_id, title, instruction, status)
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [auth.user.id, agentId, title, fullInstruction, agent.require_approval ? 'awaiting_approval' : 'created'],
+      [
+        auth.user.id,
+        agentId,
+        title,
+        fullInstruction,
+        agent.require_approval ? 'awaiting_approval' : 'created',
+      ],
     )) as TaskRow[];
     const task = taskRows[0]!;
 
@@ -205,7 +220,11 @@ export class AgentsService {
          VALUES ($1, $2, $3, $4) RETURNING id`,
         [task.id, agentId, auth.user.id, dto.instruction],
       )) as { id: string }[];
-      await this.recordTaskEvent(task.id, 'awaiting_approval', `Menunggu persetujuan untuk agen "${agent.name}".`);
+      await this.recordTaskEvent(
+        task.id,
+        'awaiting_approval',
+        `Menunggu persetujuan untuk agen "${agent.name}".`,
+      );
       await this.audit.record({
         eventKey: AUDIT_EVENTS.approvalRequested,
         severity: 'warn',
@@ -242,11 +261,12 @@ export class AgentsService {
     skip: number;
     take: number;
   }): Promise<{ items: ApprovalRow[]; total: number }> {
+    // Approval pemanggilan tool (kind tool_call) diputuskan pemilik tugas di Subordinate/chat.
     const params: unknown[] = [];
-    let where = '';
+    let where = `WHERE ap.kind = 'task'`;
     if (options.status) {
       params.push(options.status);
-      where = `WHERE ap.status = $1`;
+      where += ` AND ap.status = $1`;
     }
     const totalRows = (await this.dataSource.query(
       `SELECT count(*)::int AS total FROM approvals ap ${where}`,
@@ -271,18 +291,25 @@ export class AgentsService {
     const claimed = updatedRows<ApprovalRow>(
       await this.dataSource.query(
         `UPDATE approvals SET status = $2, decided_by = $3, decided_at = now(), decision_note = $4
-          WHERE id = $1 AND status = 'pending' RETURNING *`,
+          WHERE id = $1 AND status = 'pending' AND kind = 'task' RETURNING *`,
         [approvalId, dto.decision, auth.user.id, dto.note ?? null],
       ),
     );
     if (claimed.length === 0) {
-      throw new AppError(ERROR_CODES.conflict, 'Persetujuan sudah diputuskan atau tidak ditemukan.', 409);
+      throw new AppError(
+        ERROR_CODES.conflict,
+        'Persetujuan sudah diputuskan atau tidak ditemukan.',
+        409,
+      );
     }
     const approval = claimed[0]!;
 
     // Validasi ulang: peminta tugas masih berhak mengeksekusi agen.
     const requesterAccess = await this.effective.resolve(approval.requester_id);
-    const executeDecision = await this.effective.can(approval.requester_id, PERMISSIONS.agentsExecute);
+    const executeDecision = await this.effective.can(
+      approval.requester_id,
+      PERMISSIONS.agentsExecute,
+    );
     const canExecute = requesterAccess.isSuperadmin || executeDecision.allowed;
     if (!canExecute) {
       await this.dataSource.query(
@@ -298,7 +325,11 @@ export class AgentsService {
     }
 
     if (dto.decision === 'approved') {
-      await this.recordTaskEvent(approval.task_id, 'approved', 'Persetujuan diberikan; tugas dijalankan.');
+      await this.recordTaskEvent(
+        approval.task_id,
+        'approved',
+        'Persetujuan diberikan; tugas dijalankan.',
+      );
       await this.audit.record({
         eventKey: AUDIT_EVENTS.approvalApproved,
         severity: 'info',
@@ -360,7 +391,10 @@ export class AgentsService {
     agentId?: string;
     skip: number;
     take: number;
-  }): Promise<{ items: (TaskRow & { agent_name: string | null; requester_email: string | null })[]; total: number }> {
+  }): Promise<{
+    items: (TaskRow & { agent_name: string | null; requester_email: string | null })[];
+    total: number;
+  }> {
     const params: unknown[] = [];
     const conds: string[] = [];
     if (options.status) {
@@ -389,8 +423,12 @@ export class AgentsService {
     return { items, total: totalRows[0]?.total ?? 0 };
   }
 
-  async taskDetail(taskId: string): Promise<TaskRow & { events: TaskEventRow[]; approval: ApprovalRow | null }> {
-    const rows = (await this.dataSource.query(`SELECT * FROM ai_tasks WHERE id = $1`, [taskId])) as TaskRow[];
+  async taskDetail(
+    taskId: string,
+  ): Promise<TaskRow & { events: TaskEventRow[]; approval: ApprovalRow | null }> {
+    const rows = (await this.dataSource.query(`SELECT * FROM ai_tasks WHERE id = $1`, [
+      taskId,
+    ])) as TaskRow[];
     if (rows.length === 0) {
       throw new AppError(ERROR_CODES.notFound, 'Tugas tidak ditemukan.', 404);
     }
@@ -398,9 +436,10 @@ export class AgentsService {
       `SELECT id, event_type, message, payload, created_at FROM ai_task_events WHERE task_id = $1 ORDER BY id`,
       [taskId],
     )) as TaskEventRow[];
-    const approvalRows = (await this.dataSource.query(`${APPROVAL_SELECT} WHERE ap.task_id = $1 ORDER BY ap.created_at DESC LIMIT 1`, [
-      taskId,
-    ])) as ApprovalRow[];
+    const approvalRows = (await this.dataSource.query(
+      `${APPROVAL_SELECT} WHERE ap.task_id = $1 ORDER BY ap.created_at DESC LIMIT 1`,
+      [taskId],
+    )) as ApprovalRow[];
     return { ...rows[0]!, events, approval: approvalRows[0] ?? null };
   }
 }

@@ -1,8 +1,9 @@
 import { compare, hash, hashSync } from 'bcryptjs';
 import { Inject, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
-import { AUDIT_EVENTS } from '@contributor/shared';
-import type { AuditSeverity, MeDto, ThemePreference } from '@contributor/shared';
+import { AUDIT_EVENTS } from '@bara/shared';
+import type { AuditSeverity, MeDto, ThemePreference } from '@bara/shared';
 import { AppError, ERROR_CODES } from '../../common/errors/app-error';
 import type { AuthContext, AuthSession } from '../../common/types/auth-context';
 import { DATA_SOURCE } from '../../database/database.module';
@@ -14,6 +15,8 @@ import { SessionService } from './session.service';
 
 const BCRYPT_ROUNDS = 11;
 const DEFAULT_ABSOLUTE_HOURS = 168;
+/** Domain akun demo dari seed; kata sandinya tercatat di kode sumber. */
+const DEMO_EMAIL_DOMAINS = ['@bara.local', '@contributor.local'];
 const DUMMY_HASH = hashSync('timing-equalizer-placeholder', BCRYPT_ROUNDS);
 
 interface UserAuthRow {
@@ -34,6 +37,7 @@ interface ProfileRow {
   is_superadmin: boolean;
   department_id: string | null;
   department_name: string | null;
+  job_title: string | null;
   locale: string;
   theme: string;
 }
@@ -53,6 +57,7 @@ export class AuthService {
     private readonly lockout: LoginLockoutService,
     private readonly effective: EffectivePermissionsService,
     private readonly audit: AuditService,
+    private readonly config: ConfigService,
   ) {}
 
   private async auditLogin(
@@ -86,6 +91,25 @@ export class AuthService {
     userAgent: string | null,
   ): Promise<LoginResult> {
     const email = emailRaw.trim().toLowerCase();
+    // Kata sandi akun demo tercatat di kode sumber, jadi akun ini tidak boleh dipakai di PROD.
+    if (
+      this.config.get<string>('app.appEnv') !== 'DEV' &&
+      DEMO_EMAIL_DOMAINS.some((domain) => email.endsWith(domain))
+    ) {
+      await compare(password, DUMMY_HASH);
+      await this.lockout.record(email, null, ip, false, 'unknown_user');
+      await this.auditLogin(
+        AUDIT_EVENTS.authLoginFailed,
+        'warn',
+        `Login ditolak (akun demo di PROD): ${email}`,
+        null,
+        email,
+        ip,
+        userAgent,
+        { reason: 'demo_account' },
+      );
+      throw new AppError(ERROR_CODES.invalidCredentials, 'Email atau kata sandi salah', 401);
+    }
     const rows = (await this.dataSource.query(
       `SELECT id, email, password_hash, display_name, status, is_superadmin,
               department_id, token_version, locked_until
@@ -260,7 +284,7 @@ export class AuthService {
   ): Promise<MeDto> {
     const rows = (await this.dataSource.query(
       `SELECT u.email, u.display_name, u.is_superadmin, u.department_id,
-              d.name AS department_name, u.locale, u.theme
+              d.name AS department_name, u.job_title, u.locale, u.theme
          FROM users u
          LEFT JOIN departments d ON d.id = u.department_id
         WHERE u.id = $1`,
@@ -276,6 +300,7 @@ export class AuthService {
         displayName: row.display_name,
         departmentId: row.department_id,
         departmentName: row.department_name,
+        jobTitle: row.job_title,
         isSuperadmin: row.is_superadmin,
       },
       permissions: [...allowedIdentifiersSet].sort(),

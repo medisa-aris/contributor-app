@@ -5,7 +5,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OfficeParser } from 'officeparser';
 import { DataSource } from 'typeorm';
-import type { ConversationMode } from '@contributor/shared';
+import type { ConversationMode } from '@bara/shared';
 import type { AuthContext } from '../../common/types/auth-context';
 import { AppError, ERROR_CODES } from '../../common/errors/app-error';
 import { DATA_SOURCE } from '../../database/database.module';
@@ -140,7 +140,7 @@ export class AttachmentsService {
     if (requireSecondBrain && rows[0]!.mode !== 'second_brain') {
       throw new AppError(
         ERROR_CODES.validation,
-        'Lampiran hanya dapat digunakan pada percakapan Otak Kedua.',
+        'Lampiran hanya dapat digunakan pada percakapan Multi Brain.',
         400,
       );
     }

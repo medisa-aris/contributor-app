@@ -1,4 +1,4 @@
-# Runbook — Contributor AI
+# Runbook — ContributorAI
 
 Panduan operasional harian: menjalankan, memverifikasi, dan memulihkan sistem. Riwayat desain ada di [`architecture.md`](architecture.md); aturan izin di [`rbac.md`](rbac.md).
 
@@ -20,7 +20,7 @@ npm install                 # sekali; menjalankan build packages/shared otomatis
 npm run infra:up            # PostgreSQL 16 + Redis 7 di host remote
 npm run db:migrate          # terapkan skema (idempoten)
 npm run db:seed             # data demo: peran, izin, navigasi, departemen, konten tiga pusat,
-                            # dan 3 akun demo admin/manajer/staf (idempoten; dilewati otomatis
+                            # dan 10 akun demo (admin/manajer/staf + 7 tim HSE K3L) beserta 35 percakapan contoh (idempoten; dilewati otomatis
                             # saat NODE_ENV=production; mencetak kredensial akun demo)
 npm run dev                 # shared (watch) + API :3000 + Web :5173
 ```
@@ -33,6 +33,17 @@ Cek cepat: `http://localhost:3000/api/health` → `{"data":{"status":"ok",...}}`
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
 | `infra/.env`    | kredensial Postgres/Redis untuk host remote                                                                                                       | diabaikan |
 | `apps/api/.env` | `DATABASE_URL`, `TEST_DATABASE_URL`, `CORS_ORIGINS`, cookie, `AI_PROVIDER`/`AI_MODEL`/`AI_BASE_URL`, (opsional) `REDIS_URL`, `OPENROUTER_API_KEY` | diabaikan |
+
+Penanda lingkungan: `APP_ENV=DEV` atau `APP_ENV=PROD` di `apps/api/.env` (perlu restart API). Bila kosong, `NODE_ENV=production` dianggap `PROD`, selain itu `DEV`; API menolak start bila `APP_ENV=DEV` bersama `NODE_ENV=production`. Login cepat dilindungi berlapis:
+
+- **Build:** `npm run build` selalu membuang login cepat dari bundle, apa pun isi `.env`. Build gagal bila penanda kodenya masih ditemukan. Untuk server demo: `APP_ENV=DEV npm run build`, dan jangan pakai hasilnya di produksi.
+- **Dev server:** `npm run dev` mengikuti `APP_ENV` di `apps/api/.env`; hanya nilai `DEV` yang memuatnya.
+- **API:** pada `PROD`, login akun `@bara.local` dan `@contributor.local` ditolak 401 walau akunnya ada di database, dan seed tidak membuatnya. Jangan memakai domain ini untuk `ADMIN_EMAIL`. Sesi akun demo yang sudah aktif tetap berlaku sampai habis, jadi hapus akun itu bila database DEV dipakai untuk PROD.
+
+
+Pencarian web: `TAVILY_API_KEY`, `FIRECRAWL_API_KEY`, `BRAVE_SEARCH_API_KEY`, `WEB_SEARCH_MAX_ATTEMPTS`, `WEB_SEARCH_TIMEOUT_MS`, `WEB_SEARCH_MAX_RESULTS`, dan `WEB_SEARCH_MAX_CALLS_PER_TURN` di `apps/api/.env` (perlu restart API). Penyedia tanpa key dilewati. Urutan prioritas diatur di menu Provider AI dan tidak perlu restart.
+
+Guardrails: `GUARDRAILS_SECRET_KEY` (32 byte base64, `openssl rand -base64 32`) di `apps/api/.env` (perlu restart API). Tanpa kunci, Guardrails tidak bisa diaktifkan. Pengaturannya di menu Guardrails dan tidak perlu restart. Jangan mengganti kunci saat ada percakapan aktif: kamus lama di `guardrail_terms` tidak bisa dibuka lagi dan permintaan pada percakapan itu akan gagal; kosongkan tabel itu bila kunci harus diganti.
 
 Aturan: rahasia **hanya** di `.env` server-side. `OPENROUTER_API_KEY` tidak boleh masuk repo, argumen CLI, log, atau bundle frontend. Template ada di `*.env.example` (placeholder saja).
 
@@ -49,7 +60,7 @@ Konfigurasi runtime non-rahasia (mis. `security.lockout_threshold`, `security.se
 | `npm run infra:ps` / `logs` | Status / log container remote                                                                        |
 | `npm run infra:backup`      | Dump `contributor_ai` → `~/contributor-ai-infra/backup-contributor_ai-<stamp>.sql.gz` di host remote |
 
-**Setelah mengubah `packages/shared`**: jalankan `npm run build -w @contributor/shared` lalu restart dev server web — paket ini dipra-bundle ganda (CJS untuk API, ESM untuk Vite).
+**Setelah mengubah `packages/shared`**: jalankan `npm run build -w @bara/shared` lalu restart dev server web — paket ini dipra-bundle ganda (CJS untuk API, ESM untuk Vite).
 
 ## 5. Verifikasi Rilis (checklist)
 
@@ -60,7 +71,7 @@ Konfigurasi runtime non-rahasia (mis. `security.lockout_threshold`, `security.se
 5. Smoke deny: login akun staf → menu administrasi dan mode AI tidak tampil; akses paksa `GET /api/admin/users` dengan sesi staf → `403 AUTHORIZATION_FORBIDDEN`.
 6. Smoke AI Workspace (login akun dengan tiga izin mode, mis. manajer):
    - **Otak Kedua**: kirim satu pertanyaan → jawaban streaming tuntas dan tersimpan.
-   - **Asisten Eksekusi**: buat tugas → **Jalankan** → status bergerak `Dibuat → Selesai`, dialog Detail menampilkan hasil + jejak eksekusi (created/validating/running/completed, token, durasi, model).
+   - **Subordinate**: buat tugas → **Jalankan** → status bergerak `Dibuat → Selesai`, dialog Detail menampilkan hasil + jejak eksekusi (created/validating/running/completed, token, durasi, model).
    - **Riwayat Percakapan** (butuh `ai.workspace.history.read`): kedua tab memuat data milik-sendiri; hapus satu percakapan → baris hilang.
 7. Smoke isolasi: percakapan yang dibuat manajer tidak tampil di riwayat admin (dan sebaliknya).
 8. Smoke Knowledge Center:
@@ -79,7 +90,7 @@ Konfigurasi runtime non-rahasia (mis. `security.lockout_threshold`, `security.se
 | Login gagal terus (`AUTH_ACCOUNT_LOCKED`)                  | Lockout rate limit                                       | Tunggu `security.lockout_minutes`, atau bersihkan baris terkait di `login_attempts`; event `auth.login.unlocked_admin` tercatat bila dibuka admin                                   |
 | Perubahan izin belum terasa                                | Cache otorisasi (TTL keputusan 60 dtk; versi 3 dtk)      | Tunggu ≤ 3 dtk; bila tetap, pastikan `rbac_meta.version` naik setelah mutasi                                                                                                        |
 | API gagal start: koneksi DB                                | Container remote mati / `.env` salah                     | `npm run infra:ps`, `npm run infra:logs`; uji `psql` via `DATABASE_URL`                                                                                                             |
-| Web error aneh setelah mengubah shared                     | Bundle ESM lama                                          | `npm run build -w @contributor/shared` + restart `npm run dev`                                                                                                                      |
+| Web error aneh setelah mengubah shared                     | Bundle ESM lama                                          | `npm run build -w @bara/shared` + restart `npm run dev`                                                                                                                      |
 | `EADDRINUSE` 3000/5173                                     | Proses dev lama                                          | Hentikan proses pemakai port; jangan jalankan dua `npm run dev`                                                                                                                     |
 | 403 yang membingungkan                                     | Melihat pesan, bukan kode                                | Baca `error.details.missing` pada respons; atau pakai UI **Uji Otorisasi**                                                                                                          |
 | Sesi bocor/perlu cabut paksa                               | Karyawan keluar, dsb.                                    | UI **Sesi** → Cabut (event `auth.session.revoked`); semua mutasi tercatat                                                                                                           |
@@ -103,7 +114,7 @@ Konfigurasi runtime non-rahasia (mis. `security.lockout_threshold`, `security.se
 ## 8. Keamanan Operasional
 
 - Jangan pernah menyalin nilai dari `apps/api/.env` ke tiket, chat, atau log.
-- Akun demo `@contributor.local` (dibuat `db:seed`, kata sandi tercetak di layar) hanya untuk pelatihan lokal — seed melewatinya otomatis saat `NODE_ENV=production`; di produksi bootstrap lewat `db:create-admin`.
+- Akun demo `@bara.local` (dibuat `db:seed`, kata sandi tercetak di layar) hanya untuk pelatihan lokal — seed melewatinya otomatis pada lingkungan PROD; di produksi bootstrap lewat `db:create-admin`.
 - Rotasi kunci `OPENROUTER_API_KEY`: ubah di `.env`, restart API — tidak ada penyimpanan lain.
 - Bootstrap superadmin produksi lewat `db:create-admin`; setelah itu ganti kata sandi via UI.
 - Semua keputusan tolak tercatat (`security.authorization.denied`, `security.privilege_escalation_blocked`) — pantau lewat Log Audit dengan filter severity `warn`/`critical`.

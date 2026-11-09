@@ -9,7 +9,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { PERMISSIONS } from '@contributor/shared';
+import { PERMISSIONS } from '@bara/shared';
 import { CurrentAuth } from '../../common/decorators/current-auth.decorator';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import type { AuthContext } from '../../common/types/auth-context';

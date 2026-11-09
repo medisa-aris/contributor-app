@@ -1,9 +1,9 @@
 {
-  "name": "@contributor/web",
-  "version": "0.1.0",
+  "name": "@bara/web",
+  "version": "0.1.7",
   "private": true,
   "type": "module",
-  "description": "Contributor AI frontend (Vue 3 + Vite)",
+  "description": "ContributorAI frontend (Vue 3 + Vite)",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -p tsconfig.json --noEmit && vite build",
@@ -12,7 +12,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@contributor/shared": "0.1.0",
+    "@bara/shared": "0.1.0",
     "d3": "^7.9.0",
     "d3-org-chart": "^3.1.1",
     "dompurify": "^3.4.17",
@@ -20,6 +20,7 @@
     "marked": "^18.1.1",
     "mermaid": "^12.2.0",
     "pinia": "^3.0.3",
+    "three": "^0.180.0",
     "vue": "^3.5.18",
     "vue-i18n": "^11.1.11",
     "vue-router": "^4.5.1"
@@ -28,6 +29,7 @@
     "@types/d3": "^7.4.3",
     "@types/d3-org-chart": "^3.1.2",
     "@types/node": "^24.3.0",
+    "@types/three": "^0.180.0",
     "@vitejs/plugin-vue": "^6.0.1",
     "@vue/test-utils": "^2.4.6",
     "jsdom": "^26.1.0",

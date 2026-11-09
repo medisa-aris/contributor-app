@@ -1,11 +1,11 @@
-# Model RBAC — Contributor AI
+# Model RBAC — ContributorAI
 
 > Sumber kebenaran: `packages/shared/src/permissions.ts` (katalog), `apps/api/src/modules/rbac/*` (mesin evaluasi), migrasi `1700000000000-initial-schema.ts` (skema).
 
 ## 1. Prinsip
 
 1. **Deny-by-default** — tanpa grant eksplisit, akses ditolak. Setiap endpoint API menyatakan permission yang dibutuhkan lewat `@RequirePermission(PERMISSIONS.xxx)`.
-2. **Satu katalog** — semua identifier permission didefinisikan di `@contributor/shared` (`PERMISSION_CATALOG`, 38 entri, 5 aplikasi). Identifier adalah kontrak permanen: jangan pernah mengganti nama, hanya menambah/mendepresiasi.
+2. **Satu katalog** — semua identifier permission didefinisikan di `@bara/shared` (`PERMISSION_CATALOG`, 38 entri, 5 aplikasi). Identifier adalah kontrak permanen: jangan pernah mengganti nama, hanya menambah/mendepresiasi.
 3. **Perubahan seketika** — setiap mutasi RBAC menaikkan `rbac_meta.version`; cache otorisasi berkunci versi ini (TTL 60 dtk, versi di-cache 3 dtk) sehingga pencabutan izin berlaku dalam hitungan detik.
 4. **Satu jalur evaluasi** — UI (tombol/nav), guard API, dan layar diagnostik memakai mesin evaluasi yang sama (`policy-engine.ts`), jadi apa yang ditampilkan "Permission efektif" persis yang ditegakkan server.
 
@@ -36,7 +36,7 @@
 | `knowledge-center` | `knowledge.documents.read`, `knowledge.collections.read`, `knowledge.search.use` |
 | `agent-center` | `agents.view`, `agents.create`, `agents.execute`, `agents.approve` |
 | `integration-center` | `integrations.view`, `integrations.configure` |
-| `administration` | `admin.access`, `rbac.users.read`/`.manage`, `rbac.roles.read`/`.manage`, `rbac.groups.read`/`.manage`, `rbac.departments.read`/`.manage`, `rbac.policies.read`/`.manage`, `rbac.permissions.read`, `rbac.permissions.assign`, `rbac.effective.inspect`, `rbac.authz.test`, `nav.manage`, `config.read`, `config.manage`, `security.sessions.manage`, `audit.logs.read`, `providers.health.read` |
+| `administration` | `admin.access`, `rbac.users.read`/`.manage`, `rbac.roles.read`/`.manage`, `rbac.groups.read`/`.manage`, `rbac.departments.read`/`.manage`, `rbac.policies.read`/`.manage`, `rbac.permissions.read`, `rbac.permissions.assign`, `rbac.effective.inspect`, `rbac.authz.test`, `nav.manage`, `config.read`, `config.manage`, `security.sessions.manage`, `audit.logs.read`, `providers.health.read`, `ai.guardrails.manage` |
 
 Katalog di DB bisa menyimpang dari kode (mis. setelah upgrade); tombol **Sinkronkan katalog** menambahkan entri baru tanpa mengubah/menghapus yang lama.
 

@@ -1,0 +1,1483 @@
+{
+ "conversations": [
+  {
+   "owner": "hendra",
+   "taskCode": "M1",
+   "title": "Prosedur investigasi dan pelaporan insiden fatal",
+   "mode": "second_brain",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Claude, saya perlu mengingat alur resmi kalau terjadi insiden fatal di site. Apa langkah pertamanya menurut SOP kita?"
+    },
+    {
+     "role": "assistant",
+     "content": "Menurut SOP-HSE-017 Pelaporan dan Investigasi Insiden (dokumen sample), langkah pertama adalah penyelamatan korban dan pengamanan lokasi, baru setelah itu pelaporan berjenjang."
+    },
+    {
+     "role": "user",
+     "content": "Pelaporan berjenjangnya ke siapa saja?"
+    },
+    {
+     "role": "assistant",
+     "content": "Dari pengawas area ke Superintendent, Manager Safety, lalu GM Safety. Dari GM Safety diteruskan ke Kepala Teknik Tambang (KTT). Pelaporan ke Inspektur Tambang dilakukan melalui KTT."
+    },
+    {
+     "role": "user",
+     "content": "Apakah lokasi kejadian boleh dibersihkan setelah korban dievakuasi?"
+    },
+    {
+     "role": "assistant",
+     "content": "Tidak. SOP meminta area dipertahankan sebagaimana adanya sampai tim investigasi dan pihak berwenang memberi izin. Bukti seperti posisi unit, kondisi jalan, dan rekaman CCTV harus diamankan."
+    },
+    {
+     "role": "user",
+     "content": "Siapa yang menjadi ketua tim investigasi untuk kasus fatal?"
+    },
+    {
+     "role": "assistant",
+     "content": "Di SOP sample, ketua tim ditunjuk oleh KTT dan biasanya berasal dari luar departemen yang mengalami kejadian agar objektif. GM Safety duduk sebagai pengarah."
+    },
+    {
+     "role": "user",
+     "content": "Metode analisis akar masalah yang dipakai apa?"
+    },
+    {
+     "role": "assistant",
+     "content": "SOP menyebut kombinasi 5 Whys dan fishbone, dan untuk kasus fatal dianjurkan ICAM atau metode setara yang menelusuri kegagalan pengendalian, bukan hanya tindakan individu."
+    },
+    {
+     "role": "user",
+     "content": "Kenapa ditekankan jangan berhenti di kesalahan individu?"
+    },
+    {
+     "role": "assistant",
+     "content": "Karena prinsip investigasi modern melihat kondisi laten: desain jalur kerja, prosedur, pengawasan, dan beban kerja. Kesalahan individu biasanya gejala, bukan akar."
+    },
+    {
+     "role": "user",
+     "content": "Berapa lama laporan investigasi harus selesai?"
+    },
+    {
+     "role": "assistant",
+     "content": "SOP sample menetapkan laporan awal dalam 24 jam dan laporan akhir dalam 30 hari kerja. Untuk tenggat dari regulator, mohon dicek ke ketentuan resmi karena saya tidak ingin menyebut angka yang tidak terverifikasi."
+    },
+    {
+     "role": "user",
+     "content": "Baik. Bagaimana dengan komunikasi ke keluarga korban?"
+    },
+    {
+     "role": "assistant",
+     "content": "SOP menempatkan komunikasi keluarga di bawah HR dan manajemen site dengan pendampingan, serta melarang pernyataan penyebab sebelum investigasi selesai."
+    },
+    {
+     "role": "user",
+     "content": "Apakah ada aturan komunikasi ke media?"
+    },
+    {
+     "role": "assistant",
+     "content": "Ada. Hanya juru bicara perusahaan yang berhak memberi pernyataan. Karyawan dan kontraktor diminta mengarahkan pertanyaan media ke Corporate Communications."
+    },
+    {
+     "role": "user",
+     "content": "Apa saja dokumen yang wajib dilampirkan di laporan akhir?"
+    },
+    {
+     "role": "assistant",
+     "content": "Kronologi, foto dan diagram lokasi, daftar saksi, hasil pemeriksaan unit atau alat, rekam pelatihan dan sertifikasi pihak terkait, analisis akar masalah, serta rencana tindakan korektif dengan PIC dan tenggat."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana dengan pembelajaran ke site lain?"
+    },
+    {
+     "role": "assistant",
+     "content": "SOP mengharuskan safety alert dalam 72 jam dan sesi berbagi pembelajaran di seluruh site, termasuk kontraktor yang terkait."
+    },
+    {
+     "role": "user",
+     "content": "Apakah tindakan korektif harus diverifikasi efektivitasnya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Ya. Setiap tindakan korektif diverifikasi dan ditutup oleh Manager Safety, dan GM Safety mereview status penutupan di rapat bulanan."
+    },
+    {
+     "role": "user",
+     "content": "Ringkas semua ini jadi checklist 10 butir untuk saya simpan."
+    },
+    {
+     "role": "assistant",
+     "content": "Checklist: 1) selamatkan korban, 2) amankan lokasi, 3) lapor berjenjang, 4) bentuk tim, 5) amankan bukti, 6) wawancara saksi, 7) analisis akar masalah, 8) laporan akhir, 9) safety alert, 10) verifikasi tindakan korektif."
+    },
+    {
+     "role": "user",
+     "content": "Tolong tandai bahwa ini berdasarkan SOP sample, bukan regulasi."
+    },
+    {
+     "role": "assistant",
+     "content": "Sudah saya tandai: checklist ini bersumber dari SOP-HSE-017 sample. Untuk kewajiban pelaporan ke regulator, rujukan resminya tetap peraturan pertambangan yang berlaku dan arahan KTT."
+    }
+   ]
+  },
+  {
+   "owner": "hendra",
+   "taskCode": "M2",
+   "title": "Hierarki pengendalian dan critical control",
+   "mode": "second_brain",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya ingin menyegarkan ingatan soal hierarki pengendalian risiko. Urutannya bagaimana?"
+    },
+    {
+     "role": "assistant",
+     "content": "Dari paling kuat ke paling lemah: eliminasi, substitusi, rekayasa teknik, pengendalian administratif, lalu APD. Pengendalian yang lebih atas tidak bergantung pada perilaku manusia."
+    },
+    {
+     "role": "user",
+     "content": "Contoh di hauling untuk tiap tingkat?"
+    },
+    {
+     "role": "assistant",
+     "content": "Eliminasi: memisahkan total area kendaraan ringan dari jalur unit besar. Substitusi: mengganti pola pengangkutan agar persimpangan berkurang. Rekayasa: sistem deteksi proximity dan tanggul pengaman. Administratif: radio call dan rambu. APD: rompi reflektif dan sabuk pengaman."
+    },
+    {
+     "role": "user",
+     "content": "Di insiden terakhir, rekomendasinya banyak yang administratif. Apa risikonya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pengendalian administratif mudah gagal karena bergantung pada kepatuhan, kelelahan, dan pengawasan. Untuk risiko fatal, SOP sample meminta minimal satu pengendalian di level rekayasa atau lebih tinggi."
+    },
+    {
+     "role": "user",
+     "content": "Apa itu critical control menurut dokumen kita?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pengendalian yang jika gagal secara langsung membuka jalan ke dampak fatal. Contohnya sabuk pengaman, tanggul pengaman, lock out tag out, dan pemisahan jalur."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana cara menentukan critical control untuk satu risiko?"
+    },
+    {
+     "role": "assistant",
+     "content": "Tanyakan: jika pengendalian ini hilang, apakah kejadian fatal menjadi sangat mungkin? Dan apakah tidak ada pengendalian lain yang menggantikan? Jika keduanya ya, itu critical control."
+    },
+    {
+     "role": "user",
+     "content": "Siapa pemilik critical control?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pemilik risiko di lini operasi bertanggung jawab atas pengendalian, sedangkan HIRA mengawasi kualitas identifikasi dan verifikasi efektivitasnya."
+    },
+    {
+     "role": "user",
+     "content": "Seberapa sering critical control diverifikasi?"
+    },
+    {
+     "role": "assistant",
+     "content": "Panduan sample: risiko ekstrem bulanan dan risiko tinggi per kuartal, atau lebih cepat jika ada perubahan kondisi atau insiden."
+    },
+    {
+     "role": "user",
+     "content": "Metode verifikasinya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Observasi lapangan, tinjauan dokumen, wawancara pekerja, dan analisis data insiden serta near miss. Hasil dicatat sebagai efektif, sebagian, atau tidak efektif."
+    },
+    {
+     "role": "user",
+     "content": "Apa yang dilakukan jika hasilnya tidak efektif?"
+    },
+    {
+     "role": "assistant",
+     "content": "Dicatat sebagai temuan, ditetapkan pengendalian sementara, dibuat rencana perbaikan dengan PIC dan tenggat, lalu diverifikasi ulang."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana menghubungkannya dengan dashboard direksi?"
+    },
+    {
+     "role": "assistant",
+     "content": "Tampilkan persentase critical control terverifikasi dan efektif per risiko kritis, plus tren temuan terbuka. Itu lebih informatif daripada hanya angka insiden."
+    },
+    {
+     "role": "user",
+     "content": "Bagus. Apakah ada contoh indikator terukur untuk kriteria efektif?"
+    },
+    {
+     "role": "assistant",
+     "content": "Contoh: 100 persen unit memiliki sabuk pengaman berfungsi, tinggi tanggul sesuai standar di semua segmen, dan tidak ada pekerja di zona larangan saat alat beroperasi."
+    },
+    {
+     "role": "user",
+     "content": "Ringkas dalam tiga kalimat untuk bahan sambutan saya."
+    },
+    {
+     "role": "assistant",
+     "content": "Pengendalian terbaik adalah yang tidak bergantung pada ingatan manusia. Untuk risiko fatal kita wajib memastikan critical control ada, berfungsi, dan terverifikasi. Ukuran keberhasilan kita adalah pengendalian yang efektif, bukan banyaknya dokumen."
+    },
+    {
+     "role": "user",
+     "content": "Terima kasih."
+    },
+    {
+     "role": "assistant",
+     "content": "Sama-sama, Pak Hendra. Sumber rujukan: pedoman hierarki pengendalian dan critical control sample dari Departemen HIRA."
+    },
+    {
+     "role": "user",
+     "content": "Satu lagi, apakah APD boleh dihitung sebagai pengendalian utama?"
+    },
+    {
+     "role": "assistant",
+     "content": "Tidak untuk risiko fatal. APD dihitung sebagai lapisan terakhir dan tidak boleh menjadi satu-satunya pengendalian pada risiko tinggi atau ekstrem."
+    },
+    {
+     "role": "user",
+     "content": "Baik, itu poin yang akan saya tekankan di rapat."
+    },
+    {
+     "role": "assistant",
+     "content": "Saya sarankan dicatat sebagai prinsip dalam standar penilaian risiko yang sedang diperbarui Ibu Ratna."
+    }
+   ]
+  },
+  {
+   "owner": "hendra",
+   "taskCode": "M3",
+   "title": "Definisi dan perhitungan TRIFR dan LTIFR",
+   "mode": "second_brain",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya ingin memastikan definisi TRIFR dan LTIFR yang dipakai perusahaan. Bisa dijelaskan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Di standar pelaporan sample, TRIFR (Total Recordable Injury Frequency Rate) menghitung jumlah cedera yang tercatat per satu juta jam kerja. LTIFR hanya menghitung cedera yang menyebabkan kehilangan hari kerja."
+    },
+    {
+     "role": "user",
+     "content": "Apa saja yang masuk kategori recordable?"
+    },
+    {
+     "role": "assistant",
+     "content": "Kematian, cedera hilang hari kerja (LTI), pekerjaan terbatas (RWC), dan perawatan medis (MTC). Pertolongan pertama saja biasanya tidak dihitung."
+    },
+    {
+     "role": "user",
+     "content": "Rumusnya?"
+    },
+    {
+     "role": "assistant",
+     "content": "TRIFR = jumlah kejadian recordable dikali 1.000.000 dibagi total jam kerja. LTIFR = jumlah LTI dikali 1.000.000 dibagi total jam kerja."
+    },
+    {
+     "role": "user",
+     "content": "Jam kerja kontraktor ikut dihitung?"
+    },
+    {
+     "role": "assistant",
+     "content": "Di standar sample, ya. Jam kerja karyawan dan kontraktor yang bekerja di bawah kendali operasi site dihitung, dan dilaporkan baik gabungan maupun terpisah."
+    },
+    {
+     "role": "user",
+     "content": "Kalau ada kasus yang statusnya diperdebatkan, siapa yang memutuskan klasifikasinya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Klasifikasi akhir ditetapkan Manager Safety setelah review tim investigasi, dengan GM Safety sebagai tempat eskalasi jika ada perbedaan pendapat."
+    },
+    {
+     "role": "user",
+     "content": "Apakah ada target TRIFR perusahaan di dokumen?"
+    },
+    {
+     "role": "assistant",
+     "content": "Di dokumen target sample, TRIFR 0,45 dan LTIFR 0,10. Itu angka ilustrasi untuk demo, bukan target resmi."
+    },
+    {
+     "role": "user",
+     "content": "Mengapa dua angka itu perlu dilihat bersama?"
+    },
+    {
+     "role": "assistant",
+     "content": "TRIFR menangkap cedera ringan yang sering menjadi sinyal awal, sedangkan LTIFR menangkap dampak yang lebih berat. Bila hanya LTIFR yang dilihat, pola cedera ringan bisa terlewat."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana dengan under-reporting?"
+    },
+    {
+     "role": "assistant",
+     "content": "Risiko nyata. Karena itu dokumen sample menyarankan indikator pengimbang seperti jumlah near miss dan hazard report yang dilaporkan dan ditutup."
+    },
+    {
+     "role": "user",
+     "content": "Apakah angka ini cukup untuk menilai performa safety?"
+    },
+    {
+     "role": "assistant",
+     "content": "Tidak sepenuhnya. Ini lagging indicator. Untuk gambaran utuh perlu leading indicator seperti penutupan tindak lanjut, verifikasi critical control, dan partisipasi pelatihan."
+    },
+    {
+     "role": "user",
+     "content": "Kalau jam kerja bulanan sekitar 2,4 juta jam dan ada 3 recordable, berapa TRIFR-nya?"
+    },
+    {
+     "role": "assistant",
+     "content": "TRIFR = 3 x 1.000.000 / 2.400.000 = 1,25 untuk bulan itu. Perlu dicatat bahwa angka bulanan sangat sensitif, jadi sering dilaporkan juga secara kumulatif 12 bulan bergulir."
+    },
+    {
+     "role": "user",
+     "content": "Bagus. Mengapa kumulatif 12 bulan lebih stabil?"
+    },
+    {
+     "role": "assistant",
+     "content": "Karena jumlah jam kerja di penyebut lebih besar dan variasi acak antarbulan teredam, sehingga tren lebih mudah dibaca."
+    },
+    {
+     "role": "user",
+     "content": "Baik, saya butuh satu paragraf penjelasan untuk lampiran slide Direksi."
+    },
+    {
+     "role": "assistant",
+     "content": "TRIFR dihitung dari jumlah kejadian recordable per satu juta jam kerja dan mencakup kematian, LTI, RWC, dan MTC. LTIFR hanya mencakup LTI. Keduanya dilaporkan bulanan dan kumulatif 12 bulan untuk melihat tren yang stabil."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan catatan bahwa angka target adalah ilustrasi."
+    },
+    {
+     "role": "assistant",
+     "content": "Ditambahkan: target TRIFR 0,45 dan LTIFR 0,10 pada dokumen ini adalah ilustrasi untuk demonstrasi dan harus diganti dengan target resmi perusahaan."
+    },
+    {
+     "role": "user",
+     "content": "Terima kasih, cukup."
+    },
+    {
+     "role": "assistant",
+     "content": "Siap, Pak Hendra. Sumber: Standar Statistik Keselamatan sample."
+    }
+   ]
+  },
+  {
+   "owner": "hendra",
+   "taskCode": "M4",
+   "title": "Program fatigue management operator hauling",
+   "mode": "second_brain",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Program fatigue management 2027 akan jadi fokus. Apa saja elemen minimalnya menurut pedoman internal kita?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pedoman sample FM-HSE-004 memuat lima elemen: pengaturan jam kerja dan istirahat, pemeriksaan fit-for-work, pemantauan kelelahan selama shift, fasilitas istirahat, dan edukasi pekerja serta pengawas."
+    },
+    {
+     "role": "user",
+     "content": "Batas jam kerja operator hauling berapa?"
+    },
+    {
+     "role": "assistant",
+     "content": "Dokumen sample menetapkan maksimal 12 jam per shift termasuk istirahat, dengan jeda minimal 8 jam antar shift. Angka ini perlu disesuaikan dengan ketentuan resmi dan kebijakan site."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana fit-for-work dilakukan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Sebelum shift: tanya jawab kondisi tidur, kesehatan, dan obat yang dikonsumsi, ditambah pengecekan tanda vital sederhana. Hasilnya dicatat oleh pengawas atau paramedis."
+    },
+    {
+     "role": "user",
+     "content": "Apakah ada teknologi pemantau kelelahan di dokumen?"
+    },
+    {
+     "role": "assistant",
+     "content": "Disebutkan sistem deteksi kelelahan di kabin sebagai opsi. Tapi dokumen menegaskan teknologi hanya melengkapi, tidak menggantikan pengaturan jam kerja dan pengawasan."
+    },
+    {
+     "role": "user",
+     "content": "Kapan pekerja boleh menolak bekerja karena lelah?"
+    },
+    {
+     "role": "assistant",
+     "content": "Setiap pekerja memiliki stop work authority, termasuk ketika merasa tidak fit karena kelelahan. Pengawas wajib menindaklanjuti tanpa sanksi bila laporan dibuat dengan itikad baik."
+    },
+    {
+     "role": "user",
+     "content": "Apa risiko yang paling sering muncul di data kita terkait kelelahan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Di data sample, kejadian cenderung meningkat pada pergantian shift dan menjelang akhir shift malam, dengan pola microsleep dan serah terima yang tidak tuntas."
+    },
+    {
+     "role": "user",
+     "content": "Apa rekomendasi untuk serah terima shift?"
+    },
+    {
+     "role": "assistant",
+     "content": "Serah terima terstruktur di titik tetap: kondisi unit, area kerja, bahaya aktif, dan instruksi khusus. Ditandatangani kedua pengawas dan dibahas singkat bersama operator."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana dengan jadwal rotasi yang baik?"
+    },
+    {
+     "role": "assistant",
+     "content": "Hindari perubahan shift mendadak dan rotasi balik cepat dari malam ke pagi. Rotasi maju atau pola tetap umumnya lebih mudah diadaptasi tubuh."
+    },
+    {
+     "role": "user",
+     "content": "Apakah ada kewajiban edukasi untuk keluarga?"
+    },
+    {
+     "role": "assistant",
+     "content": "Tidak wajib, tetapi pedoman sample menyarankan materi sederhana untuk keluarga tentang pola tidur dan istirahat karena kualitas tidur dipengaruhi kondisi rumah."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana mengukur keberhasilan program?"
+    },
+    {
+     "role": "assistant",
+     "content": "Indikator: jumlah laporan kelelahan, near miss terkait kantuk, kepatuhan fit-for-work, dan kejadian kendaraan pada jam rawan. Targetnya tren turun, bukan angka mutlak."
+    },
+    {
+     "role": "user",
+     "content": "Siapa pemilik program ini?"
+    },
+    {
+     "role": "assistant",
+     "content": "Manager Safety sebagai pemilik program, dengan dukungan Produksi untuk penjadwalan dan HR atau paramedis untuk kesehatan kerja."
+    },
+    {
+     "role": "user",
+     "content": "Apakah kontraktor angkutan wajib mengikuti?"
+    },
+    {
+     "role": "assistant",
+     "content": "Ya. Kontrak sample mewajibkan kontraktor menerapkan standar fatigue management yang setara dan memberikan data jam kerja untuk diaudit."
+    },
+    {
+     "role": "user",
+     "content": "Apa yang biasanya menjadi hambatan implementasi?"
+    },
+    {
+     "role": "assistant",
+     "content": "Target produksi yang menekan, kekurangan operator, dan persepsi bahwa istirahat menurunkan penghasilan. Perlu dukungan manajemen agar standar ini tidak diabaikan."
+    },
+    {
+     "role": "user",
+     "content": "Saya ingin ringkasan satu halaman untuk rapat dengan Manajer Produksi."
+    },
+    {
+     "role": "assistant",
+     "content": "Ringkasan: tujuan, lima elemen program, batas jam kerja, serah terima shift terstruktur, indikator keberhasilan, dan permintaan dukungan Produksi pada penjadwalan."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan bahwa angka batas jam kerja adalah acuan sample."
+    },
+    {
+     "role": "assistant",
+     "content": "Sudah. Catatan: batas jam kerja pada ringkasan ini adalah acuan dokumen sample dan harus dicocokkan dengan kebijakan resmi perusahaan."
+    }
+   ]
+  },
+  {
+   "owner": "hendra",
+   "taskCode": "M5",
+   "title": "Stop work authority dan perlindungan pelapor",
+   "mode": "second_brain",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya mau memperkuat budaya stop work authority. Apa yang dikatakan kebijakan kita?"
+    },
+    {
+     "role": "assistant",
+     "content": "Kebijakan sample SWA-HSE-001 menyatakan setiap orang di site, termasuk kontraktor, berhak dan wajib menghentikan pekerjaan yang dinilai tidak aman tanpa takut sanksi."
+    },
+    {
+     "role": "user",
+     "content": "Apa syarat menghentikan pekerjaan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Tidak ada syarat jabatan. Cukup ada keyakinan wajar bahwa pekerjaan dapat menyebabkan cedera atau kerusakan serius. Pekerjaan dimulai kembali setelah bahaya dikendalikan dan pengawas menyetujui."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana jika pekerja salah menilai?"
+    },
+    {
+     "role": "assistant",
+     "content": "Kebijakan menyatakan tidak ada hukuman untuk penghentian dengan itikad baik meski kemudian terbukti tidak berbahaya. Yang dievaluasi adalah pembelajaran, bukan orangnya."
+    },
+    {
+     "role": "user",
+     "content": "Siapa yang boleh memulai kembali pekerjaan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pengawas area bersama orang yang menghentikan pekerjaan setelah memastikan pengendalian terpasang. Untuk risiko tinggi, perlu persetujuan Superintendent."
+    },
+    {
+     "role": "user",
+     "content": "Apakah ada pencatatan penghentian kerja?"
+    },
+    {
+     "role": "assistant",
+     "content": "Ya. Setiap penghentian dicatat dengan lokasi, bahaya, tindakan, dan waktu pemulihan. Datanya dipakai sebagai indikator budaya keselamatan."
+    },
+    {
+     "role": "user",
+     "content": "Apa hubungan SWA dengan hasil survei budaya tahun lalu?"
+    },
+    {
+     "role": "assistant",
+     "content": "Survei sample menunjukkan skor terendah pada keberanian melapor. Itu menandakan SWA belum sepenuhnya dirasakan aman oleh pekerja."
+    },
+    {
+     "role": "user",
+     "content": "Apa yang bisa dilakukan manajemen untuk memperbaikinya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Kunjungan pimpinan yang mengapresiasi penghentian kerja, studi kasus positif, dan menanggapi cepat setiap laporan agar pekerja melihat hasil nyata."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana kebijakan perlindungan pelapor?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pelapor hazard dan insiden dilindungi dari tindakan balasan. Pelanggaran terhadap perlindungan ini diperlakukan sebagai pelanggaran disiplin berat."
+    },
+    {
+     "role": "user",
+     "content": "Apakah ada kanal pelaporan anonim?"
+    },
+    {
+     "role": "assistant",
+     "content": "Dokumen sample menyebut kanal pelaporan rahasia melalui Whistle Blowing System perusahaan untuk isu yang sulit dilaporkan lewat jalur biasa."
+    },
+    {
+     "role": "user",
+     "content": "Apakah pengawas dilatih khusus untuk menanggapi penghentian kerja?"
+    },
+    {
+     "role": "assistant",
+     "content": "Ada modul pelatihan pengawas tentang respons yang konstruktif: berterima kasih, mendengarkan, dan bertindak, bukan mempertanyakan motivasi."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana mengukur keberhasilan program SWA?"
+    },
+    {
+     "role": "assistant",
+     "content": "Jumlah penghentian kerja yang dicatat, waktu respons, tindak lanjut tertutup, dan perubahan skor survei budaya. Kenaikan jumlah penghentian pada awalnya adalah tanda positif."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana mencegah penyalahgunaan SWA?"
+    },
+    {
+     "role": "assistant",
+     "content": "Edukasi jelas bahwa SWA untuk bahaya nyata. Kasus penyalahgunaan yang jelas ditangani lewat dialog dulu, dengan HR hanya pada kasus berulang dan disengaja."
+    },
+    {
+     "role": "user",
+     "content": "Buatkan lima poin bahan sambutan peluncuran ulang SWA."
+    },
+    {
+     "role": "assistant",
+     "content": "Lima poin: 1) setiap orang berhak berhenti, 2) berhenti itu berani, 3) pelapor dilindungi, 4) setiap laporan ditanggapi, 5) pimpinan memberi contoh dan mengapresiasi."
+    },
+    {
+     "role": "user",
+     "content": "Bagus. Saya ingin slogan yang konsisten dengan kampanye 2027."
+    },
+    {
+     "role": "assistant",
+     "content": "Sejalan dengan tema berani lapor: Berhenti Itu Berani. Bisa dipadukan dengan Lapor Hari Ini, Selamat Esok Hari."
+    },
+    {
+     "role": "user",
+     "content": "Terima kasih."
+    },
+    {
+     "role": "assistant",
+     "content": "Sama-sama, Pak Hendra. Sumber: SWA-HSE-001 dan hasil survei budaya keselamatan sample."
+    }
+   ]
+  },
+  {
+   "owner": "hendra",
+   "taskCode": "M6",
+   "title": "Persiapan audit SMKP Minerba",
+   "mode": "second_brain",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Audit SMKP akan datang. Bantu saya mengingat elemen-elemen yang biasanya diaudit."
+    },
+    {
+     "role": "assistant",
+     "content": "Elemen SMKP pada dokumen sample dikelompokkan: kepemimpinan dan komitmen, perencanaan, dukungan dan pelaksanaan operasi, pemantauan dan evaluasi, serta tinjauan manajemen dan perbaikan berkelanjutan. Detail elemen resmi perlu dicek pada pedoman SMKP yang berlaku."
+    },
+    {
+     "role": "user",
+     "content": "Dokumen apa yang biasanya diminta auditor di elemen kepemimpinan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Kebijakan K3, struktur dan tanggung jawab, bukti komitmen manajemen seperti kunjungan pimpinan dan rapat K3, serta alokasi sumber daya."
+    },
+    {
+     "role": "user",
+     "content": "Untuk perencanaan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Identifikasi bahaya dan penilaian risiko, daftar persyaratan hukum, sasaran dan program K3, serta rencana kerja tahunan."
+    },
+    {
+     "role": "user",
+     "content": "Untuk pelaksanaan operasi?"
+    },
+    {
+     "role": "assistant",
+     "content": "Prosedur kerja dan izin kerja, pelatihan dan kompetensi, pengelolaan kontraktor, tanggap darurat, serta inspeksi dan perawatan peralatan."
+    },
+    {
+     "role": "user",
+     "content": "Apa yang paling sering menjadi temuan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pola umum di industri: tindak lanjut temuan terlambat, dokumen tidak mutakhir, dan sertifikasi kedaluwarsa. Tiga hal itu sebaiknya diperiksa lebih dulu."
+    },
+    {
+     "role": "user",
+     "content": "Siapa yang menjadi PIC tiap kelompok elemen?"
+    },
+    {
+     "role": "assistant",
+     "content": "Usulan sample: Superintendent Compliance untuk dokumen dan regulasi, Superintendent Safety Operasional untuk lapangan, dan Manager HIRA untuk identifikasi bahaya dan risiko."
+    },
+    {
+     "role": "user",
+     "content": "Berapa lama persiapan yang ideal?"
+    },
+    {
+     "role": "assistant",
+     "content": "Empat minggu: audit dokumen, inspeksi internal, perbaikan temuan, lalu simulasi audit dan briefing tim. Untuk site besar, tambah dua minggu."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana mengelola temuan major vs minor?"
+    },
+    {
+     "role": "assistant",
+     "content": "Temuan major membutuhkan rencana korektif segera dengan bukti penutupan, sedangkan minor dapat dijadwalkan. Kedua jenis tetap perlu PIC dan tenggat."
+    },
+    {
+     "role": "user",
+     "content": "Apakah wawancara pekerja bagian dari audit?"
+    },
+    {
+     "role": "assistant",
+     "content": "Ya. Auditor biasanya mewawancarai pekerja untuk melihat pemahaman prosedur, SWA, dan tanggap darurat. Karena itu briefing tim sebelum audit penting."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana mempersiapkan bukti pelatihan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Rekap sertifikat berlaku, matriks kompetensi per jabatan, dan daftar kehadiran induksi karyawan serta kontraktor. Periksa masa berlaku dua bulan ke depan."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana dengan statistik kecelakaan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pastikan data TRIFR, LTIFR, dan tindak lanjut investigasi konsisten antara laporan internal dan pelaporan ke regulator."
+    },
+    {
+     "role": "user",
+     "content": "Apakah ada risiko jika data tidak konsisten?"
+    },
+    {
+     "role": "assistant",
+     "content": "Ya, auditor dapat mempertanyakan keandalan sistem pencatatan dan memperluas sampel pemeriksaan. Sebaiknya ada satu sumber data yang diverifikasi."
+    },
+    {
+     "role": "user",
+     "content": "Susun checklist persiapan audit satu halaman."
+    },
+    {
+     "role": "assistant",
+     "content": "Checklist: dokumen terbaru, bukti kepemimpinan, IBPR terbaru, daftar regulasi, rekap pelatihan, status tindak lanjut, hasil inspeksi, tanggap darurat, kontraktor, dan sumber data statistik."
+    },
+    {
+     "role": "user",
+     "content": "Tambahkan rapat koordinasi mingguan."
+    },
+    {
+     "role": "assistant",
+     "content": "Ditambahkan rapat 30 menit setiap Senin untuk memantau progres dan hambatan, dipimpin Manager Safety."
+    },
+    {
+     "role": "user",
+     "content": "Terima kasih."
+    },
+    {
+     "role": "assistant",
+     "content": "Sama-sama. Catatan: daftar elemen ini ringkasan sample, rujuk pedoman SMKP resmi saat menyusun daftar audit final."
+    }
+   ]
+  },
+  {
+   "owner": "hendra",
+   "taskCode": "M7",
+   "title": "Pengelolaan keselamatan kontraktor",
+   "mode": "second_brain",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Bagaimana kebijakan kita soal seleksi kontraktor dari sisi keselamatan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Dokumen sample CSM-HSE-002 mewajibkan prakualifikasi keselamatan sebelum kontrak: rekam jejak insiden, sistem manajemen K3, kompetensi personel, dan rencana keselamatan proyek."
+    },
+    {
+     "role": "user",
+     "content": "Apa kriteria yang membuat kontraktor ditolak?"
+    },
+    {
+     "role": "assistant",
+     "content": "Tidak ada angka tunggal. Namun riwayat insiden fatal yang belum ditindaklanjuti, tidak ada penanggung jawab K3, atau sertifikasi personel tidak valid adalah alasan umum untuk tidak lolos."
+    },
+    {
+     "role": "user",
+     "content": "Siapa yang memutuskan hasil prakualifikasi?"
+    },
+    {
+     "role": "assistant",
+     "content": "Tim lintas fungsi: Safety, Procurement, dan pengguna jasa. GM Safety menerima laporan kontraktor yang lolos bersyarat."
+    },
+    {
+     "role": "user",
+     "content": "Setelah kontrak berjalan, apa yang diawasi?"
+    },
+    {
+     "role": "assistant",
+     "content": "Induksi, kepatuhan prosedur kerja, inspeksi rutin, laporan statistik bulanan, dan kehadiran pengawas kontraktor yang kompeten di lapangan."
+    },
+    {
+     "role": "user",
+     "content": "Apakah KPI keselamatan masuk ke evaluasi kontrak?"
+    },
+    {
+     "role": "assistant",
+     "content": "Ya. Dokumen sample memasukkan TRIFR kontraktor, penutupan temuan, partisipasi pelatihan, dan kontribusi pada pelaporan hazard sebagai komponen evaluasi."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana jika kontraktor berulang kali melanggar?"
+    },
+    {
+     "role": "assistant",
+     "content": "Eskalasi bertahap: teguran tertulis, rencana perbaikan wajib, penghentian pekerjaan tertentu, dan terakhir peninjauan kontrak, dengan keputusan melibatkan GM Safety dan manajemen terkait."
+    },
+    {
+     "role": "user",
+     "content": "Apa saja yang diaudit pada audit kontraktor?"
+    },
+    {
+     "role": "assistant",
+     "content": "Dokumen izin dan kompetensi, kondisi unit dan alat, praktik di lapangan, catatan pelatihan, dan sistem pelaporan insiden mereka."
+    },
+    {
+     "role": "user",
+     "content": "Seberapa sering audit dilakukan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Sample: tahunan untuk kontraktor risiko tinggi dan dua tahun untuk risiko lebih rendah, ditambah audit khusus setelah insiden serius."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana menangani kontraktor kecil yang sistemnya belum matang?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pendampingan: template prosedur, pelatihan bersama, dan inspeksi gabungan agar mereka naik kelas tanpa mengorbankan standar minimum."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana dengan keterlibatan kontraktor di kampanye safety culture?"
+    },
+    {
+     "role": "assistant",
+     "content": "Libatkan sejak perancangan, sertakan dalam kompetisi lintas perusahaan, dan masukkan indikator budaya keselamatan dalam evaluasi kontrak."
+    },
+    {
+     "role": "user",
+     "content": "Kasus TRIFR naik di kontraktor angkutan, tindakan apa yang masuk akal?"
+    },
+    {
+     "role": "assistant",
+     "content": "Audit khusus, refresher training pekerja workshop, inspeksi harian selama 30 hari, dan rencana perbaikan dengan tenggat yang diverifikasi Safety."
+    },
+    {
+     "role": "user",
+     "content": "Siapa PIC di pihak kita?"
+    },
+    {
+     "role": "assistant",
+     "content": "Superintendent Safety Compliance & Audit untuk audit dan dokumen, serta Superintendent Safety Operasional untuk inspeksi lapangan."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana kita memastikan kontraktor melaporkan insiden dengan jujur?"
+    },
+    {
+     "role": "assistant",
+     "content": "Dengan menghindari penalti sepihak yang mendorong under-reporting, menyandingkan data mereka dengan inspeksi independen, dan mengapresiasi pelaporan near miss."
+    },
+    {
+     "role": "user",
+     "content": "Buat ringkasan 5 butir untuk rapat kontraktor."
+    },
+    {
+     "role": "assistant",
+     "content": "Ringkasan: prakualifikasi, induksi, pengawasan lapangan, evaluasi KPI, dan eskalasi bertahap. Ditambah dukungan pendampingan untuk kontraktor kecil."
+    },
+    {
+     "role": "user",
+     "content": "Baik, cukup untuk sekarang."
+    },
+    {
+     "role": "assistant",
+     "content": "Siap. Sumber: CSM-HSE-002 sample."
+    }
+   ]
+  },
+  {
+   "owner": "hendra",
+   "taskCode": "M8",
+   "title": "Tingkat darurat dan simulasi tanggap darurat",
+   "mode": "second_brain",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya ingin mengingat klasifikasi tingkat darurat di site kita."
+    },
+    {
+     "role": "assistant",
+     "content": "Dokumen ERP-HSE-003 sample membagi tiga tingkat: Level 1 ditangani tim area, Level 2 membutuhkan tim tanggap darurat site, dan Level 3 melibatkan manajemen krisis serta bantuan eksternal."
+    },
+    {
+     "role": "user",
+     "content": "Siapa yang menetapkan level?"
+    },
+    {
+     "role": "assistant",
+     "content": "Incident Controller di lapangan menetapkan level awal dan dapat menaikkannya sesuai perkembangan. Penurunan level hanya atas persetujuan KTT atau penggantinya."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana struktur komando di dokumen?"
+    },
+    {
+     "role": "assistant",
+     "content": "Incident Controller memimpin lapangan, Emergency Coordinator mengelola sumber daya di pos komando, dan Crisis Manager di tingkat manajemen untuk Level 3."
+    },
+    {
+     "role": "user",
+     "content": "Apa saja skenario yang wajib disimulasikan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Kebakaran unit atau fasilitas, kecelakaan fatal, longsor atau gangguan lereng, tumpahan bahan berbahaya, dan evakuasi medis dari pit terjauh."
+    },
+    {
+     "role": "user",
+     "content": "Frekuensi simulasi?"
+    },
+    {
+     "role": "assistant",
+     "content": "Sample: minimal tiga kali setahun untuk skenario berbeda dan satu simulasi tingkat site per tahun. Setiap simulasi dievaluasi dan temuannya ditutup."
+    },
+    {
+     "role": "user",
+     "content": "Apa metrik utama evaluasi simulasi?"
+    },
+    {
+     "role": "assistant",
+     "content": "Waktu respons, kejelasan komando, keberhasilan komunikasi antar tim, kelengkapan peralatan, dan keselamatan penolong."
+    },
+    {
+     "role": "user",
+     "content": "Data sample menunjukkan waktu respons membaik dari 11 ke 8 menit. Apakah ada target?"
+    },
+    {
+     "role": "assistant",
+     "content": "Target waktu respons sample adalah 8 menit ke titik terjauh pit. Karena itu pos siaga dan penempatan peralatan menjadi perhatian utama."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana dengan komunikasi, yang jadi temuan di semua simulasi?"
+    },
+    {
+     "role": "assistant",
+     "content": "Rekomendasi: standarisasi frekuensi radio darurat, daftar kontak yang diperbarui, dan latihan relay informasi di pos komando."
+    },
+    {
+     "role": "user",
+     "content": "Apa syarat kompetensi anggota ERT?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pelatihan dasar tanggap darurat, P3K, pemadam kebakaran, dan penyelamatan sesuai peran, dengan sertifikasi yang dicek masa berlakunya. Rotasi anggota harus dicatat."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana kesiapan fasilitas medis?"
+    },
+    {
+     "role": "assistant",
+     "content": "Klinik site, ambulans yang siap 24 jam, dan nota kesepahaman dengan rumah sakit rujukan. Waktu tempuh ke rumah sakit menjadi bagian rencana evakuasi."
+    },
+    {
+     "role": "user",
+     "content": "Apa yang menjadi pelajaran terbesar dari simulasi sebelumnya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Dari data sample: komunikasi, jarak peralatan ke pit terjauh, dan kejelasan peran saat pergantian shift. Itu sebaiknya masuk rencana perbaikan 90 hari."
+    },
+    {
+     "role": "user",
+     "content": "Siapa pemilik rencana perbaikan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Manager Safety sebagai pemilik, dengan dukungan Superintendent Safety Operasional untuk pelaksanaan lapangan."
+    },
+    {
+     "role": "user",
+     "content": "Tolong buatkan lima pertanyaan kesiapan yang bisa saya ajukan saat kunjungan site."
+    },
+    {
+     "role": "assistant",
+     "content": "Pertanyaan: 1) berapa waktu respons ke pit terjauh, 2) kapan simulasi terakhir dan temuannya, 3) siapa Incident Controller di shift malam, 4) apakah frekuensi radio darurat dipahami semua tim, 5) apa status sertifikasi anggota ERT."
+    },
+    {
+     "role": "user",
+     "content": "Bagus, terima kasih."
+    },
+    {
+     "role": "assistant",
+     "content": "Sama-sama. Sumber: ERP-HSE-003 dan laporan simulasi sample."
+    }
+   ]
+  },
+  {
+   "owner": "hendra",
+   "taskCode": "M9",
+   "title": "Management of Change (MOC)",
+   "mode": "second_brain",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Kapan sebuah perubahan wajib melalui proses MOC?"
+    },
+    {
+     "role": "assistant",
+     "content": "Dokumen sample MOC-HSE-001 mewajibkan MOC untuk perubahan permanen atau sementara yang berpotensi memengaruhi risiko: desain jenjang, peralatan, prosedur kerja, organisasi, dan bahan."
+    },
+    {
+     "role": "user",
+     "content": "Contoh perubahan yang sering terlewat?"
+    },
+    {
+     "role": "assistant",
+     "content": "Penggantian alat dengan ukuran berbeda, penambahan unit pada area kerja yang sama, perubahan jalur kerja sementara, dan pengurangan personel pengawas."
+    },
+    {
+     "role": "user",
+     "content": "Siapa yang menilai permohonan MOC?"
+    },
+    {
+     "role": "assistant",
+     "content": "Superintendent Risk Control & MOC mengelola proses, melibatkan fungsi terkait seperti Perencanaan, Produksi, dan Safety untuk menilai risiko."
+    },
+    {
+     "role": "user",
+     "content": "Apa yang wajib ada di permohonan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Deskripsi perubahan dan alasan, penilaian risiko sebelum dan sesudah perubahan, pengendalian tambahan, rencana implementasi, dan rencana pemantauan setelah perubahan."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana dengan perubahan desain jenjang tambang?"
+    },
+    {
+     "role": "assistant",
+     "content": "Perlu kajian geoteknik dan penilaian risiko stabilitas lereng, serta persetujuan pemegang otoritas teknis. Tidak boleh dijalankan sebelum MOC disetujui."
+    },
+    {
+     "role": "user",
+     "content": "Apa itu perubahan sementara?"
+    },
+    {
+     "role": "assistant",
+     "content": "Perubahan yang berlaku untuk jangka tertentu. Wajib memiliki tanggal berakhir dan peninjauan, supaya tidak berubah menjadi permanen tanpa evaluasi."
+    },
+    {
+     "role": "user",
+     "content": "Siapa yang menyetujui MOC risiko tinggi?"
+    },
+    {
+     "role": "assistant",
+     "content": "Sample: Superintendent terkait, Manager Safety, dan GM Safety untuk risiko tinggi atau ekstrem. Untuk perubahan desain besar, KTT turut menyetujui."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana mengelola MOC darurat?"
+    },
+    {
+     "role": "assistant",
+     "content": "Diizinkan dengan persetujuan lisan dari pemegang otoritas, tetapi wajib didokumentasikan lengkap dalam 24 jam dan dinilai ulang segera."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana MOC dikaitkan dengan briefing pekerja?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pekerja terdampak harus diberi tahu perubahan, bahaya baru, dan pengendalian sebelum perubahan berlaku. Bukti briefing disimpan."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana pemantauan setelah perubahan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Ada verifikasi pasca-implementasi di 30 dan 90 hari untuk memastikan risiko benar-benar sesuai perkiraan dan tidak muncul bahaya baru."
+    },
+    {
+     "role": "user",
+     "content": "Apa risiko utama jika MOC dilewati?"
+    },
+    {
+     "role": "assistant",
+     "content": "Bahaya baru tidak teridentifikasi, pengendalian tidak sesuai, dan pekerja tidak dibekali. Banyak insiden berat menelusuri akar masalah ke perubahan yang tidak dikelola."
+    },
+    {
+     "role": "user",
+     "content": "Dari mana saya bisa memantau jumlah MOC terbuka?"
+    },
+    {
+     "role": "assistant",
+     "content": "Daftar MOC dikelola oleh Superintendent Risk Control & MOC. Indikator sample: jumlah MOC aktif, yang melewati tenggat peninjauan, dan yang perlu eskalasi."
+    },
+    {
+     "role": "user",
+     "content": "Buat poin singkat untuk rapat manajemen mengenai disiplin MOC."
+    },
+    {
+     "role": "assistant",
+     "content": "Poin: setiap perubahan dinilai risikonya, tidak ada pekerjaan dimulai sebelum persetujuan, perubahan sementara punya tanggal akhir, pekerja dibriefing, dan hasilnya diverifikasi."
+    },
+    {
+     "role": "user",
+     "content": "Terima kasih."
+    },
+    {
+     "role": "assistant",
+     "content": "Sama-sama. Sumber: MOC-HSE-001 sample."
+    }
+   ]
+  },
+  {
+   "owner": "hendra",
+   "taskCode": "M10",
+   "title": "Leading indicator dan KPI safety manajer",
+   "mode": "second_brain",
+   "messages": [
+    {
+     "role": "user",
+     "content": "Saya sedang menyusun KPI 2027. Apa itu leading indicator dan contohnya?"
+    },
+    {
+     "role": "assistant",
+     "content": "Leading indicator mengukur aktivitas pencegahan sebelum kejadian, seperti penyelesaian IBPR sebelum operasi, penutupan tindak lanjut tepat waktu, dan verifikasi critical control."
+    },
+    {
+     "role": "user",
+     "content": "Apa bedanya dengan lagging?"
+    },
+    {
+     "role": "assistant",
+     "content": "Lagging mengukur hasil setelah kejadian, misalnya TRIFR, LTIFR, dan jumlah insiden. Lagging penting tapi terlambat untuk mencegah."
+    },
+    {
+     "role": "user",
+     "content": "Bobot yang umum?"
+    },
+    {
+     "role": "assistant",
+     "content": "Dokumen sample menyarankan 40 persen lagging dan 60 persen leading agar fokus pada pencegahan, bisa disesuaikan kebijakan perusahaan."
+    },
+    {
+     "role": "user",
+     "content": "Indikator untuk Manager HIRA?"
+    },
+    {
+     "role": "assistant",
+     "content": "Persentase IBPR area baru selesai sebelum operasi, persentase risiko tinggi dengan pengendalian terverifikasi, dan kualitas IBPR hasil review."
+    },
+    {
+     "role": "user",
+     "content": "Untuk Manager Safety?"
+    },
+    {
+     "role": "assistant",
+     "content": "Penutupan tindak lanjut temuan tepat waktu, cakupan pelatihan wajib, jumlah near miss dan hazard report yang dilaporkan dan ditutup, serta partisipasi kegiatan budaya keselamatan."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana mencegah KPI saling tumpang tindih?"
+    },
+    {
+     "role": "assistant",
+     "content": "Pisahkan kepemilikan: HIRA memiliki kualitas identifikasi dan pengendalian risiko, Safety memiliki eksekusi lapangan dan kepatuhan, dan lagging dimiliki bersama."
+    },
+    {
+     "role": "user",
+     "content": "Apa risiko perilaku dari KPI lagging?"
+    },
+    {
+     "role": "assistant",
+     "content": "Under-reporting insiden. Pengimbangnya adalah indikator pelaporan near miss dan hazard report serta kualitas laporan."
+    },
+    {
+     "role": "user",
+     "content": "Berapa target yang realistis untuk penutupan tindak lanjut?"
+    },
+    {
+     "role": "assistant",
+     "content": "Titik awal sample: 90 persen tepat waktu untuk temuan umum dan 100 persen untuk risiko tinggi. Disesuaikan kapasitas tim."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana frekuensi review?"
+    },
+    {
+     "role": "assistant",
+     "content": "Leading direview bulanan, lagging direview bulanan dan dievaluasi kumulatif tiap kuartal."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana menyampaikan KPI ke Direksi?"
+    },
+    {
+     "role": "assistant",
+     "content": "Ringkas dalam satu halaman: tren lagging, status leading, risiko utama, dan permintaan dukungan. Jelaskan konteks agar angka tidak disalahartikan."
+    },
+    {
+     "role": "user",
+     "content": "Apa contoh indikator budaya keselamatan?"
+    },
+    {
+     "role": "assistant",
+     "content": "Jumlah penghentian kerja yang dicatat, partisipasi sesi berbagi pembelajaran, kualitas hazard report, dan skor survei budaya."
+    },
+    {
+     "role": "user",
+     "content": "Bagaimana memastikan data KPI akurat?"
+    },
+    {
+     "role": "assistant",
+     "content": "Satu sumber data terverifikasi, definisi tertulis tiap indikator, dan audit sampel bulanan oleh Superintendent Compliance."
+    },
+    {
+     "role": "user",
+     "content": "Siapa yang menetapkan bobot final?"
+    },
+    {
+     "role": "assistant",
+     "content": "GM Safety bersama manajemen terkait. Sebaiknya dikonfirmasi dengan HR untuk keselarasan sistem penilaian kinerja."
+    },
+    {
+     "role": "user",
+     "content": "Buat tabel KPI Manager Safety 6 baris."
+    },
+    {
+     "role": "assistant",
+     "content": "Tabel: tindak lanjut tepat waktu, cakupan pelatihan, near miss dilaporkan, hazard report ditutup, partisipasi kegiatan budaya, dan TRIFR kontraktor, masing-masing dengan jenis, target, bobot, dan frekuensi review."
+    },
+    {
+     "role": "user",
+     "content": "Terima kasih, itu cukup."
+    },
+    {
+     "role": "assistant",
+     "content": "Sama-sama, Pak Hendra. Angka target di atas adalah titik awal sample yang perlu disesuaikan."
+    }
+   ]
+  }
+ ],
+ "tasks": [
+  {
+   "code": "S1",
+   "title": "Memo persetujuan bersyarat rencana kerja K3L 2027",
+   "instruction": "Susun memo persetujuan bersyarat untuk draf rencana kerja K3L 2027 yang diajukan Manager HIRA dan Manager Safety. Syarat: dua program carry-over 2026 (revisi prosedur kerja di ketinggian dan digitalisasi laporan hazard) harus dimasukkan kembali, dan jadwal Q1 diperbarui. Tenggat revisi 31 Oktober 2026. Format memo resmi, bahasa Indonesia formal, siap ditandatangani GM Safety. Jangan kirim ke siapa pun.",
+   "result": "**MEMO INTERNAL**\n\n**Kepada:** Manager HIRA (Ratna Kusumawardani); Manager Safety (Bambang Sutrisno)\n**Dari:** GM Safety (Hendra Wijaksana)\n**Perihal:** Persetujuan Bersyarat Rencana Kerja K3L 2027\n\nSetelah meninjau draf Rencana Kerja K3L 2027, rencana **disetujui dengan syarat** berikut:\n\n1. Memasukkan kembali dua program carry-over 2026: (a) revisi prosedur kerja di ketinggian dan (b) digitalisasi laporan hazard, lengkap dengan target, PIC, dan anggaran.\n2. Memperbarui jadwal Q1 agar kapasitas tim tidak terlampaui saat program berjalan paralel.\n3. Menambahkan indikator keberhasilan untuk setiap program baru, termasuk fatigue management dan perluasan audit kontraktor.\n\n**Tenggat:** revisi diserahkan paling lambat **31 Oktober 2026**. Tindak lanjut ditugaskan kepada Manager HIRA dan Manager Safety sesuai bidang masing-masing.\n\nSetelah revisi diterima, GM Safety akan memberikan persetujuan akhir.\n\nHormat saya,\nHendra Wijaksana — GM Safety\n\n_Catatan: memo ini berupa draf dan belum dikirim. Data pada dokumen ini adalah contoh fiktif._",
+   "steps": [
+    "Membaca instruksi dan syarat persetujuan",
+    "Memvalidasi tenggat 31 Oktober 2026",
+    "Mengidentifikasi penerima memo",
+    "Menyusun bagian perihal dan pembuka",
+    "Merumuskan syarat carry-over program 2026",
+    "Menambahkan syarat pembaruan jadwal Q1",
+    "Menambahkan syarat indikator keberhasilan",
+    "Menetapkan tenggat dan PIC tindak lanjut",
+    "Memeriksa nada bahasa formal",
+    "Memastikan tidak ada pengiriman otomatis",
+    "Memformat memo siap tanda tangan"
+   ],
+   "tokensIn": 2150,
+   "tokensOut": 640,
+   "durationMs": 18200,
+   "owner": "hendra"
+  },
+  {
+   "code": "S2",
+   "title": "Bahan presentasi kinerja safety September untuk Direksi",
+   "instruction": "Dari data sample September 2026 (TRIFR 0,52 dan LTIFR 0,08; target TRIFR 0,45 dan LTIFR 0,10; Agustus TRIFR 0,41), buat struktur maksimal 6 slide untuk Direksi beserta isi tiap slide dan catatan pembicara. Beri label estimasi pada proyeksi dan tambahkan lampiran rumus (basis 1.000.000 jam kerja). Gunakan Bahasa Indonesia.",
+   "result": "**Struktur 6 slide — Kinerja Safety September 2026**\n\n**1. Ringkasan KPI** — TRIFR 0,52 (target 0,45, di atas target); LTIFR 0,08 (target 0,10, di bawah target).\n**2. Tren 6 bulan** — TRIFR Agustus 0,41 naik 0,11 poin ke September; jam kerja relatif sama.\n**3. Analisis penyebab** — kenaikan berasal dari tiga kasus medical treatment pada satu kontraktor angkutan, seluruhnya cedera ringan di area workshop. Pola terkonsentrasi, bukan sistemik.\n**4. Insiden menonjol** — ringkas ketiga kasus dan pembelajaran utama.\n**5. Rencana perbaikan** — audit khusus kontraktor, refresher training pekerja workshop, inspeksi harian 30 hari.\n**6. Dukungan Direksi** — permintaan dukungan untuk penegakan standar kontraktor.\n\n**Proyeksi (ESTIMASI):** jika perbaikan berjalan, TRIFR dapat kembali ke kisaran 0,45 dalam 2 bulan. Ini estimasi, bukan jaminan.\n\n**Lampiran — rumus:**\nTRIFR = (jumlah kejadian recordable × 1.000.000) ÷ total jam kerja\nLTIFR = (jumlah LTI × 1.000.000) ÷ total jam kerja\n\n_Seluruh angka adalah contoh fiktif._",
+   "steps": [
+    "Memuat data KPI September 2026",
+    "Menghitung selisih terhadap target",
+    "Membandingkan dengan Agustus",
+    "Mengelompokkan kasus menurut kontraktor dan area",
+    "Menyusun narasi analisis penyebab",
+    "Menyusun usulan rencana perbaikan",
+    "Membuat proyeksi dan memberi label estimasi",
+    "Menyusun struktur 6 slide",
+    "Menulis catatan pembicara",
+    "Menambahkan lampiran rumus TRIFR dan LTIFR",
+    "Memeriksa konsistensi angka antar slide",
+    "Merapikan format keluaran"
+   ],
+   "tokensIn": 3120,
+   "tokensOut": 980,
+   "durationMs": 26400,
+   "owner": "hendra"
+  },
+  {
+   "code": "S3",
+   "title": "Briefing satu halaman untuk KTT: insiden fatal dump truck",
+   "instruction": "Susun briefing satu halaman untuk Kepala Teknik Tambang berdasarkan laporan investigasi insiden fatal (unit pendukung di blind spot dump truck). Sertakan kronologi singkat, akar masalah, tujuh rekomendasi dengan prioritas hierarki pengendalian, dua near miss terdahulu yang belum ditutup, PIC, dan timeline: pengendalian sementara 3 hari, rambu dan jalur terpisah 14 hari, sistem proximity 60 hari, evaluasi efektivitas 90 hari.",
+   "result": "**BRIEFING KTT — Insiden Fatal Blind Spot Dump Truck (sample fiktif)**\n\n**Kronologi singkat:** unit pendukung berada di blind spot dump truck saat manuver di area kerja bersama; terjadi benturan yang mengakibatkan korban fatal.\n\n**Akar masalah:** (1) jalur kerja kendaraan ringan dan unit besar tidak terpisah; (2) prosedur komunikasi radio tidak dijalankan.\n\n**Temuan tambahan:** dua near miss kendaraan di area yang sama dalam 6 bulan terakhir belum ditutup tindak lanjutnya.\n\n**Rekomendasi prioritas (hierarki pengendalian):**\n- Eliminasi/rekayasa: pemisahan fisik jalur, sistem deteksi proximity, pembatasan akses area unit besar.\n- Administratif: penegakan radio call, rambu, briefing shift.\n\n**PIC:** Manager Safety (pengendalian operasional), Manager HIRA (review risiko), Manajer Produksi (perubahan jalur kerja).\n\n**Timeline:** 3 hari pengendalian sementara → 14 hari rambu dan jalur terpisah → 60 hari sistem proximity → 90 hari evaluasi efektivitas.\n\n**Catatan:** tiga dari tujuh rekomendasi masih administratif; diusulkan diperkuat ke level rekayasa.",
+   "steps": [
+    "Membaca laporan investigasi sample",
+    "Mengekstrak kronologi",
+    "Mengekstrak akar masalah",
+    "Memetakan tujuh rekomendasi ke hierarki pengendalian",
+    "Menandai rekomendasi yang hanya administratif",
+    "Mencari near miss terkait di area yang sama",
+    "Memverifikasi status tindak lanjut near miss",
+    "Menyusun timeline penyelesaian",
+    "Menentukan usulan PIC per rekomendasi",
+    "Menyusun antisipasi pertanyaan KTT",
+    "Memadatkan isi menjadi satu halaman",
+    "Memeriksa kelengkapan dan konsistensi tenggat"
+   ],
+   "tokensIn": 3680,
+   "tokensOut": 820,
+   "durationMs": 29100,
+   "owner": "hendra"
+  },
+  {
+   "code": "S4",
+   "title": "Tabel KPI 2027 untuk Manager HIRA dan Manager Safety",
+   "instruction": "Buat tabel KPI 2027 untuk Manager HIRA dan Manager Safety. Kolom: indikator, jenis (leading/lagging), target, bobot, sumber data, frekuensi review. Bobot 60 persen leading dan 40 persen lagging per manajer. Tambahkan indikator pengimbang pelaporan near miss dan hazard report agar tidak terjadi under-reporting.",
+   "result": "**KPI 2027 — Manager HIRA** (60% leading / 40% lagging)\n\n| Indikator | Jenis | Target | Bobot | Sumber data | Review |\n|---|---|---|---|---|---|\n| IBPR area baru selesai sebelum operasi | Leading | 100% | 25% | Register IBPR | Bulanan |\n| Risiko tinggi dengan pengendalian terverifikasi | Leading | ≥95% | 25% | Form verifikasi | Bulanan |\n| Kualitas IBPR hasil review | Leading | ≥90% lolos | 10% | Catatan review | Bulanan |\n| Insiden akibat bahaya yang sudah teridentifikasi | Lagging | Menurun | 40% | Sistem insiden | Kumulatif kuartalan |\n\n**KPI 2027 — Manager Safety** (60% leading / 40% lagging)\n\n| Indikator | Jenis | Target | Bobot | Sumber data | Review |\n|---|---|---|---|---|---|\n| Tindak lanjut temuan tepat waktu | Leading | ≥90% | 20% | Register temuan | Bulanan |\n| Cakupan pelatihan wajib | Leading | ≥95% | 15% | Database pelatihan | Bulanan |\n| Near miss dan hazard report dilaporkan serta ditutup | Leading (pengimbang) | Naik, penutupan ≤14 hari | 25% | Sistem pelaporan | Bulanan |\n| TRIFR dan LTIFR (perusahaan dan kontraktor) | Lagging | Sesuai target resmi | 40% | Statistik K3 | Kumulatif kuartalan |\n\n_Target adalah titik awal sample dan perlu disesuaikan._",
+   "steps": [
+    "Membaca instruksi dan kolom tabel",
+    "Menentukan indikator leading Manager HIRA",
+    "Menentukan indikator lagging Manager HIRA",
+    "Menentukan indikator leading Manager Safety",
+    "Menentukan indikator lagging Manager Safety",
+    "Memisahkan kepemilikan KPI agar tidak tumpang tindih",
+    "Menghitung bobot 60/40 per manajer",
+    "Menambahkan indikator pengimbang under-reporting",
+    "Menetapkan target awal",
+    "Menetapkan sumber data tiap indikator",
+    "Menetapkan frekuensi review",
+    "Memeriksa total bobot 100 persen"
+   ],
+   "tokensIn": 2480,
+   "tokensOut": 910,
+   "durationMs": 22300,
+   "owner": "hendra"
+  },
+  {
+   "code": "S5",
+   "title": "Checklist kesiapan inspeksi tahunan Inspektur Tambang",
+   "instruction": "Susun checklist kesiapan inspeksi tahunan Inspektur Tambang yang dikelompokkan menjadi dokumen, kondisi lapangan, dan kompetensi personel. Tambahkan PIC per kelompok, timeline persiapan 4 minggu, dan jadwal rapat koordinasi mingguan 30 menit setiap Senin.",
+   "result": "**Checklist Kesiapan Inspeksi Tahunan (sample)**\n\n**A. Dokumen — PIC: Supt Safety Compliance & Audit**\n- Program K3 dan laporan statistik\n- Hasil audit internal dan bukti tindak lanjut\n- Dokumen izin kerja, catatan pelatihan, dan sertifikat\n\n**B. Kondisi lapangan — PIC: Supt Safety Operasional & Inspeksi**\n- Jalan angkut: rambu, guardrail, tanggul pengaman\n- Fuel station dan workshop\n- Area peledakan dan fasilitas tanggap darurat\n\n**C. Kompetensi personel — PIC: Manager HIRA (risiko) dan Supt Compliance**\n- Sertifikasi pengawas dan operator\n- Status kompetensi tim tanggap darurat\n- Catatan induksi karyawan baru dan kontraktor\n\n**Timeline 4 minggu:** M1 audit dokumen; M2 inspeksi lapangan internal; M3 perbaikan temuan; M4 simulasi pemeriksaan dan briefing tim.\n\n**Rapat koordinasi:** setiap Senin, 30 menit, memantau progres dan hambatan.\n\n**Prioritas pemeriksaan awal:** tindak lanjut temuan terlambat, dokumen tidak mutakhir, sertifikasi kedaluwarsa.",
+   "steps": [
+    "Membaca instruksi",
+    "Mengelompokkan menjadi tiga kategori",
+    "Menyusun daftar dokumen kunci",
+    "Menyusun daftar area lapangan",
+    "Menyusun daftar kompetensi personel",
+    "Menentukan PIC per kelompok",
+    "Menyusun timeline 4 minggu",
+    "Menjadwalkan rapat koordinasi Senin",
+    "Menandai tiga temuan berulang",
+    "Memeriksa kelengkapan checklist"
+   ],
+   "tokensIn": 1950,
+   "tokensOut": 720,
+   "durationMs": 16800,
+   "owner": "hendra"
+  },
+  {
+   "code": "S6",
+   "title": "Ringkasan eksekutif tren insiden dan near miss 6 bulan",
+   "instruction": "Dari data sample 6 bulan terakhir (near miss naik 18 persen, insiden cedera turun 7 persen, kategori terbanyak kendaraan dan kejatuhan material, penutupan near miss 61 persen, Hauling dan Workshop paling lambat, kejadian meningkat saat pergantian shift), susun ringkasan eksekutif satu halaman untuk rapat bulanan lengkap dengan tiga pembelajaran utama dan rekomendasi.",
+   "result": "**Ringkasan Eksekutif — Tren Insiden dan Near Miss (6 bulan, sample)**\n\n**Gambaran umum**\n- Near miss naik **18%**; insiden cedera turun **7%**.\n- Kategori terbanyak: **kendaraan** dan **kejatuhan material**.\n\n**Catatan penting**\n- Kenaikan near miss dapat menandakan budaya pelaporan membaik, tetapi baru **61%** yang tindak lanjutnya ditutup.\n- Tunggakan terbanyak di **Hauling dan Workshop**.\n- Kejadian cenderung meningkat pada **pergantian shift** dan menjelang akhir shift malam.\n\n**Tiga pembelajaran utama**\n1. Pelaporan meningkat.\n2. Penutupan tindak lanjut tertinggal.\n3. Risiko memuncak di pergantian shift.\n\n**Rekomendasi**\n- Perkuat serah terima shift terstruktur.\n- Tinjau pengaturan jam kerja dan fatigue management.\n- Tetapkan target penutupan near miss maksimal **14 hari**.\n\n**Visual yang disarankan:** tren bulanan, distribusi per kategori, status penutupan per departemen.\n\n_Data adalah contoh fiktif._",
+   "steps": [
+    "Memuat data 6 bulan sample",
+    "Menghitung tren near miss",
+    "Menghitung tren insiden cedera",
+    "Mengelompokkan per kategori kejadian",
+    "Menghitung rasio penutupan tindak lanjut",
+    "Mengidentifikasi departemen dengan tunggakan",
+    "Menganalisis pola waktu kejadian",
+    "Menyusun tiga pembelajaran utama",
+    "Menyusun rekomendasi",
+    "Menentukan tiga visual pendukung",
+    "Memadatkan menjadi satu halaman"
+   ],
+   "tokensIn": 2760,
+   "tokensOut": 760,
+   "durationMs": 19800,
+   "owner": "hendra"
+  },
+  {
+   "code": "S7",
+   "title": "Draf surat konfirmasi jadwal inspeksi ke Inspektur Tambang",
+   "instruction": "Buat draf surat resmi kepada Inspektur Tambang untuk mengonfirmasi jadwal inspeksi tahunan, ruang lingkup pemeriksaan, dan kontak PIC. Gunakan kolom isian untuk tanggal, nomor surat, dan nama inspektur. PENTING: jangan dikirim; hanya simpan sebagai draf untuk ditinjau GM Safety.",
+   "result": "**DRAF SURAT — BELUM DIKIRIM**\n\nNomor: [nomor surat]\nPerihal: Konfirmasi Jadwal Inspeksi Tahunan\n\nKepada Yth.\nInspektur Tambang [nama inspektur]\ndi tempat\n\nDengan hormat,\n\nMenindaklanjuti rencana inspeksi tahunan, bersama ini kami mengonfirmasi jadwal pelaksanaan pada **[tanggal]** di wilayah operasi PT Berau Coal (sample).\n\n**Ruang lingkup yang kami siapkan:**\n1. Dokumen sistem manajemen keselamatan dan statistik.\n2. Kondisi lapangan: jalan angkut, fuel station, workshop, area peledakan, dan fasilitas tanggap darurat.\n3. Kompetensi dan sertifikasi personel.\n\n**Kontak PIC:**\n- Superintendent Safety Compliance & Audit: [nomor kontak]\n- Superintendent Safety Operasional & Inspeksi: [nomor kontak]\n\nDemikian kami sampaikan. Atas perhatian dan kerja samanya kami ucapkan terima kasih.\n\nHormat kami,\nHendra Wijaksana — GM Safety\n\n_Status: draf tersimpan. Tidak ada pengiriman yang dilakukan._",
+   "steps": [
+    "Membaca instruksi dan batasan pengiriman",
+    "Menyusun kop dan nomor surat berisi kolom isian",
+    "Menyusun paragraf pembuka",
+    "Menyusun ruang lingkup pemeriksaan",
+    "Menambahkan kontak PIC",
+    "Menyusun penutup surat",
+    "Memeriksa nada bahasa resmi",
+    "Menandai dokumen sebagai draf",
+    "Memastikan tidak ada aksi pengiriman",
+    "Menyimpan draf untuk ditinjau"
+   ],
+   "tokensIn": 1620,
+   "tokensOut": 540,
+   "durationMs": 14500,
+   "owner": "hendra"
+  },
+  {
+   "code": "S8",
+   "title": "Daftar pertanyaan review rencana kerja K3L untuk dua manager",
+   "instruction": "Buat daftar 8 pertanyaan yang akan diajukan GM Safety kepada Manager Safety dan Manager HIRA terkait draf rencana kerja K3L 2027. Wajib mencakup: alasan dihapusnya dua program carry-over, dasar kenaikan anggaran sekitar 12 persen, indikator keberhasilan tiap program, dan kapasitas tim di Q1.",
+   "result": "**Pertanyaan Review Rencana Kerja K3L 2027**\n\n**Untuk kedua manager**\n1. Mengapa program revisi prosedur kerja di ketinggian dan digitalisasi laporan hazard tidak masuk draf 2027?\n2. Apa dasar kenaikan anggaran sekitar 12 persen, dan komponen mana yang paling menentukan?\n3. Apa indikator keberhasilan untuk setiap program baru (fatigue management, audit kontraktor, pelatihan critical risk, simulasi darurat)?\n4. Apakah tim mampu menjalankan seluruh program secara paralel di Q1? Apa mitigasinya?\n\n**Untuk Manager HIRA**\n5. Bagaimana program critical risk akan memverifikasi efektivitas pengendalian risiko tinggi?\n6. Apa dampak perubahan matriks risiko terhadap jadwal IBPR area baru?\n\n**Untuk Manager Safety**\n7. Bagaimana perluasan audit kontraktor diprioritaskan berdasarkan profil risiko?\n8. Bagaimana target penutupan tindak lanjut temuan akan dijaga saat beban kerja meningkat di akhir tahun?",
+   "steps": [
+    "Membaca instruksi",
+    "Mengidentifikasi perubahan utama draf 2027",
+    "Menyusun pertanyaan program carry-over",
+    "Menyusun pertanyaan anggaran",
+    "Menyusun pertanyaan indikator keberhasilan",
+    "Menyusun pertanyaan kapasitas Q1",
+    "Menyusun pertanyaan khusus Manager HIRA",
+    "Menyusun pertanyaan khusus Manager Safety",
+    "Mengelompokkan berdasarkan penerima",
+    "Memeriksa jumlah pertanyaan dan kejelasan"
+   ],
+   "tokensIn": 1480,
+   "tokensOut": 520,
+   "durationMs": 12700,
+   "owner": "hendra"
+  },
+  {
+   "code": "S9",
+   "title": "Draf pesan peluncuran kampanye safety culture 2027",
+   "instruction": "Tuliskan draf pesan peluncuran kampanye budaya keselamatan 2027 atas nama GM Safety. Tema: berani lapor. Tekankan komitmen manajemen, perlindungan pelapor, dan ajakan berpartisipasi. Berikan tiga slogan alternatif. Draf saja, jangan dikirim.",
+   "result": "**Draf Pesan Peluncuran — Kampanye Budaya Keselamatan 2027**\n\nRekan-rekan yang saya hormati,\n\nKeselamatan kita dimulai dari keberanian untuk berbicara. Tahun 2027, kita meluncurkan kampanye **\"Berani Lapor, Aman Bersama\"**.\n\n**Komitmen kami:**\n- Manajemen hadir di lapangan, mendengarkan, dan menindaklanjuti setiap laporan.\n- **Setiap pelapor dilindungi.** Tidak ada sanksi atas laporan yang dibuat dengan itikad baik.\n- Laporan yang berkualitas akan diapresiasi.\n\n**Ajakan:** laporkan bahaya dan near miss sekecil apa pun, gunakan hak menghentikan pekerjaan bila tidak aman, dan ikuti kegiatan kampanye di setiap kuartal.\n\n**Slogan alternatif**\n1. Lapor Hari Ini, Selamat Esok Hari\n2. Kita Jaga Satu Sama Lain\n3. Berhenti Itu Berani\n\nSalam selamat,\nHendra Wijaksana — GM Safety\n\n_Status: draf, belum dikirim._",
+   "steps": [
+    "Membaca instruksi dan tema kampanye",
+    "Mengidentifikasi nada pesan yang tepat",
+    "Menyusun pembuka",
+    "Menyusun bagian komitmen manajemen",
+    "Menyusun bagian perlindungan pelapor",
+    "Menyusun ajakan partisipasi",
+    "Membuat tiga slogan alternatif",
+    "Memeriksa konsistensi dengan hasil survei budaya",
+    "Menandai sebagai draf",
+    "Memastikan tidak ada pengiriman"
+   ],
+   "tokensIn": 1390,
+   "tokensOut": 480,
+   "durationMs": 11800,
+   "owner": "hendra"
+  },
+  {
+   "code": "S10",
+   "title": "Rencana perbaikan 90 hari kesiapan tanggap darurat site ketiga",
+   "instruction": "Susun rencana perbaikan 90 hari untuk meningkatkan kesiapan tanggap darurat di site ketiga (dua aspek belum siap: komunikasi dan jarak peralatan ke pit terjauh). Tahapan: 30 hari standarisasi komunikasi, 60 hari pos siaga, 90 hari simulasi ulang. Sertakan estimasi kebutuhan sumber daya (tanpa harga, karena data harga belum tersedia), PIC, dan indikator keberhasilan.",
+   "result": "**Rencana Perbaikan 90 Hari — Kesiapan ERT Site 3 (sample)**\n\n**Tahap 1 (hari 1–30): Standarisasi komunikasi**\n- Menyeragamkan frekuensi radio darurat dan memperbarui daftar kontak.\n- Latihan relay informasi di pos komando.\n- PIC: Superintendent Safety Operasional & Inspeksi.\n\n**Tahap 2 (hari 31–60): Pos siaga di pit terjauh**\n- Menentukan lokasi pos siaga dan menempatkan alat pemadam serta peralatan P3K.\n- Menyusun jadwal personel siaga.\n- PIC: Manager Safety dengan dukungan Produksi.\n\n**Tahap 3 (hari 61–90): Simulasi ulang**\n- Simulasi skenario berbeda dari sebelumnya untuk mengukur perbaikan.\n- Evaluasi dan penutupan temuan.\n\n**Estimasi kebutuhan sumber daya (belum bertarif):** tambahan personel siaga, perangkat radio, dan satu kendaraan respons. Rincian biaya dihitung setelah data harga tersedia.\n\n**Indikator keberhasilan:** waktu respons ke pit terjauh ≤8 menit; temuan komunikasi nol pada simulasi ulang; seluruh anggota ERT bersertifikat berlaku.",
+   "steps": [
+    "Membaca instruksi dan kondisi site ketiga",
+    "Menganalisis dua aspek belum siap",
+    "Menyusun tahap 1 standarisasi komunikasi",
+    "Menyusun tahap 2 pos siaga",
+    "Menyusun tahap 3 simulasi ulang",
+    "Menentukan PIC tiap tahap",
+    "Menyusun estimasi kebutuhan sumber daya",
+    "Menandai biaya sebagai belum tersedia",
+    "Menetapkan indikator keberhasilan",
+    "Menyusun risiko dan mitigasi jadwal",
+    "Memeriksa kelengkapan rencana 90 hari"
+   ],
+   "tokensIn": 2310,
+   "tokensOut": 790,
+   "durationMs": 20900,
+   "owner": "hendra"
+  }
+ ]
+}

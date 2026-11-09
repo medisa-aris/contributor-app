@@ -1,7 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import { PERMISSIONS } from '@contributor/shared';
+import { PERMISSIONS } from '@bara/shared';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 
 interface ProviderStatus {

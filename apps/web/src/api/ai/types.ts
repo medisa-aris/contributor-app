@@ -1,10 +1,12 @@
-import type { AiTaskStatus, ConversationMode } from '@contributor/shared';
+import type { AiTaskStatus, ConversationMode } from '@bara/shared';
+import type { UserDocument } from '@/api/documents/types';
 
 export type ConversationSummary = {
   id: string;
   mode: ConversationMode;
   title: string;
   counterpart_style: string | null;
+  web_search?: boolean;
   starred_at: string | null;
   updated_at: string;
   created_at: string;
@@ -18,6 +20,31 @@ export type ConversationMessage = {
   tokens_in: number | null;
   tokens_out: number | null;
   created_at: string;
+  /** Dokumen yang dibuat AI pada pesan ini. */
+  documents?: UserDocument[];
+  /** Jejak pemanggilan tool konektor pada pesan asisten. */
+  tool_trace?: ToolTrace | null;
+  /** Jumlah data pribadi yang dimasking per kategori pada jawaban ini. */
+  guardrails?: Record<string, number> | null;
+};
+
+export type ToolTraceStatus = 'running' | 'ok' | 'error' | 'pending_approval' | 'approved' | 'rejected';
+
+export type ToolTraceStep = {
+  id: string;
+  name: string;
+  label: string;
+  source: string | null;
+  input: Record<string, unknown>;
+  status: ToolTraceStatus;
+  summary: string;
+  preview?: unknown;
+  approvalId?: string;
+};
+
+export type ToolTrace = {
+  steps: ToolTraceStep[];
+  pending?: { approvalId: string; callId: string } | null;
 };
 
 export type ConversationDetail = ConversationSummary & {
@@ -80,6 +107,7 @@ export interface ChatRequestPayload {
   prompt: string;
   conversationId?: string;
   counterpartStyle?: string;
+  webSearch?: boolean;
 }
 
 export type StreamErrorInfo = {
@@ -91,5 +119,6 @@ export type StreamErrorInfo = {
 export type StreamEvent =
   | { type: 'ready'; conversationId: string }
   | { type: 'delta'; text: string }
+  | { type: 'tool'; step: ToolTraceStep }
   | { type: 'done'; conversationId: string; message: ConversationMessage }
   | { type: 'error'; info: StreamErrorInfo };

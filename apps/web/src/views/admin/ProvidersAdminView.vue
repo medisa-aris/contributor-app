@@ -2,6 +2,8 @@
 import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { getProviders, type AdminProvidersOverview } from '@/api/admin';
+import WebSearchPriorityCard from '@/components/admin/WebSearchPriorityCard.vue';
+import { useAuthStore } from '@/stores/auth.store';
 import {
   CaBadge,
   CaCard,
@@ -10,6 +12,7 @@ import {
 } from '@/components/ui';
 
 const { t } = useI18n();
+const auth = useAuthStore();
 
 const overview = ref<AdminProvidersOverview | null>(null);
 const loading = ref(true);
@@ -75,6 +78,8 @@ onMounted(load);
           </div>
         </CaCard>
       </div>
+
+      <WebSearchPriorityCard v-if="auth.can('config.read')" />
     </template>
   </section>
 </template>

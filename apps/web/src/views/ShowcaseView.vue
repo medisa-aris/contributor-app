@@ -23,10 +23,12 @@ import {
   CaTable,
   CaTabs,
 } from '@/components/ui';
+import { useConfigStore } from '@/stores/config.store';
 import { useThemeStore, type ThemeMode } from '@/stores/theme.store';
 import { useToastStore, type ToastVariant } from '@/stores/toast.store';
 
 const { t } = useI18n();
+const config = useConfigStore();
 const theme = useThemeStore();
 const toasts = useToastStore();
 
@@ -145,7 +147,7 @@ function submitDialog(): void {
   <div class="showcase">
     <header class="showcase__hero">
       <div class="showcase__hero-content">
-        <CaBreadcrumb :items="[{ label: 'Contributor AI' }, { label: t('showcase.title') }]" />
+        <CaBreadcrumb :items="[{ label: config.appName }, { label: t('showcase.title') }]" />
         <h1 class="showcase__title">{{ t('showcase.title') }}</h1>
         <p class="showcase__subtitle">{{ t('showcase.subtitle') }}</p>
       </div>

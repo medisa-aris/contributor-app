@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { RouterLink, useRoute } from 'vue-router';
-import { PERMISSION_CATALOG } from '@contributor/shared';
+import { PERMISSION_CATALOG } from '@bara/shared';
 import {
   getRolePermissions,
   listPermissions,

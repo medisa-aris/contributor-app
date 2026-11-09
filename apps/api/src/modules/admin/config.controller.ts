@@ -6,9 +6,10 @@ import {
   Param,
   Put,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ApiTags } from '@nestjs/swagger';
-import { AUDIT_EVENTS, PERMISSIONS } from '@contributor/shared';
-import type { PublicConfigDto } from '@contributor/shared';
+import { AUDIT_EVENTS, isGuardrailConfigKey, PERMISSIONS } from '@bara/shared';
+import type { PublicConfigDto } from '@bara/shared';
 import { DataSource } from 'typeorm';
 import { Audit } from '../../common/decorators/audit.decorator';
 import { CurrentAuth } from '../../common/decorators/current-auth.decorator';
@@ -23,7 +24,10 @@ import { ConfigUpdateDto } from './dto/misc.dto';
 @ApiTags('config')
 @Controller()
 export class ConfigController {
-  constructor(@Inject(DATA_SOURCE) private readonly dataSource: DataSource) {}
+  constructor(
+    @Inject(DATA_SOURCE) private readonly dataSource: DataSource,
+    private readonly config: ConfigService,
+  ) {}
 
   @Public()
   @Get('config/public')
@@ -33,11 +37,12 @@ export class ConfigController {
     )) as { key: string; value: unknown }[];
     const map = new Map(rows.map((r) => [r.key, r.value]));
     return {
-      appName: String(map.get('app.name') ?? 'Contributor AI'),
+      appName: String(map.get('app.name') ?? 'ContributorAI'),
       defaultLocale: String(map.get('app.default_locale') ?? 'id'),
       defaultTheme: (map.get('app.default_theme') ?? 'system') as PublicConfigDto['defaultTheme'],
       timezone: String(map.get('app.timezone') ?? 'Asia/Jakarta'),
       showTokenUsage: map.get('ai.show_token_usage') !== false,
+      environment: this.config.get<'DEV' | 'PROD'>('app.appEnv') ?? 'PROD',
     };
   }
 
@@ -45,7 +50,8 @@ export class ConfigController {
   @Get('admin/config')
   async list() {
     return (await this.dataSource.query(
-      `SELECT key, value, description, is_public, updated_at, updated_by FROM app_config ORDER BY key`,
+      `SELECT key, value, description, is_public, updated_at, updated_by
+         FROM app_config WHERE key NOT LIKE 'ai.guardrails_%' ORDER BY key`,
     )) as unknown[];
   }
 
@@ -57,6 +63,9 @@ export class ConfigController {
     @Param('key') key: string,
     @Body() dto: ConfigUpdateDto,
   ) {
+    if (isGuardrailConfigKey(key)) {
+      throw new AppError(ERROR_CODES.forbidden, 'Pengaturan Guardrails hanya dapat diubah di menu Guardrails.', 403);
+    }
     const rows = updatedRows<{ key: string }>(
       await this.dataSource.query(
         `UPDATE app_config SET value = $2::jsonb, updated_at = now(), updated_by = $3

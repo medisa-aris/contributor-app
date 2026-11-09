@@ -5,7 +5,7 @@ import {
   Index,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import type { AuditSeverity } from '@contributor/shared';
+import type { AuditSeverity } from '@bara/shared';
 
 @Entity('audit_events')
 export class AuditEvent {

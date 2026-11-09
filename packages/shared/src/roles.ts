@@ -2,6 +2,7 @@
 export const SYSTEM_ROLES = {
   administrator: 'administrator',
   manager: 'manager',
+  superintendent: 'superintendent',
   staf: 'staf',
 } as const;
 

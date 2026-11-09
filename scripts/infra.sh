@@ -2,9 +2,9 @@
 # Operations for the PostgreSQL + Redis Docker host (see docs/runbook.md).
 set -euo pipefail
 
-REMOTE_USER_HOST="${CONTRIBUTOR_INFRA_HOST:-training@192.168.0.62}"
-REMOTE_DIR="${CONTRIBUTOR_INFRA_DIR:-~/contributor-ai-infra}"
-COMPOSE="docker compose --project-name contributor-ai"
+REMOTE_USER_HOST="${BARA_INFRA_HOST:-${CONTRIBUTOR_INFRA_HOST:-training@192.168.0.62}}"
+REMOTE_DIR="${BARA_INFRA_DIR:-${CONTRIBUTOR_INFRA_DIR:-~/contributor-ai-infra}}"
+COMPOSE="docker compose --project-name bara"
 
 usage() {
   echo "Usage: bash scripts/infra.sh <up|down|ps|logs|backup|deploy>"
@@ -41,7 +41,7 @@ case "$cmd" in
     ;;
   backup)
     stamp=$(date +%Y%m%d-%H%M%S)
-    ssh "$REMOTE_USER_HOST" "docker exec contributor-ai-postgres pg_dump -U ca contributor_ai | gzip > ${REMOTE_DIR}/backup-contributor_ai-${stamp}.sql.gz && ls -lh ${REMOTE_DIR}/backup-contributor_ai-${stamp}.sql.gz"
+    ssh "$REMOTE_USER_HOST" "docker exec bara-postgres pg_dump -U ca contributor_ai | gzip > ${REMOTE_DIR}/backup-contributor_ai-${stamp}.sql.gz && ls -lh ${REMOTE_DIR}/backup-contributor_ai-${stamp}.sql.gz"
     ;;
   *)
     usage

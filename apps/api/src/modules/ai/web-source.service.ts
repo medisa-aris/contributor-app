@@ -153,7 +153,11 @@ async function resolvePublicAddresses(url: URL): Promise<PinnedAddress[]> {
     );
   }
   if (resolved.length === 0) {
-    throw new AppError(ERROR_CODES.validation, 'Nama domain sumber web tidak dapat ditemukan.', 400);
+    throw new AppError(
+      ERROR_CODES.validation,
+      'Nama domain sumber web tidak dapat ditemukan.',
+      400,
+    );
   }
   if (resolved.some((entry) => !isPublicAddress(entry.address))) {
     throw internalAddressError();
@@ -284,9 +288,7 @@ function decompressBody(body: Buffer, encoding: string | undefined): Promise<Buf
     const options = { maxOutputLength: WEB_SOURCE_LIMITS.maxDecompressedBytes };
     const callback = (error: Error | null, result: Buffer): void => {
       if (error) {
-        reject(
-          new AppError(ERROR_CODES.validation, 'Konten sumber web tidak dapat dibaca.', 400),
-        );
+        reject(new AppError(ERROR_CODES.validation, 'Konten sumber web tidak dapat dibaca.', 400));
         return;
       }
       resolve(result);

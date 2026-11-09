@@ -6,21 +6,21 @@
     system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
   --ca-font-family-mono: "Cascadia Code", "Segoe UI Mono", Consolas, monospace;
 
-  /* Brand ramp */
-  --ca-brand-10: #e6f2fb;
-  --ca-brand-20: #cfe4fa;
-  --ca-brand-30: #b4d6fa;
-  --ca-brand-40: #91c3f5;
-  --ca-brand-50: #6cb0f0;
-  --ca-brand-60: #479ef5;
-  --ca-brand-70: #2886de;
-  --ca-brand-80: #0f6cbd;
-  --ca-brand-90: #115ea3;
-  --ca-brand-100: #0f548c;
-  --ca-brand-110: #0f4f82;
-  --ca-brand-120: #0e4775;
-  --ca-brand-130: #0c3b5e;
-  --ca-brand-140: #0a2f49;
+  /* Brand ramp — hijau Berau Coal Energy (beraucoalenergy.co.id): #86c543 (aksen), #537a2a (aksi utama, kontras AA dengan putih) */
+  --ca-brand-10: #f1f7e8;
+  --ca-brand-20: #e1efcc;
+  --ca-brand-30: #cfe6ab;
+  --ca-brand-40: #b3d981;
+  --ca-brand-50: #9ad05f;
+  --ca-brand-60: #86c543;
+  --ca-brand-70: #6a9f33;
+  --ca-brand-80: #537a2a;
+  --ca-brand-90: #476a24;
+  --ca-brand-100: #3c5a1f;
+  --ca-brand-110: #36511c;
+  --ca-brand-120: #2f4719;
+  --ca-brand-130: #263a14;
+  --ca-brand-140: #1d2c0f;
 
   --ca-color-brand: var(--ca-brand-80);
   --ca-color-brand-hover: var(--ca-brand-90);
@@ -29,8 +29,8 @@
   --ca-color-brand-soft: var(--ca-brand-70);
   --ca-color-brand-subtle: var(--ca-brand-10);
   --ca-color-brand-subtle-hover: var(--ca-brand-20);
-  --ca-color-link: #115ea3;
-  --ca-color-link-hover: #0f548c;
+  --ca-color-link: #476a24;
+  --ca-color-link-hover: #36511c;
 
   /* Neutrals */
   --ca-bg-canvas: #f5f5f5;
@@ -83,15 +83,16 @@
 [data-theme='dark'] {
   color-scheme: dark;
 
-  --ca-color-brand: #479ef5;
-  --ca-color-brand-hover: #62abf5;
-  --ca-color-brand-soft: #62abf5;
-  --ca-color-brand-pressed: #2886de;
-  --ca-color-brand-selected: #2886de;
-  --ca-color-brand-subtle: #0a2f49;
-  --ca-color-brand-subtle-hover: #0c3b5e;
-  --ca-color-link: #479ef5;
-  --ca-color-link-hover: #62abf5;
+  --ca-color-brand: #86c543;
+  --ca-color-brand-hover: #9ad05f;
+  --ca-color-brand-soft: #9ad05f;
+  --ca-color-brand-pressed: #6a9f33;
+  --ca-color-brand-selected: #6a9f33;
+  --ca-color-brand-subtle: #1d2c0f;
+  --ca-color-brand-subtle-hover: #263a14;
+  --ca-fg-on-brand: #14200a;
+  --ca-color-link: #9ad05f;
+  --ca-color-link-hover: #b3d981;
 
   --ca-bg-canvas: #141414;
   --ca-bg-surface: #292929;

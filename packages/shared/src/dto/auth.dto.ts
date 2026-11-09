@@ -16,6 +16,7 @@ export interface AuthUserDto {
   displayName: string;
   departmentId: string | null;
   departmentName: string | null;
+  jobTitle: string | null;
   isSuperadmin: boolean;
 }
 
@@ -49,4 +50,5 @@ export interface PublicConfigDto {
   defaultTheme: ThemePreference;
   timezone: string;
   showTokenUsage: boolean;
+  environment: 'DEV' | 'PROD';
 }

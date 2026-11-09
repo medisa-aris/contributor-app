@@ -1,15 +1,18 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { AUDIT_EVENTS, type AiTaskStatus } from '@contributor/shared';
+import { AUDIT_EVENTS, type AiTaskStatus } from '@bara/shared';
 import { DataSource } from 'typeorm';
 import type { AuthContext } from '../../common/types/auth-context';
 import { AppError, ERROR_CODES } from '../../common/errors/app-error';
 import { DATA_SOURCE } from '../../database/database.module';
 import { updatedRows } from '../../database/query-result';
 import { AuditService } from '../audit/audit.service';
-import { AiGatewayService } from './gateway.service';
+import { applyLoopEvent, loopContent, type ToolTraceStep } from './chat-tools.service';
+import { AiGatewayService, type ToolHandler } from './gateway.service';
+import { WebSearchService } from './web-search/web-search.service';
 
 export interface TaskRow {
   id: string;
+  user_id: string;
   title: string;
   instruction: string;
   status: AiTaskStatus;
@@ -23,7 +26,20 @@ export interface TaskRow {
   started_at: string | null;
   finished_at: string | null;
   updated_at: string;
+  agent_id?: string | null;
+  group_id?: string | null;
+  parent_task_id?: string | null;
+  agent_name?: string | null;
+  group_name?: string | null;
+  group_mode?: 'delegate' | 'discussion' | null;
+  web_search?: boolean;
 }
+
+const TASK_SELECT = `
+  SELECT t.*, a.name AS agent_name, a.avatar_color AS agent_color, g.name AS group_name, g.mode AS group_mode
+    FROM ai_tasks t
+    LEFT JOIN agents a ON a.id = t.agent_id
+    LEFT JOIN agent_groups g ON g.id = t.group_id`;
 
 export interface TaskEventRow {
   id: string;
@@ -33,7 +49,13 @@ export interface TaskEventRow {
   created_at: string;
 }
 
-const OPEN_STATUSES: readonly AiTaskStatus[] = ['created', 'validating', 'awaiting_approval', 'running'];
+const OPEN_STATUSES: readonly AiTaskStatus[] = [
+  'created',
+  'validating',
+  'awaiting_approval',
+  'running',
+  'needs_input',
+];
 const RUNNABLE_STATUSES: readonly AiTaskStatus[] = ['created', 'failed', 'cancelled'];
 
 @Injectable()
@@ -44,12 +66,16 @@ export class TasksService {
     @Inject(DATA_SOURCE) private readonly dataSource: DataSource,
     private readonly gateway: AiGatewayService,
     private readonly audit: AuditService,
+    private readonly webSearch: WebSearchService,
   ) {}
 
-  async create(auth: AuthContext, input: { title: string; instruction: string }): Promise<TaskRow> {
+  async create(
+    auth: AuthContext,
+    input: { title: string; instruction: string; webSearch?: boolean },
+  ): Promise<TaskRow> {
     const rows = (await this.dataSource.query(
-      `INSERT INTO ai_tasks (user_id, title, instruction) VALUES ($1, $2, $3) RETURNING *`,
-      [auth.user.id, input.title, input.instruction],
+      `INSERT INTO ai_tasks (user_id, title, instruction, web_search) VALUES ($1, $2, $3, $4) RETURNING *`,
+      [auth.user.id, input.title, input.instruction, input.webSearch === true],
     )) as TaskRow[];
     const task = rows[0]!;
     await this.recordEvent(task.id, 'created', 'Tugas dibuat dan menunggu dijalankan.');
@@ -71,38 +97,47 @@ export class TasksService {
     auth: AuthContext,
     options: { status?: AiTaskStatus; skip: number; take: number },
   ): Promise<{ items: TaskRow[]; total: number }> {
+    // Sub-tugas delegasi ditampilkan di dalam tugas induknya, bukan di daftar utama.
     const params: unknown[] = [auth.user.id];
-    let where = 'user_id = $1';
+    let where = 't.user_id = $1 AND t.parent_task_id IS NULL';
     if (options.status) {
       params.push(options.status);
-      where += ` AND status = $${params.length}`;
+      where += ` AND t.status = $${params.length}`;
     }
     const totalRows = (await this.dataSource.query(
-      `SELECT count(*)::int AS total FROM ai_tasks WHERE ${where}`,
+      `SELECT count(*)::int AS total FROM ai_tasks t WHERE ${where}`,
       params,
     )) as { total: number }[];
     params.push(options.take, options.skip);
     const items = (await this.dataSource.query(
-      `SELECT * FROM ai_tasks WHERE ${where} ORDER BY created_at DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      `${TASK_SELECT} WHERE ${where} ORDER BY t.created_at DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
       params,
     )) as TaskRow[];
     return { items, total: totalRows[0]?.total ?? 0 };
   }
 
-  async detail(auth: AuthContext, taskId: string): Promise<TaskRow & { events: TaskEventRow[] }> {
-    const rows = (await this.dataSource.query(
-      `SELECT * FROM ai_tasks WHERE id = $1 AND user_id = $2`,
-      [taskId, auth.user.id],
-    )) as TaskRow[];
+  async detail(
+    auth: AuthContext,
+    taskId: string,
+    afterEventId = 0,
+  ): Promise<TaskRow & { events: TaskEventRow[]; children: TaskRow[] }> {
+    const rows = (await this.dataSource.query(`${TASK_SELECT} WHERE t.id = $1 AND t.user_id = $2`, [
+      taskId,
+      auth.user.id,
+    ])) as TaskRow[];
     if (rows.length === 0) {
       throw new AppError(ERROR_CODES.notFound, 'Tugas tidak ditemukan.', 404);
     }
     const events = (await this.dataSource.query(
       `SELECT id, event_type, message, payload, created_at
-         FROM ai_task_events WHERE task_id = $1 ORDER BY id`,
-      [taskId],
+         FROM ai_task_events WHERE task_id = $1 AND id > $2 ORDER BY id`,
+      [taskId, afterEventId],
     )) as TaskEventRow[];
-    return { ...rows[0]!, events };
+    const children = (await this.dataSource.query(
+      `${TASK_SELECT} WHERE t.parent_task_id = $1 ORDER BY t.created_at`,
+      [taskId],
+    )) as TaskRow[];
+    return { ...rows[0]!, events, children };
   }
 
   /**
@@ -124,7 +159,9 @@ export class TasksService {
     taskId: string,
     fromStatuses: readonly AiTaskStatus[] = RUNNABLE_STATUSES,
   ): Promise<TaskRow> {
-    const rows = (await this.dataSource.query(`SELECT * FROM ai_tasks WHERE id = $1`, [taskId])) as TaskRow[];
+    const rows = (await this.dataSource.query(`SELECT * FROM ai_tasks WHERE id = $1`, [
+      taskId,
+    ])) as TaskRow[];
     if (rows.length === 0) {
       throw new AppError(ERROR_CODES.notFound, 'Tugas tidak ditemukan.', 404);
     }
@@ -161,10 +198,18 @@ export class TasksService {
     const startedAt = Date.now();
 
     try {
-      const result = await this.gateway.chat({
-        mode: 'subordinate',
-        messages: [{ role: 'user', content: task.instruction }],
+      const webHandlers = await this.webSearch.taskHandlers(task.web_search, {
+        userId: task.user_id,
+        taskId,
       });
+      const result =
+        webHandlers.length > 0
+          ? await this.runWithWeb(taskId, task, webHandlers)
+          : await this.gateway.chat({
+              guard: { userId: task.user_id, taskId },
+              mode: 'subordinate',
+              messages: [{ role: 'user', content: task.instruction }],
+            });
       const durationMs = Date.now() - startedAt;
       const updated = updatedRows<TaskRow>(
         await this.dataSource.query(
@@ -253,7 +298,36 @@ export class TasksService {
     return claimed[0]!;
   }
 
-  private async mustOwn(auth: AuthContext, taskId: string): Promise<TaskRow> {
+  /** Tugas umum dengan pencarian web: loop tool, tiap langkah dicatat sebagai event. */
+  private async runWithWeb(taskId: string, task: TaskRow, handlers: ToolHandler[]) {
+    const handlerMap = new Map(handlers.map((h) => [h.tool.name, h]));
+    const steps: ToolTraceStep[] = [];
+    const loop = await this.gateway.drainToolLoop(
+      {
+        guard: { userId: task.user_id, taskId },
+        mode: 'subordinate',
+        messages: [{ role: 'user', content: task.instruction }],
+        handlers,
+        toolRules: this.webSearch.toolRules(handlers),
+      },
+      async (event) => {
+        const step = applyLoopEvent(steps, event, handlerMap);
+        if (step && event.type === 'tool_result') {
+          await this.recordEvent(taskId, 'tool_result', `${step.label}: ${step.summary}`, {
+            ...step,
+          });
+        }
+      },
+    );
+    return {
+      content: loopContent(loop) || 'Penyedia AI tidak mengembalikan jawaban.',
+      model: loop.model,
+      tokensIn: loop.tokensIn,
+      tokensOut: loop.tokensOut,
+    };
+  }
+
+  async mustOwn(auth: AuthContext, taskId: string): Promise<TaskRow> {
     const rows = (await this.dataSource.query(
       `SELECT * FROM ai_tasks WHERE id = $1 AND user_id = $2`,
       [taskId, auth.user.id],

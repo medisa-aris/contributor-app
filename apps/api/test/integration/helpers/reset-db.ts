@@ -1,10 +1,21 @@
 import { hash } from 'bcryptjs';
 import type { DataSource } from 'typeorm';
-import { ALL_PERMISSION_IDS, PERMISSION_CATALOG, SYSTEM_ROLES } from '@contributor/shared';
+import { ALL_PERMISSION_IDS, PERMISSION_CATALOG, SYSTEM_ROLES } from '@bara/shared';
 
 export const TEST_PASSWORD = 'Test123456!';
 
 const TRUNCATE_TABLES = [
+  'guardrail_terms',
+  'connector_tool_calls',
+  'connector_grants',
+  'db_connectors',
+  'conversation_connectors',
+  'agent_group_members',
+  'agent_groups',
+  'agent_connectors',
+  'agent_skills',
+  'skills',
+  'ai_task_messages',
   'approvals',
   'rest_connectors',
   'mcp_servers',
@@ -60,6 +71,10 @@ export const MANAGER_PERMISSIONS = [
   'ai.secondbrain.query',
   'ai.counterpart.analyze',
   'ai.subordinate.execute',
+  'ai.mindmap.team.read',
+  'ai.documents.manage',
+  'ai.agents.manage',
+  'connectors.use',
   'knowledge.documents.read',
   'knowledge.search.use',
   'agents.view',
@@ -268,7 +283,7 @@ export async function seedTestFixtures(dataSource: DataSource): Promise<TestFixt
   // pengujian konfigurasi publik dan admin selalu berangkat dari keadaan sama.
   await dataSource.query(`
 INSERT INTO app_config (key, value, description, is_public) VALUES
-  ('app.name', '"Contributor AI"', 'Nama aplikasi yang tampil di antarmuka', true),
+  ('app.name', '"ContributorAI"', 'Nama aplikasi yang tampil di antarmuka', true),
   ('app.default_locale', '"id"', 'Bahasa antarmuka bawaan', true),
   ('app.default_theme', '"system"', 'Tema bawaan', true),
   ('app.timezone', '"Asia/Jakarta"', 'Zona waktu tampilan', true),
@@ -282,7 +297,12 @@ ON CONFLICT (key) DO NOTHING;
 
   return {
     users: { superadmin, admin, manager, managerHr, hrAdmin, staf, disabled },
-    roles: { administrator: adminRoleId, manager: managerRoleId, staf: stafRoleId, hrAdmin: hrAdminRoleId },
+    roles: {
+      administrator: adminRoleId,
+      manager: managerRoleId,
+      staf: stafRoleId,
+      hrAdmin: hrAdminRoleId,
+    },
     departments: { it, itData, hr },
   };
 }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { COUNTERPART_STYLES, type ConversationMode } from '@contributor/shared';
+import { COUNTERPART_STYLES, type ConversationMode } from '@bara/shared';
 import {
   addUrlAttachment,
   conversationDetail,
@@ -23,7 +23,14 @@ import { useConfigStore } from '@/stores/config.store';
 import { useToastStore } from '@/stores/toast.store';
 import { CaButton, CaEmptyState, CaIcon, CaSpinner, CaSwitch } from '@/components/ui';
 import { formatDateTime, formatNumber } from '@/utils/format';
+import { useFullscreen } from '@/composables/useFullscreen';
+import type { UserDocument } from '@/api/documents';
 import ChatMessage from './ChatMessage.vue';
+import ConversationConnectorsBar from './ConversationConnectorsBar.vue';
+import WebSearchToggle from './WebSearchToggle.vue';
+import type { ToolTraceStep } from '@/api/ai';
+import { decideConversationApproval } from '@/api/ai';
+import DocumentViewerPanel from './DocumentViewerPanel.vue';
 
 interface SpeechResultAlternative {
   transcript: string;
@@ -60,15 +67,41 @@ const { t } = useI18n();
 const auth = useAuthStore();
 const config = useConfigStore();
 const toast = useToastStore();
+const { ui, setFullscreen } = useFullscreen();
 
 const canBrowseHistory = computed(() => auth.can('ai.workspace.history.read'));
 
 const conversationId = ref<string | null>(null);
+const webSearch = ref(false);
 const messages = ref<ConversationMessage[]>([]);
 const draft = ref('');
 const styleId = ref(COUNTERPART_STYLES[0]!.id);
+const SIDEBAR_COLLAPSED_KEY = 'bara.chat.sidebarCollapsed';
+
+function readSidebarCollapsed(): boolean {
+  try {
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+const sidebarCollapsed = ref(readSidebarCollapsed());
+
+function toggleSidebar(): void {
+  sidebarCollapsed.value = !sidebarCollapsed.value;
+  try {
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, sidebarCollapsed.value ? '1' : '0');
+  } catch {
+    // penyimpanan tidak tersedia; keadaan hanya berlaku pada sesi ini
+  }
+}
+
 const streaming = ref(false);
 const pendingText = ref('');
+/** Langkah tool yang sedang berjalan selama streaming. */
+const pendingSteps = ref<ToolTraceStep[]>([]);
+const busyApprovalId = ref<string | null>(null);
 const streamError = ref('');
 const sending = ref(false);
 const regenerating = ref(false);
@@ -108,7 +141,26 @@ const urlDraft = ref('');
 const addingUrl = ref(false);
 const attachmentBusyId = ref<string | null>(null);
 const attachmentInput = ref<HTMLInputElement | null>(null);
-const showAttachmentsPane = computed(() => supportsAttachments.value && attachmentsOpen.value);
+const viewerDoc = ref<UserDocument | null>(null);
+const showAttachmentsPane = computed(
+  () => supportsAttachments.value && attachmentsOpen.value && viewerDoc.value === null,
+);
+
+function toggleAttachments(): void {
+  if (viewerDoc.value) {
+    viewerDoc.value = null;
+    attachmentsOpen.value = true;
+    return;
+  }
+  attachmentsOpen.value = !attachmentsOpen.value;
+}
+
+function openDocument(doc: UserDocument): void {
+  viewerDoc.value = doc;
+}
+function closeViewer(): void {
+  viewerDoc.value = null;
+}
 const canAddUrl = computed(
   () =>
     supportsAttachments.value &&
@@ -194,8 +246,10 @@ async function openConversation(id: string): Promise<void> {
     const detail = await conversationDetail(id);
     conversationId.value = detail.id;
     messages.value = detail.messages;
+    viewerDoc.value = null;
     streamError.value = '';
     if (detail.counterpart_style) styleId.value = detail.counterpart_style;
+    webSearch.value = detail.web_search === true;
     void loadAttachments(detail.id);
   } catch (caught) {
     toast.push(
@@ -511,7 +565,9 @@ async function commitRename(item: ConversationSummary): Promise<void> {
 function startNew(): void {
   if (streaming.value || regenerating.value || uploading.value || addingUrl.value) return;
   conversationId.value = null;
+  webSearch.value = false;
   messages.value = [];
+  viewerDoc.value = null;
   streamError.value = '';
   pendingText.value = '';
   resetAttachments();
@@ -562,6 +618,7 @@ async function send(): Promise<void> {
         prompt,
         conversationId: conversationId.value ?? undefined,
         counterpartStyle: props.mode === 'counterpart' ? styleId.value : undefined,
+        ...(auth.can('ai.websearch.use') ? { webSearch: webSearch.value } : {}),
       },
       (event) => {
         if (event.type === 'ready') {
@@ -569,9 +626,18 @@ async function send(): Promise<void> {
         } else if (event.type === 'delta') {
           pendingText.value += event.text;
           assistantText += event.text;
+        } else if (event.type === 'tool') {
+          const index = pendingSteps.value.findIndex((step) => step.id === event.step.id);
+          pendingSteps.value =
+            index >= 0
+              ? pendingSteps.value.map((step, i) => (i === index ? event.step : step))
+              : [...pendingSteps.value, event.step];
         } else if (event.type === 'done') {
           messages.value = [...messages.value, event.message];
           pendingText.value = '';
+          pendingSteps.value = [];
+          const created = event.message.documents?.[0];
+          if (created) openDocument(created);
           void loadConversations({ silent: true });
         } else {
           streamError.value = event.info.message;
@@ -587,6 +653,7 @@ async function send(): Promise<void> {
     }
   } finally {
     pendingText.value = '';
+    pendingSteps.value = [];
     streaming.value = false;
     sending.value = false;
     if (activeAbort === controller) activeAbort = null;
@@ -595,6 +662,33 @@ async function send(): Promise<void> {
       toast.push({ variant: 'info', title: t('workspace.chat.stopped') }, 3000);
       void loadConversations({ silent: true });
     }
+  }
+}
+
+async function decideApproval(payload: { approvalId: string; decision: 'approved' | 'rejected' }): Promise<void> {
+  const id = conversationId.value;
+  if (!id || busyApprovalId.value) return;
+  busyApprovalId.value = payload.approvalId;
+  try {
+    const detail = await decideConversationApproval(id, payload.approvalId, payload.decision);
+    if (conversationId.value === id) messages.value = detail.messages;
+    toast.push(
+      {
+        variant: payload.decision === 'approved' ? 'success' : 'info',
+        title:
+          payload.decision === 'approved'
+            ? t('workspace.tools.approvedToast')
+            : t('workspace.tools.rejectedToast'),
+      },
+      3000,
+    );
+  } catch (caught) {
+    toast.push(
+      { variant: 'danger', title: caught instanceof ApiError ? caught.message : t('errors.saveFailed') },
+      5000,
+    );
+  } finally {
+    busyApprovalId.value = null;
   }
 }
 
@@ -793,101 +887,143 @@ onBeforeUnmount(() => {
     class="chat"
     :class="{
       'chat--no-sidebar': !canBrowseHistory,
+      'chat--sidebar-collapsed': canBrowseHistory && sidebarCollapsed,
       'chat--attachments': showAttachmentsPane,
+      'chat--viewer': viewerDoc !== null,
+      'chat--full': ui.fullscreen,
     }"
   >
-    <aside v-if="canBrowseHistory" class="chat__sidebar">
-      <div class="chat__sidebar-head">
-        <h2 class="chat__sidebar-title">{{ t('workspace.chat.sidebarTitle') }}</h2>
-        <CaButton size="small" variant="subtle" @click="startNew">
-          {{ t('workspace.chat.newChat') }}
-        </CaButton>
-      </div>
-      <div class="chat__search">
-        <CaIcon name="search" :size="13" class="chat__search-icon" />
-        <input
-          v-model="searchQuery"
-          type="search"
-          class="chat__search-input"
-          :placeholder="t('workspace.chat.searchPlaceholder')"
-          :aria-label="t('workspace.chat.searchPlaceholder')"
-        />
-        <button
-          v-if="searchQuery"
-          type="button"
-          class="chat__search-clear"
-          :aria-label="t('shell.searchClear')"
-          @click="searchQuery = ''"
-        >
-          ×
-        </button>
-      </div>
-      <CaSpinner v-if="conversationsLoading" class="chat__sidebar-loading" />
-      <p v-else-if="conversationsError" class="chat__sidebar-error" role="alert">
-        {{ conversationsError }}
-      </p>
-      <CaEmptyState
-        v-else-if="conversations.length === 0"
-        :title="searchQuery ? t('workspace.chat.searchEmpty') : t('workspace.chat.historyEmpty')"
-      />
-      <ul v-else class="chat__list">
-        <li
-          v-for="item in conversations"
-          :key="item.id"
-          class="chat__list-item"
-          :class="{ 'chat__list-item--active': item.id === conversationId }"
-        >
-          <input
-            v-if="renamingId === item.id"
-            ref="renameInput"
-            v-model="renameDraft"
-            class="chat__rename-input"
-            :aria-label="t('workspace.chat.rename')"
-            maxlength="120"
-            @keydown.enter.prevent="commitRename(item)"
-            @keydown.esc.prevent="cancelRename"
-            @blur="commitRename(item)"
-          />
-          <button v-else type="button" class="chat__list-button" @click="openConversation(item.id)">
-            <span class="chat__list-title-row">
-              <CaIcon v-if="item.starred_at" name="star" :size="11" class="chat__list-star" />
-              <span class="chat__list-title">{{ item.title }}</span>
-            </span>
-            <span class="chat__list-time">{{ formatDateTime(item.updated_at) }}</span>
-          </button>
-          <div v-if="renamingId !== item.id" class="chat__list-actions">
+    <aside
+      v-if="canBrowseHistory"
+      class="chat__sidebar"
+      :class="{ 'chat__sidebar--collapsed': sidebarCollapsed }"
+    >
+      <button
+        v-if="sidebarCollapsed"
+        type="button"
+        class="chat__rail"
+        :aria-label="t('workspace.chat.sidebarExpand')"
+        :title="t('workspace.chat.sidebarExpand')"
+        aria-expanded="false"
+        aria-controls="chat-sidebar-body"
+        @click="toggleSidebar"
+      >
+        <CaIcon name="columns" :size="16" />
+        <span class="chat__rail-label">{{ t('workspace.chat.sidebarTitle') }}</span>
+      </button>
+      <div v-show="!sidebarCollapsed" id="chat-sidebar-body" class="chat__sidebar-body">
+        <div class="chat__sidebar-head">
+          <h2 class="chat__sidebar-title">{{ t('workspace.chat.sidebarTitle') }}</h2>
+          <div class="chat__sidebar-head-actions">
+            <CaButton size="small" variant="subtle" @click="startNew">
+              {{ t('workspace.chat.newChat') }}
+            </CaButton>
             <button
               type="button"
-              class="chat__list-action"
-              :class="{ 'chat__list-action--starred': item.starred_at }"
-              :aria-label="item.starred_at ? t('workspace.chat.unstar') : t('workspace.chat.star')"
-              :aria-pressed="Boolean(item.starred_at)"
-              :title="item.starred_at ? t('workspace.chat.unstar') : t('workspace.chat.star')"
-              @click="toggleStar(item)"
+              class="chat__toolbar-icon"
+              :aria-label="t('workspace.chat.sidebarCollapse')"
+              :title="t('workspace.chat.sidebarCollapse')"
+              aria-expanded="true"
+              aria-controls="chat-sidebar-body"
+              @click="toggleSidebar"
             >
-              <CaIcon name="star" :size="13" />
-            </button>
-            <button
-              type="button"
-              class="chat__list-action"
-              :aria-label="t('workspace.chat.rename')"
-              :title="t('workspace.chat.rename')"
-              @click="startRename(item)"
-            >
-              <CaIcon name="pencil" :size="13" />
-            </button>
-            <button
-              type="button"
-              class="chat__list-action chat__list-action--danger"
-              :aria-label="t('common.delete')"
-              :title="t('common.delete')"
-              @click="removeConversation(item.id)"
-            >
-              <CaIcon name="trash" :size="13" />
+              <CaIcon name="columns" :size="14" />
             </button>
           </div>
-        </li>
-      </ul>
+        </div>
+        <div class="chat__search">
+          <CaIcon name="search" :size="13" class="chat__search-icon" />
+          <input
+            v-model="searchQuery"
+            type="search"
+            class="chat__search-input"
+            :placeholder="t('workspace.chat.searchPlaceholder')"
+            :aria-label="t('workspace.chat.searchPlaceholder')"
+          />
+          <button
+            v-if="searchQuery"
+            type="button"
+            class="chat__search-clear"
+            :aria-label="t('shell.searchClear')"
+            @click="searchQuery = ''"
+          >
+            ×
+          </button>
+        </div>
+        <CaSpinner v-if="conversationsLoading" class="chat__sidebar-loading" />
+        <p v-else-if="conversationsError" class="chat__sidebar-error" role="alert">
+          {{ conversationsError }}
+        </p>
+        <CaEmptyState
+          v-else-if="conversations.length === 0"
+          :title="searchQuery ? t('workspace.chat.searchEmpty') : t('workspace.chat.historyEmpty')"
+        />
+        <ul v-else class="chat__list">
+          <li
+            v-for="item in conversations"
+            :key="item.id"
+            class="chat__list-item"
+            :class="{ 'chat__list-item--active': item.id === conversationId }"
+          >
+            <input
+              v-if="renamingId === item.id"
+              ref="renameInput"
+              v-model="renameDraft"
+              class="chat__rename-input"
+              :aria-label="t('workspace.chat.rename')"
+              maxlength="120"
+              @keydown.enter.prevent="commitRename(item)"
+              @keydown.esc.prevent="cancelRename"
+              @blur="commitRename(item)"
+            />
+            <button
+              v-else
+              type="button"
+              class="chat__list-button"
+              @click="openConversation(item.id)"
+            >
+              <span class="chat__list-title-row">
+                <CaIcon v-if="item.starred_at" name="star" :size="11" class="chat__list-star" />
+                <span class="chat__list-title">{{ item.title }}</span>
+              </span>
+              <span class="chat__list-time">{{ formatDateTime(item.updated_at) }}</span>
+            </button>
+            <div v-if="renamingId !== item.id" class="chat__list-actions">
+              <button
+                type="button"
+                class="chat__list-action"
+                :class="{ 'chat__list-action--starred': item.starred_at }"
+                :aria-label="
+                  item.starred_at ? t('workspace.chat.unstar') : t('workspace.chat.star')
+                "
+                :aria-pressed="Boolean(item.starred_at)"
+                :title="item.starred_at ? t('workspace.chat.unstar') : t('workspace.chat.star')"
+                @click="toggleStar(item)"
+              >
+                <CaIcon name="star" :size="13" />
+              </button>
+              <button
+                type="button"
+                class="chat__list-action"
+                :aria-label="t('workspace.chat.rename')"
+                :title="t('workspace.chat.rename')"
+                @click="startRename(item)"
+              >
+                <CaIcon name="pencil" :size="13" />
+              </button>
+              <button
+                type="button"
+                class="chat__list-action chat__list-action--danger"
+                :aria-label="t('common.delete')"
+                :title="t('common.delete')"
+                @click="removeConversation(item.id)"
+              >
+                <CaIcon name="trash" :size="13" />
+              </button>
+            </div>
+          </li>
+        </ul>
+      </div>
     </aside>
 
     <section class="chat__main">
@@ -937,7 +1073,7 @@ onBeforeUnmount(() => {
                 ? t('workspace.chat.attachments.hide')
                 : t('workspace.chat.attachments.show')
             "
-            @click="attachmentsOpen = !attachmentsOpen"
+            @click="toggleAttachments"
           >
             <CaIcon name="paperclip" :size="14" />
             <span>{{ t('workspace.chat.attachments.toggle') }}</span>
@@ -964,6 +1100,19 @@ onBeforeUnmount(() => {
           >
             <CaIcon name="printer" :size="14" />
             <span>{{ t('workspace.chat.print') }}</span>
+          </button>
+          <button
+            type="button"
+            class="chat__toolbar-button"
+            :class="{ 'chat__toolbar-button--active': ui.fullscreen }"
+            :aria-pressed="ui.fullscreen"
+            :title="ui.fullscreen ? t('workspace.chat.exitFullscreen') : t('workspace.chat.fullscreen')"
+            @click="setFullscreen(!ui.fullscreen)"
+          >
+            <CaIcon :name="ui.fullscreen ? 'close' : 'columns'" :size="14" />
+            <span>{{
+              ui.fullscreen ? t('workspace.chat.exitFullscreen') : t('workspace.chat.fullscreen')
+            }}</span>
           </button>
         </div>
       </div>
@@ -1013,18 +1162,34 @@ onBeforeUnmount(() => {
               !streaming &&
               !regenerating
             "
+            :documents="message.documents"
+            :active-document-id="viewerDoc?.id ?? null"
+            :tool-steps="message.tool_trace?.steps ?? []"
+            :guardrails="message.guardrails ?? null"
+            :busy-approval-id="busyApprovalId"
             @regenerate="regenerate"
+            @open-document="openDocument"
+            @decide="decideApproval"
           />
           <ChatMessage
             v-if="streaming || regenerating"
             role="assistant"
             :content="streaming ? pendingText : ''"
+            :tool-steps="pendingSteps"
             pending
           />
         </template>
       </div>
 
       <p v-if="streamError" class="chat__error" role="alert">{{ streamError }}</p>
+
+      <ConversationConnectorsBar
+        :conversation-id="conversationId"
+        :ensure-conversation="ensureConversation"
+        :disabled="streaming || regenerating"
+      />
+
+      <WebSearchToggle v-model="webSearch" :disabled="streaming || regenerating" />
 
       <form class="chat__composer" @submit.prevent="send">
         <textarea
@@ -1073,6 +1238,14 @@ onBeforeUnmount(() => {
         </div>
       </form>
     </section>
+
+    <DocumentViewerPanel
+      v-if="viewerDoc"
+      :key="viewerDoc.id"
+      class="chat__viewer"
+      :doc="viewerDoc"
+      @close="closeViewer"
+    />
 
     <aside
       v-if="showAttachmentsPane"
@@ -1271,12 +1444,46 @@ onBeforeUnmount(() => {
   grid-template-columns: 280px minmax(0, 1fr) 300px;
 }
 
+.chat--sidebar-collapsed {
+  grid-template-columns: 48px minmax(0, 1fr);
+}
+
+.chat--sidebar-collapsed.chat--attachments {
+  grid-template-columns: 48px minmax(0, 1fr) 300px;
+}
+
 .chat--no-sidebar {
   grid-template-columns: minmax(0, 1fr);
 }
 
 .chat--no-sidebar.chat--attachments {
   grid-template-columns: minmax(0, 1fr) 300px;
+}
+
+.chat--viewer {
+  grid-template-columns: 280px minmax(0, 1fr) minmax(360px, 44%);
+}
+
+.chat--viewer.chat--sidebar-collapsed {
+  grid-template-columns: 48px minmax(0, 1fr) minmax(360px, 44%);
+}
+
+.chat--viewer.chat--no-sidebar {
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 44%);
+}
+
+.chat__viewer {
+  min-height: 0;
+}
+
+/* Layar penuh khusus percakapan: menutup seluruh jendela, termasuk header halaman. */
+.chat--full {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  height: 100vh;
+  padding: var(--ca-space-4);
+  background: var(--ca-bg-canvas);
 }
 
 .chat__sidebar {
@@ -1287,6 +1494,50 @@ onBeforeUnmount(() => {
   border-radius: var(--ca-radius-xl);
   background: var(--ca-bg-surface);
   overflow: hidden;
+}
+
+.chat__sidebar-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.chat__sidebar-head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ca-space-1);
+}
+
+.chat__rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ca-space-4);
+  width: 100%;
+  height: 100%;
+  padding: var(--ca-space-4) 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: var(--ca-fg-3);
+}
+
+.chat__rail:hover {
+  color: var(--ca-color-brand);
+  background: var(--ca-color-brand-subtle);
+}
+
+.chat__rail:focus-visible {
+  outline: 2px solid var(--ca-color-brand);
+  outline-offset: -2px;
+}
+
+.chat__rail-label {
+  writing-mode: vertical-rl;
+  font-size: var(--ca-text-200);
+  font-weight: var(--ca-font-weight-semibold);
+  letter-spacing: 0.02em;
 }
 
 .chat__sidebar-head {
@@ -2083,15 +2334,42 @@ onBeforeUnmount(() => {
   .chat--attachments {
     grid-template-columns: 240px minmax(0, 1fr) 270px;
   }
+
+  .chat--viewer {
+    grid-template-columns: 240px minmax(0, 1fr) minmax(320px, 44%);
+  }
 }
 
 @media (max-width: 900px) {
   .chat,
   .chat--attachments,
   .chat--no-sidebar,
-  .chat--no-sidebar.chat--attachments {
+  .chat--no-sidebar.chat--attachments,
+  .chat--sidebar-collapsed,
+  .chat--sidebar-collapsed.chat--attachments,
+  .chat--viewer,
+  .chat--viewer.chat--sidebar-collapsed,
+  .chat--viewer.chat--no-sidebar {
     grid-template-columns: 1fr;
     height: auto;
+  }
+
+  .chat__viewer {
+    height: 70vh;
+  }
+
+  .chat__sidebar--collapsed {
+    max-height: none;
+  }
+
+  .chat__rail {
+    flex-direction: row;
+    justify-content: flex-start;
+    padding: var(--ca-space-3) var(--ca-space-4);
+  }
+
+  .chat__rail-label {
+    writing-mode: horizontal-tb;
   }
 
   .chat__sidebar {

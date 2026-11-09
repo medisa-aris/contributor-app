@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import type { AuthUserDto, MeDto } from '@contributor/shared';
+import type { AuthUserDto, MeDto } from '@bara/shared';
 import { apiGet, apiPost, setCsrfToken } from '@/api/http';
 
 export const useAuthStore = defineStore('auth', () => {

@@ -1,4 +1,4 @@
-# Arsitektur Contributor AI
+# Arsitektur ContributorAI
 
 > Fase 1–6: Fondasi + Autentikasi + RBAC + AI Workspace + tiga pusat (Knowledge, Agent, Integration). Dokumen ini menjelaskan struktur, alur, dan keputusan desain utama.
 
@@ -10,7 +10,7 @@ contributor-app/
 │   ├── api/          # NestJS 11 (CommonJS) — REST API /api/*
 │   └── web/          # Vue 3 + Vite + Pinia + vue-i18n — SPA
 ├── packages/
-│   └── shared/       # @contributor/shared — katalog permission, enum, tipe kontrak API
+│   └── shared/       # @bara/shared — katalog permission, enum, tipe kontrak API
 ├── scripts/          # infra.sh (operasi Docker host remote), utilitas
 └── docs/             # dokumen ini
 ```
@@ -22,7 +22,7 @@ Package manager: **npm workspaces**. `packages/shared` di-build ganda:
 | `dist/`     | CommonJS (via `main` / kondisi `require`)                                                      | NestJS API         |
 | `dist/esm/` | ESM (via `module` / kondisi `import`, plus `dist/esm/package.json` berisi `{"type":"module"}`) | Vite/Rollup di web |
 
-Build: `npm run build -w @contributor/shared` menjalankan `tsc -p tsconfig.json && tsc -p tsconfig.esm.json && node scripts/write-esm-marker.cjs`.
+Build: `npm run build -w @bara/shared` menjalankan `tsc -p tsconfig.json && tsc -p tsconfig.esm.json && node scripts/write-esm-marker.cjs`.
 
 ## 2. Topologi Runtime (dev)
 
@@ -92,8 +92,8 @@ Tiga mode interaksi AI, masing-masing dikunci permission tersendiri di bawah apl
 | Mode                             | Permission               | Pengalaman                                                                                                        | Suhu |
 | -------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------- | ---- |
 | Otak Kedua (`second_brain`)      | `ai.secondbrain.query`   | Tanya-jawab pengetahuan; jawaban langsung tersimpan sebagai percakapan                                            | 0.3  |
-| Mitra Berpikir (`counterpart`)   | `ai.counterpart.analyze` | Lawan bicara yang menantang gagasan; gaya lawan bicara dipilih dari `COUNTERPART_STYLES` di `@contributor/shared` | 0.7  |
-| Asisten Eksekusi (`subordinate`) | `ai.subordinate.execute` | Tugas tertulis satu instruksi; pengguna memicu eksekusi dan memantau status                                       | 0.2  |
+| Mitra Berpikir (`counterpart`)   | `ai.counterpart.analyze` | Lawan bicara yang menantang gagasan; gaya lawan bicara dipilih dari `COUNTERPART_STYLES` di `@bara/shared` | 0.7  |
+| Subordinate (`subordinate`) | `ai.subordinate.execute` | Tugas tertulis satu instruksi; pengguna memicu eksekusi dan memantau status                                       | 0.2  |
 
 - **Gateway provider** (`gateway.service.ts`): adapter di-resolve sekali per proses dari konfigurasi env (`AI_PROVIDER`, `AI_MODEL`, `AI_BASE_URL`, `*_API_KEY`) lewat `provider-resolver.ts`. `OpenAiCompatibleProvider` melayani OpenAI/OpenRouter/Ollama dalam satu jalur kode; `AnthropicProvider` untuk Anthropic. System prompt disusun per mode (`prompts.ts`), pesan divalidasi dan dibatasi (`limits.ts`), timeout via `AbortSignal`. Kredensial hanya hidup di memori proses API — tidak pernah ke browser, log, atau respons.
 - **Streaming SSE**: `POST /api/ai/chat/stream` mengirim event `ready` → `delta` (potongan jawaban) → `done` (pesan asisten tersimpan) / `error`. Klien web memakai `fetch` + `TextDecoderStream` karena `EventSource` tidak mendukung POST dan header CSRF.
@@ -106,11 +106,33 @@ Tiga mode interaksi AI, masing-masing dikunci permission tersendiri di bawah apl
 
 **Knowledge Center** (`knowledge/`). Sumber pengetahuan manual (kode unik, origin `manual`), dokumen dengan konten mentah + status indeks (`indexed|pending|failed`), dan koleksi sebagai himpunan sumber. Pencarian memakai kolom `tsvector` (`content_tsv`) dengan ranking `ts_rank`; cuplikan hasil dibungkus `ts_headline` (`<mark>…</mark>`) dan disajikan sebagai segmen `{text, highlighted}` di web — dirender elemen `<mark>` via `v-for`, **tanpa `v-html`**, sehingga aman dari XSS. Setiap hasil membawa sitasi locator (judul dokumen + sumber + lokasi) agar jawaban AI dapat dirujuk balik.
 
-**Agent Center** (`agents/`). Registry agen: nama, instruksi sistem, daftar alat, `requires_approval`, status aktif. Eksekusi memakai lifecycle tugas yang sama dengan Asisten Eksekusi (`created → validating → awaiting_approval/running → completed|failed`): agen tanpa persetujuan langsung berjalan, agen `requires_approval` berhenti di `awaiting_approval` sampai pemutus (`agents.approve`) menyetujui atau menolak — keputusan dicatat di `approvals` (pemutus, catatan, waktu) dan audit trail. Daftar tugas per agen menampilkan nama agen + email peminta agar operasional mudah diaudit.
+**Agent Center** (`agents/`). Registry agen: nama, instruksi sistem, daftar alat, `requires_approval`, status aktif. Eksekusi memakai lifecycle tugas yang sama dengan Subordinate (`created → validating → awaiting_approval/running → completed|failed`): agen tanpa persetujuan langsung berjalan, agen `requires_approval` berhenti di `awaiting_approval` sampai pemutus (`agents.approve`) menyetujui atau menolak — keputusan dicatat di `approvals` (pemutus, catatan, waktu) dan audit trail. Daftar tugas per agen menampilkan nama agen + email peminta agar operasional mudah diaudit.
 
 **Integration Center** (`integrations/`). Dua jenis konektor: **MCP server** (URL endpoint, jenis transport) dan **REST connector** (base URL + daftar endpoint peralatan `GET|POST` yang diparsing dari teks `METHOD /path`). Kesehatan dicek eksplisit lewat tombol "Periksa kesehatan" (bukan latar) dan hasilnya (`last_health_ok/at`) ditampilkan sebagai lencana. Status kredensial provider AI disajikan **boolean terkonfigurasi/belum** — nama variabel env boleh tampil, nilai rahasia tidak pernah keluar dari server.
 
 Ketiga pusat mengikuti konvensi yang sama: guard permission per endpoint, amplop `paginated()` untuk daftar, audit event untuk mutasi, dan DTO query ketat (`whitelist + forbidNonWhitelisted`) — parameter filter baru harus dideklarasikan eksplisit di DTO turunan `PaginationQueryDto`.
+
+### 3.7 Pencarian Web
+
+Opsi "Cari di web" tersedia per percakapan (Multi Brain, Partner) dan per tugas (Subordinate), bawaannya nonaktif. Saat aktif, model mendapat tool `web_search` dan `web_read` lewat tool loop yang sama dengan konektor (`ai/web-search/`).
+
+- **Izin**: `ai.websearch.use`. UI menyembunyikan opsi tanpa izin; server menolak `webSearch: true` dengan 403 dan tidak membangun tool tanpa izin. Tugas memeriksa ulang izin pemilik setiap kali dijalankan.
+- **Penyedia**: Tavily, Firecrawl, Brave Search. API key dan batas ada di `.env`; urutan prioritas ada di `app_config` (`ai.web_search_priority`) dan diatur admin dengan seret-lepas di menu Provider AI (`config.manage`), berlaku tanpa restart.
+- **Failover**: gangguan teknis (jaringan, batas waktu, 408, 429, 5xx, Tavily 434) diulang sampai 3 percobaan per penyedia. Masalah token atau langganan (key kosong, 401, 402, 403, Tavily 432/433, kode Brave `SUBSCRIPTION_TOKEN_INVALID`/`QUOTA_LIMITED`) langsung pindah ke penyedia berikutnya tanpa diulang. Tombol Stop menghentikan rantai.
+- **`web_read`**: URL internal ditolak (`assertPublicUrl`). Halaman dibaca lewat penyedia yang mendukung ekstraksi (Tavily, Firecrawl), lalu crawler bawaan sebagai cadangan.
+- **Keamanan data**: hasil web diperlakukan sebagai data tidak tepercaya. Audit `ai.web_search.called` hanya mencatat metadata (penyedia, percobaan, jumlah hasil), bukan kata kunci, karena percakapan bersifat privat.
+
+### 3.8 Guardrails
+
+Data pribadi dimasking sebelum keluar ke penyedia LLM dan dikembalikan saat jawaban tiba. `GuardedProvider` membungkus adapter di `AiGatewayService.resolveAdapter()`, sehingga semua proses tercakup tanpa kode tambahan di pemanggil. Nonaktif secara bawaan; hanya pemegang `ai.guardrails.manage` yang bisa mengubahnya di menu Guardrails.
+
+- **Token:** karakter pertama tetap, 3 karakter pertama digeser +1, lalu HMAC 12 karakter (`Medisa` → `MNFE…`). Email menjadi `token@token.com`. Hash tidak bisa dibalik, jadi unmask memakai peta di memori per permintaan.
+- **Deteksi** (`guardrails/detectors.ts`): kolom tabel/CSV/JSON, `kunci: nilai`, pola tetap, kata pemicu, nama pengguna aplikasi, dan istilah dari admin. Katalog kategori ada di `packages/shared/src/guardrails.ts`.
+- **Kamus:** nilai tanpa pola disimpan terenkripsi di `guardrail_terms` per percakapan atau tugas, karena hasil tool tidak ikut riwayat giliran berikutnya.
+- **Tool:** argumen tool internal di-unmask; `web_search` dan `web_read` (`keepMasked`) tetap memakai token.
+- **Info di pesan:** jumlah per kategori disimpan di `conversation_messages.guardrails` dan ditampilkan di atas tanggal jawaban.
+- **Gagal tertutup:** bila masking gagal atau kunci hilang, permintaan dibatalkan dan tidak ada data terkirim.
+- **Batasan:** nama di kalimat bebas tanpa petunjuk bisa lolos; gambar tidak bisa dimasking (diblokir bila opsinya aktif); token adalah pseudonimisasi, bukan anonimisasi. Audit hanya mencatat jumlah per kategori.
 
 ## 4. Frontend (apps/web)
 
