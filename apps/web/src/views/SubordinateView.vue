@@ -124,6 +124,6 @@ function openTask(id: string): void {
 
 <style scoped>
 .sub__tabs {
-  margin-bottom: var(--ca-space-5, 20px);
+  margin-bottom: var(--ca-space-12);
 }
 </style>

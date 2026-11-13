@@ -629,7 +629,7 @@ const hiddenCount = computed(() =>
 .ts__link {
   border: 0;
   background: transparent;
-  color: var(--ca-color-brand);
+  color: var(--ca-color-brand-text);
   cursor: pointer;
   font: inherit;
   text-decoration: underline;

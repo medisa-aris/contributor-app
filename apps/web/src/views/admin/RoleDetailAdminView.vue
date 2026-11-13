@@ -328,7 +328,7 @@ onMounted(load);
 .rd-matrix__dirty {
   margin: var(--ca-space-6) 0 0;
   font-size: var(--ca-text-200);
-  color: var(--ca-color-brand);
+  color: var(--ca-color-brand-text);
 }
 
 .rd-app {

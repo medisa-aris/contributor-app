@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import {
   getEffectivePermissions,
@@ -24,6 +25,7 @@ import {
 } from '@/components/ui';
 
 const { t } = useI18n();
+const route = useRoute();
 
 const search = ref('');
 const searchResults = ref<AdminUserRow[]>([]);
@@ -85,6 +87,18 @@ async function pickUser(user: AdminUserRow) {
     loading.value = false;
   }
 }
+
+onMounted(async () => {
+  const email = route.query.user;
+  if (typeof email !== 'string' || !email) return;
+  try {
+    const result = await listUsers({ search: email, page: 1, pageSize: 10 });
+    const match = result.items.find((u) => u.email === email);
+    if (match) await pickUser(match);
+  } catch {
+    searchError.value = t('errors.loadFailed');
+  }
+});
 
 function resetUser() {
   selectedUser.value = null;

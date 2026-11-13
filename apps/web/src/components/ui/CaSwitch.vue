@@ -81,7 +81,7 @@ const inputId = useId();
 
 .ca-switch__input:checked + .ca-switch__track .ca-switch__thumb {
   transform: translateX(20px);
-  background: #ffffff;
+  background: var(--ca-bg-surface);
 }
 
 .ca-switch__input:focus-visible + .ca-switch__track {

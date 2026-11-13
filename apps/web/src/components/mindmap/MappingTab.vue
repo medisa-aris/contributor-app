@@ -13,7 +13,7 @@ import type {
 } from '@/api/mindmap/types';
 import { useUiStore } from '@/stores/ui.store';
 import MindThoughtList from './MindThoughtList.vue';
-import { MODE_COLORS, MODE_ORDER, dominantMode, initials, truncate } from './mode-colors';
+import { MODE_COLORS, MODE_DASH, MODE_ORDER, dominantMode, initials, truncate } from './mode-colors';
 
 const props = defineProps<{ query: MindMapQuery }>();
 const { t } = useI18n();
@@ -314,7 +314,7 @@ function draw(): void {
       g.append('circle')
         .attr('r', r + 3)
         .style('fill', 'var(--ca-bg-surface)')
-        .style('stroke', selected.value?.id === person.id ? 'var(--ca-color-brand)' : 'transparent')
+        .style('stroke', selected.value?.id === person.id ? 'var(--ca-color-brand-strong)' : 'transparent')
         .style('stroke-width', 2.5);
       if (person.total === 0) {
         g.append('circle')
@@ -343,8 +343,8 @@ function draw(): void {
     } else {
       g.append('circle')
         .attr('r', r)
-        .style('fill', isCenter ? 'var(--ca-color-brand)' : 'var(--ca-color-brand-subtle)')
-        .style('stroke', 'var(--ca-color-brand)')
+        .style('fill', isCenter ? 'var(--ca-color-brand-strong)' : 'var(--ca-bg-surface)')
+        .style('stroke', 'var(--ca-color-brand-secondary)')
         .style('stroke-width', d.data.collapsed ? 2.5 : 1.5)
         .style('stroke-dasharray', d.data.collapsed ? '4 3' : 'none');
       g.append('text')
@@ -353,7 +353,7 @@ function draw(): void {
         .attr('dy', '0.35em')
         .style('font-size', isCenter ? '14px' : '11px')
         .style('font-weight', 700)
-        .style('fill', isCenter ? 'var(--ca-fg-on-brand)' : 'var(--ca-fg-1)')
+        .style('fill', isCenter ? 'var(--ca-fg-on-brand-strong)' : 'var(--ca-fg-1)')
         .style('pointer-events', 'none');
     }
 
@@ -429,6 +429,20 @@ onBeforeUnmount(() => {
   loadSeq++;
 });
 
+const deptSummary = computed(() => {
+  const node = focus.value;
+  if (!node) return null;
+  const subs = (node.children ?? []).filter((c) => c.kind === 'dept');
+  const max = Math.max(1, ...subs.map((c) => c.total));
+  return {
+    name: node.name,
+    total: node.total,
+    subs: subs
+      .map((c) => ({ id: c.id, name: c.name, total: c.total, pct: Math.round((c.total / max) * 100) }))
+      .sort((a, b) => b.total - a.total),
+  };
+});
+
 const selectedCounts = computed(() =>
   selected.value ? MODE_ORDER.map((m) => ({ mode: m, n: selected.value!.counts[m] })) : [],
 );
@@ -447,7 +461,8 @@ const dominantColor = computed(() =>
       <CaEmptyState :title="t('workspace.mindMap.mapping.empty')" />
     </div>
 
-    <div v-show="org && org.people.length > 0 && !failed" ref="host" class="map__canvas">
+    <div v-show="org && org.people.length > 0 && !failed" class="map__graph">
+    <div ref="host" class="map__canvas">
       <svg ref="svgEl" class="map__svg" role="img" :aria-label="t('workspace.mindMap.tabs.mapping')" />
     </div>
 
@@ -467,11 +482,50 @@ const dominantColor = computed(() =>
 
     <div v-if="org && org.people.length > 0" class="map__legend">
       <span v-for="m in MODE_ORDER" :key="m" class="map__legend-item">
-        <i class="map__legend-dot" :style="{ background: MODE_COLORS[m] }" />
+        <i class="map__legend-line" :style="{ borderTopColor: MODE_COLORS[m], borderTopStyle: MODE_DASH[m] }" />
         {{ t(`workspace.mindMap.modes.${m}`) }}
       </span>
       <span class="map__hint">{{ t('workspace.mindMap.mapping.hint') }}</span>
     </div>
+    </div>
+
+    <aside
+      v-if="org && org.people.length > 0 && !failed && !selected && deptSummary"
+      class="map__panel map__panel--dept"
+      :aria-label="t('workspace.mindMap.mapping.selectedDept')"
+    >
+      <div class="map__dept-head">
+        <span class="map__caption">{{ t('workspace.mindMap.mapping.selectedDept') }}</span>
+        <h2 class="map__dept-name">{{ deptSummary.name }}</h2>
+      </div>
+      <p class="map__dept-total">
+        <span class="map__dept-num">{{ deptSummary.total }}</span>
+        <span class="map__caption">{{ t('workspace.mindMap.mapping.titlesInRange', { days: query.days }) }}</span>
+      </p>
+      <div class="map__dept-subs">
+        <span class="map__dept-label">{{ t('workspace.mindMap.mapping.subDepartments') }}</span>
+        <p v-if="deptSummary.subs.length === 0" class="map__none">{{ t('workspace.mindMap.mapping.noSubDepartments') }}</p>
+        <button
+          v-for="sub in deptSummary.subs"
+          :key="sub.id"
+          type="button"
+          class="map__dept-sub"
+          @click="setFocus(sub.id)"
+        >
+          <span class="map__dept-sub-row">
+            <span>{{ sub.name }}</span>
+            <span class="map__dept-sub-count">{{ sub.total }}</span>
+          </span>
+          <span class="map__dept-bar" aria-hidden="true"><span :style="{ width: `${sub.pct}%` }" /></span>
+        </button>
+      </div>
+      <p class="map__dept-note">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+          <circle cx="8" cy="8" r="6" /><path d="M8 7.5V11M8 5h.01" />
+        </svg>
+        {{ t('workspace.mindMap.mapping.auditNote') }}
+      </p>
+    </aside>
 
     <aside v-if="selected" class="map__panel" :style="{ '--accent': dominantColor }">
       <header class="map__panel-head">
@@ -503,6 +557,18 @@ const dominantColor = computed(() =>
 .map {
   position: absolute;
   inset: 0;
+  display: flex;
+  gap: var(--ca-space-8);
+}
+.map__graph {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--ca-stroke-2);
+  border-radius: var(--ca-radius-xl);
+  background: var(--ca-bg-canvas);
+  box-shadow: var(--ca-shadow-4);
+  overflow: hidden;
 }
 .map__state {
   position: absolute;
@@ -533,7 +599,7 @@ const dominantColor = computed(() =>
   max-width: calc(100% - 24px);
   padding: 4px 8px;
   background: var(--ca-bg-surface);
-  border: 1px solid var(--ca-stroke-1);
+  border: 1px solid var(--ca-stroke-2);
   border-radius: var(--ca-radius-md);
 }
 .map__crumb {
@@ -545,7 +611,7 @@ const dominantColor = computed(() =>
   font: inherit;
 }
 .map__crumb:hover {
-  color: var(--ca-color-brand);
+  color: var(--ca-color-brand-text);
 }
 .map__crumb--on {
   color: var(--ca-fg-1);
@@ -582,19 +648,119 @@ const dominantColor = computed(() =>
   color: var(--ca-fg-3);
 }
 .map__panel {
-  position: absolute;
-  top: var(--ca-space-3);
-  right: var(--ca-space-3);
-  bottom: var(--ca-space-3);
-  width: min(380px, calc(100% - 24px));
+  flex: 0 0 var(--ca-context-panel-width);
   display: flex;
   flex-direction: column;
+  min-height: 0;
   background: var(--ca-bg-surface);
-  border: 1px solid var(--ca-stroke-1);
-  border-top: 3px solid var(--accent);
-  border-radius: var(--ca-radius-lg);
-  box-shadow: var(--ca-shadow-16, 0 8px 24px rgba(0, 0, 0, 0.18));
-  animation: map-panel-in var(--ca-duration-normal, 200ms) ease-out;
+  border: 1px solid var(--ca-stroke-2);
+  border-top: 3px solid var(--accent, var(--ca-stroke-2));
+  border-radius: var(--ca-radius-xl);
+  box-shadow: var(--ca-shadow-4);
+  animation: map-panel-in var(--ca-duration-normal) var(--ca-curve-decelerate-mid);
+}
+.map__panel--dept {
+  gap: var(--ca-space-8);
+  padding: var(--ca-space-10);
+  border-top-width: 1px;
+  overflow-y: auto;
+}
+.map__caption {
+  font-size: var(--ca-text-200);
+  line-height: var(--ca-line-200);
+  color: var(--ca-fg-3);
+}
+.map__dept-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ca-space-2);
+}
+.map__dept-name {
+  font-size: var(--ca-text-500);
+  line-height: var(--ca-line-500);
+  font-weight: var(--ca-font-weight-semibold);
+}
+.map__dept-total {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ca-space-4);
+}
+.map__dept-num {
+  font-size: var(--ca-text-900);
+  line-height: var(--ca-line-900);
+  font-weight: var(--ca-font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.map__dept-subs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ca-space-4);
+}
+.map__dept-label {
+  font-weight: var(--ca-font-weight-semibold);
+}
+.map__dept-sub {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ca-space-2);
+  padding: var(--ca-space-2) 0;
+  border: 0;
+  background: transparent;
+  color: var(--ca-fg-1);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.map__dept-sub:hover .map__dept-sub-row span:first-child {
+  color: var(--ca-color-brand-text);
+}
+.map__dept-sub-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ca-space-4);
+}
+.map__dept-sub-count {
+  font-weight: var(--ca-font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.map__dept-bar {
+  display: flex;
+  height: 6px;
+  border-radius: var(--ca-radius-md);
+  background: var(--ca-bg-surface-2);
+  overflow: hidden;
+}
+.map__dept-bar span {
+  background: var(--ca-chart-1);
+}
+.map__dept-note {
+  display: flex;
+  gap: var(--ca-space-4);
+  margin-top: auto;
+  padding: var(--ca-space-6);
+  border-radius: var(--ca-radius-xl);
+  background: var(--ca-bg-surface-2);
+  font-size: var(--ca-text-200);
+  line-height: var(--ca-line-200);
+}
+.map__dept-note svg {
+  flex: none;
+  color: var(--ca-info-fg);
+}
+.map__legend-line {
+  width: 16px;
+  height: 0;
+  border-top-width: 2px;
+  display: inline-block;
+}
+@media (max-width: 900px) {
+  .map {
+    flex-direction: column;
+  }
+  .map__panel {
+    flex: none;
+    max-height: 45%;
+  }
 }
 @keyframes map-panel-in {
   from {
@@ -614,8 +780,9 @@ const dominantColor = computed(() =>
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--accent);
-  color: #fff;
+  background: var(--ca-color-brand-subtle);
+  color: var(--ca-color-brand-text);
+  border: 2px solid var(--accent);
   font-weight: 700;
   flex-shrink: 0;
 }

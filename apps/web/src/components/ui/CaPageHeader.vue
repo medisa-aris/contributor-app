@@ -20,31 +20,31 @@ defineProps<{
 <style scoped>
 .page-header {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: var(--ca-space-4);
+  gap: var(--ca-space-8);
   flex-wrap: wrap;
-  margin-bottom: var(--ca-space-6);
+  margin-bottom: var(--ca-space-12);
 }
 
 .page-header__title {
-  font-size: var(--ca-text-600);
-  line-height: var(--ca-line-600);
+  font-size: var(--ca-text-700);
+  line-height: var(--ca-line-700);
   font-weight: var(--ca-font-weight-semibold);
 }
 
 .page-header__description {
-  margin-top: var(--ca-space-1);
+  margin-top: var(--ca-space-2);
   color: var(--ca-fg-3);
-  font-size: var(--ca-text-200);
-  line-height: var(--ca-line-200);
-  max-width: 640px;
+  font-size: var(--ca-text-300);
+  line-height: var(--ca-line-300);
+  max-width: 680px;
 }
 
 .page-header__actions {
   display: flex;
   align-items: center;
-  gap: var(--ca-space-2);
-  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: var(--ca-space-4);
 }
 </style>

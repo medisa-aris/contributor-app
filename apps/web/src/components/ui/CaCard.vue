@@ -34,6 +34,7 @@ withDefaults(
   background: var(--ca-bg-surface);
   border: 1px solid var(--ca-stroke-2);
   border-radius: var(--ca-radius-xl);
+  box-shadow: var(--ca-shadow-4);
   overflow: hidden;
 }
 
@@ -43,12 +44,12 @@ withDefaults(
 }
 
 .ca-card__header {
-  padding: var(--ca-space-6) var(--ca-space-8) 0;
+  padding: var(--ca-space-10) var(--ca-space-10) 0;
 }
 
 .ca-card__title {
-  font-size: var(--ca-text-400);
-  line-height: var(--ca-line-400);
+  font-size: var(--ca-text-500);
+  line-height: var(--ca-line-500);
   font-weight: var(--ca-font-weight-semibold);
   color: var(--ca-fg-1);
 }
@@ -65,11 +66,11 @@ withDefaults(
 }
 
 .ca-card__body--padded {
-  padding: var(--ca-space-8);
+  padding: var(--ca-space-10);
 }
 
 .ca-card__footer {
-  border-top: 1px solid var(--ca-stroke-3);
-  padding: var(--ca-space-6) var(--ca-space-8);
+  border-top: 1px solid var(--ca-stroke-2);
+  padding: var(--ca-space-6) var(--ca-space-10);
 }
 </style>

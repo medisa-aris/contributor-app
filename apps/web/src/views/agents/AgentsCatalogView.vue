@@ -10,6 +10,7 @@ import {
   CaCard,
   CaIcon,
   CaPageHeader,
+  CaSegmented,
 } from '@/components/ui';
 
 const { t } = useI18n();
@@ -40,6 +41,31 @@ async function load(): Promise<void> {
 
 onMounted(() => void load());
 
+type ApprovalFilter = 'all' | 'approval' | 'direct';
+const filter = ref<ApprovalFilter>('all');
+
+const counts = computed(() => ({
+  all: agents.value.length,
+  approval: agents.value.filter((a) => a.require_approval).length,
+  direct: agents.value.filter((a) => !a.require_approval).length,
+  active: agents.value.filter((a) => a.status === 'active').length,
+  tools: agents.value.reduce((sum, a) => sum + a.tool_allowlist.length, 0),
+}));
+
+const filterItems = computed(() => [
+  { key: 'all' as const, label: t('agents.filterAll', { n: counts.value.all }) },
+  { key: 'approval' as const, label: t('agents.filterApproval', { n: counts.value.approval }) },
+  { key: 'direct' as const, label: t('agents.filterDirect', { n: counts.value.direct }) },
+]);
+
+const visibleAgents = computed(() =>
+  agents.value.filter((a) =>
+    filter.value === 'all' ? true : filter.value === 'approval' ? a.require_approval : !a.require_approval,
+  ),
+);
+
+const HOW_STEPS = ['instruction', 'agent', 'approval', 'tools', 'result'] as const;
+
 function statusVariant(agent: AgentRow): 'success' | 'neutral' {
   return agent.status === 'active' ? 'success' : 'neutral';
 }
@@ -67,8 +93,29 @@ function statusLabel(agent: AgentRow): string {
       {{ t('agents.catalogEmpty') }}
     </p>
 
+    <section class="ca-panel agents-how" aria-labelledby="agents-how">
+      <div class="agents-section-head">
+        <h2 id="agents-how" class="ca-panel__title">{{ t('agents.howTitle') }}</h2>
+        <span class="agents-muted">
+          {{ t('agents.howSummary', { active: counts.active, approval: counts.approval, tools: counts.tools }) }}
+        </span>
+      </div>
+      <ol class="agents-steps">
+        <li v-for="(step, index) in HOW_STEPS" :key="step" class="agents-step">
+          <span class="agents-step__num" aria-hidden="true">{{ index + 1 }}</span>
+          <span class="agents-step__title">{{ t(`agents.howSteps.${step}.title`) }}</span>
+          <span class="agents-muted">{{ t(`agents.howSteps.${step}.desc`) }}</span>
+        </li>
+      </ol>
+    </section>
+
+    <div class="agents-section-head agents-list-head">
+      <h2 class="ca-panel__title">{{ t('agents.listTitle') }}</h2>
+      <CaSegmented v-model="filter" :items="filterItems" :label="t('agents.filterLabel')" />
+    </div>
+
     <div class="agents-grid">
-      <CaCard v-for="agent in agents" :key="agent.id">
+      <CaCard v-for="agent in visibleAgents" :key="agent.id">
         <div class="agents-card">
           <div class="agents-card__icon" aria-hidden="true">
             <CaIcon name="bot" :size="28" />
@@ -83,6 +130,7 @@ function statusLabel(agent: AgentRow): string {
                 <CaBadge v-if="agent.require_approval" variant="warning" size="small">
                   {{ t('agents.approvalRequired') }}
                 </CaBadge>
+                <CaBadge v-else variant="neutral" size="small">{{ t('agents.runsDirect') }}</CaBadge>
               </div>
             </div>
             <p v-if="agent.description" class="agents-card__desc">{{ agent.description }}</p>
@@ -111,6 +159,64 @@ function statusLabel(agent: AgentRow): string {
 </template>
 
 <style scoped>
+.agents-how {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ca-space-8);
+  margin-bottom: var(--ca-space-12);
+}
+
+.agents-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ca-space-6);
+}
+
+.agents-list-head {
+  margin-bottom: var(--ca-space-8);
+}
+
+.agents-muted {
+  color: var(--ca-fg-3);
+}
+
+.agents-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--ca-space-6);
+}
+
+.agents-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ca-space-2);
+  padding: var(--ca-space-6);
+  border-radius: var(--ca-radius-xl);
+  background: var(--ca-bg-surface-2);
+}
+
+.agents-step__num {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--ca-radius-circular);
+  background: var(--ca-color-brand-strong);
+  color: var(--ca-fg-on-brand-strong);
+  font-size: var(--ca-text-200);
+  font-weight: var(--ca-font-weight-semibold);
+}
+
+.agents-step__title {
+  font-weight: var(--ca-font-weight-semibold);
+}
+
 .agents-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
@@ -130,9 +236,9 @@ function statusLabel(agent: AgentRow): string {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--ca-radius-3);
-  background: var(--ca-color-brand-bg, rgba(100, 120, 255, 0.12));
-  color: var(--ca-color-brand);
+  border-radius: var(--ca-radius-xl);
+  background: var(--ca-color-brand-subtle);
+  color: var(--ca-color-brand-text);
 }
 
 .agents-card__main {

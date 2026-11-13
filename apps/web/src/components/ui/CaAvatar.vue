@@ -9,20 +9,7 @@ const props = withDefaults(
   { size: 'medium' },
 );
 
-const PALETTE = [
-  '#0f6cbd',
-  '#4f6bed',
-  '#7d4fd1',
-  '#b146c2',
-  '#e3008c',
-  '#c50f1f',
-  '#ca5010',
-  '#986f0b',
-  '#498205',
-  '#0e700e',
-  '#008272',
-  '#005b70',
-];
+const PALETTE = ['#075e54', '#0f6cbd', '#5b3fa8', '#a3185f', '#a83d06', '#6b5300', '#0e5c0e', '#005b70'];
 
 const initials = computed(() => {
   const parts = props.name.trim().split(/\s+/).filter(Boolean);
@@ -36,7 +23,7 @@ const color = computed(() => {
   for (const char of props.name) {
     hash = (hash * 31 + char.charCodeAt(0)) % PALETTE.length;
   }
-  return PALETTE[hash] ?? '#0f6cbd';
+  return PALETTE[hash] ?? '#075e54';
 });
 </script>
 

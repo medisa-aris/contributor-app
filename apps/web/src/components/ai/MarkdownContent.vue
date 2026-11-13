@@ -159,7 +159,7 @@ let purifyHookInstalled = false;
 <style scoped>
 .markdown--pending :deep(p:last-child::after) {
   content: '▍';
-  color: var(--ca-color-brand);
+  color: var(--ca-color-brand-text);
   animation: caret-blink 0.9s step-end infinite;
 }
 
@@ -384,7 +384,7 @@ let purifyHookInstalled = false;
 .markdown :deep(.hljs-literal),
 .markdown :deep(.hljs-section),
 .markdown :deep(.hljs-doctag) {
-  color: var(--ca-color-brand);
+  color: var(--ca-color-brand-text);
 }
 
 .markdown :deep(.hljs-string),

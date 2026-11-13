@@ -110,6 +110,7 @@ const spinnerSize = computed(() => (props.size === 'large' ? 'small' : 'tiny'));
   background: var(--ca-color-brand);
   color: var(--ca-fg-on-brand);
   border-color: transparent;
+  box-shadow: var(--ca-shadow-2);
 }
 
 .ca-button--primary:hover:not(:disabled):not([aria-disabled='true']) {
@@ -123,12 +124,12 @@ const spinnerSize = computed(() => (props.size === 'large' ? 'small' : 'tiny'));
 .ca-button--secondary {
   background: var(--ca-bg-surface);
   color: var(--ca-fg-1);
-  border-color: var(--ca-stroke-1);
+  border-color: var(--ca-stroke-accessible);
 }
 
 .ca-button--secondary:hover:not(:disabled):not([aria-disabled='true']) {
   background: var(--ca-bg-surface-hover);
-  border-color: var(--ca-stroke-1-hover);
+  border-color: var(--ca-fg-3);
 }
 
 .ca-button--secondary:active:not(:disabled):not([aria-disabled='true']) {
@@ -138,7 +139,7 @@ const spinnerSize = computed(() => (props.size === 'large' ? 'small' : 'tiny'));
 .ca-button--outline {
   background: transparent;
   color: var(--ca-fg-1);
-  border-color: var(--ca-stroke-1);
+  border-color: var(--ca-stroke-accessible);
 }
 
 .ca-button--outline:hover:not(:disabled):not([aria-disabled='true']) {
@@ -172,17 +173,18 @@ const spinnerSize = computed(() => (props.size === 'large' ? 'small' : 'tiny'));
 }
 
 .ca-button--danger {
-  background: var(--ca-danger-stroke);
-  color: #ffffff;
-  border-color: transparent;
+  background: var(--ca-bg-surface);
+  color: var(--ca-danger-fg);
+  border-color: var(--ca-danger-stroke);
 }
 
 .ca-button--danger:hover:not(:disabled):not([aria-disabled='true']) {
-  background: var(--ca-danger-hover);
+  background: var(--ca-danger-bg);
 }
 
 .ca-button--danger:active:not(:disabled):not([aria-disabled='true']) {
-  background: var(--ca-danger-pressed);
+  background: var(--ca-danger-bg);
+  border-color: var(--ca-danger-pressed);
 }
 
 .ca-button:disabled,
@@ -209,6 +211,8 @@ const spinnerSize = computed(() => (props.size === 'large' ? 'small' : 'tiny'));
 .ca-button--danger[aria-disabled='true'] {
   background: var(--ca-bg-surface-3);
   color: var(--ca-fg-disabled);
+  border-color: var(--ca-stroke-3);
+  box-shadow: none;
 }
 
 .ca-button__icon {

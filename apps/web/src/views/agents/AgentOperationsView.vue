@@ -548,7 +548,7 @@ onBeforeUnmount(() => stopPolling());
 .ops-events__type {
   flex: none;
   font-family: var(--ca-font-family-monospace, monospace);
-  color: var(--ca-color-brand);
+  color: var(--ca-color-brand-text);
 }
 
 .ops-events__message {

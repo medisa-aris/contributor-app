@@ -23,7 +23,7 @@ const initials = computed(() =>
       width: `${size}px`,
       height: `${size}px`,
       fontSize: `${Math.round(size * 0.4)}px`,
-      background: color ?? 'var(--ca-bg-brand, #0f766e)',
+      background: color ?? 'var(--ca-color-brand-strong)',
     }"
     :title="name"
     aria-hidden="true"

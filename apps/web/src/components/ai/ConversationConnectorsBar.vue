@@ -227,7 +227,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick));
   gap: 6px;
   padding: 2px 4px 2px 10px;
   border-radius: 999px;
-  background: var(--ca-bg-brand-subtle, rgba(0, 120, 80, 0.1));
+  background: var(--ca-color-brand-subtle);
   color: var(--ca-fg-1);
 }
 

@@ -160,7 +160,7 @@ function cell(value: unknown): string {
 }
 
 .trace__approval {
-  border: 1px solid var(--ca-border-warning, #e0b252);
+  border: 1px solid var(--ca-warning-stroke);
   background: var(--ca-bg-warning-subtle, rgba(224, 178, 82, 0.1));
   border-radius: var(--ca-radius-large, 10px);
   padding: var(--ca-space-4);

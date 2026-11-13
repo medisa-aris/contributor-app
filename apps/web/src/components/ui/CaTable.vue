@@ -30,9 +30,35 @@ const props = withDefaults(
     emptyDescription?: string;
     hover?: boolean;
     tableKey?: string;
+    selectable?: boolean;
+    rowActive?: (row: T) => boolean;
   }>(),
   { hover: true, tableKey: '' },
 );
+
+const selection = defineModel<string[]>('selection', { default: () => [] });
+const emit = defineEmits<{ 'row-click': [row: T] }>();
+
+const allKeys = computed(() => props.rows.map((r) => props.rowKey(r)));
+const allSelected = computed(
+  () => allKeys.value.length > 0 && allKeys.value.every((k) => selection.value.includes(k)),
+);
+const someSelected = computed(() => !allSelected.value && allKeys.value.some((k) => selection.value.includes(k)));
+
+function toggleAll(): void {
+  selection.value = allSelected.value ? [] : [...allKeys.value];
+}
+
+function toggleRow(key: string): void {
+  selection.value = selection.value.includes(key)
+    ? selection.value.filter((k) => k !== key)
+    : [...selection.value, key];
+}
+
+watch(allKeys, (keys) => {
+  const next = selection.value.filter((k) => keys.includes(k));
+  if (next.length !== selection.value.length) selection.value = next;
+});
 
 const { t } = useI18n();
 
@@ -177,6 +203,7 @@ const sortedRows = computed<T[]>(() => {
 <template>
   <div class="ca-table-wrapper">
     <div class="ca-table__toolbar">
+      <slot name="toolbar" />
       <span v-if="sortKey" class="ca-table__sort-note">
         {{ t('table.sortedBy', { column: columnLabel(sortKey) }) }}
         <button type="button" class="ca-table__sort-clear" @click="sortKey = null">
@@ -195,6 +222,13 @@ const sortedRows = computed<T[]>(() => {
         <span>{{ t('table.columnSettings') }}</span>
         <CaIcon name="chevron-down" :size="12" />
       </button>
+    </div>
+
+    <div v-if="selectable && selection.length > 0" class="ca-table__bulk" role="region" :aria-label="t('table.selectedCount', { count: selection.length })">
+      <span class="ca-table__bulk-count">{{ t('table.selectedCount', { count: selection.length }) }}</span>
+      <slot name="bulk-actions" :keys="selection" />
+      <span class="ca-table__toolbar-spacer" />
+      <button type="button" class="ca-table__sort-clear" @click="selection = []">{{ t('table.clearSelection') }}</button>
     </div>
 
     <div v-if="panelOpen" class="ca-table__scrim" @click="panelOpen = false" />
@@ -233,6 +267,15 @@ const sortedRows = computed<T[]>(() => {
     <table class="ca-table">
       <thead>
         <tr>
+          <th v-if="selectable" scope="col" class="ca-table__check">
+            <input
+              type="checkbox"
+              :checked="allSelected"
+              :indeterminate="someSelected"
+              :aria-label="t('table.selectAll')"
+              @change="toggleAll"
+            />
+          </th>
           <th
             v-for="column in visibleColumns"
             :key="column.key"
@@ -261,13 +304,30 @@ const sortedRows = computed<T[]>(() => {
       </thead>
       <tbody v-if="loading">
         <tr v-for="row in 5" :key="`skeleton-${row}`" class="ca-table__skeleton-row">
+          <td v-if="selectable" class="ca-table__check" />
           <td v-for="column in visibleColumns" :key="column.key">
             <CaSkeleton width="80%" />
           </td>
         </tr>
       </tbody>
       <tbody v-else-if="sortedRows.length > 0">
-        <tr v-for="row in sortedRows" :key="rowKey(row)" :class="{ 'ca-table__row--hover': hover }">
+        <tr
+          v-for="row in sortedRows"
+          :key="rowKey(row)"
+          :class="{
+            'ca-table__row--hover': hover,
+            'ca-table__row--selected': selection.includes(rowKey(row)) || rowActive?.(row),
+          }"
+          @click="emit('row-click', row)"
+        >
+          <td v-if="selectable" class="ca-table__check" @click.stop>
+            <input
+              type="checkbox"
+              :checked="selection.includes(rowKey(row))"
+              :aria-label="t('table.selectRow')"
+              @change="toggleRow(rowKey(row))"
+            />
+          </td>
           <td
             v-for="column in visibleColumns"
             :key="column.key"
@@ -305,8 +365,9 @@ const sortedRows = computed<T[]>(() => {
 .ca-table__toolbar {
   display: flex;
   align-items: center;
-  gap: var(--ca-space-2);
-  padding-bottom: var(--ca-space-2);
+  flex-wrap: wrap;
+  gap: var(--ca-space-4);
+  padding-bottom: var(--ca-space-4);
 }
 
 .ca-table__toolbar-spacer {
@@ -339,11 +400,12 @@ const sortedRows = computed<T[]>(() => {
   display: inline-flex;
   align-items: center;
   gap: var(--ca-space-2);
-  padding: var(--ca-space-1) var(--ca-space-3);
-  border: 1px solid var(--ca-stroke-1);
+  height: 32px;
+  padding: 0 var(--ca-space-4);
+  border: 1px solid var(--ca-stroke-accessible);
   border-radius: var(--ca-radius-md);
   background: var(--ca-bg-surface);
-  color: var(--ca-fg-2);
+  color: var(--ca-fg-1);
   font: inherit;
   font-size: var(--ca-text-200);
   cursor: pointer;
@@ -354,7 +416,7 @@ const sortedRows = computed<T[]>(() => {
 }
 .ca-table__columns-btn[aria-expanded='true'] {
   border-color: var(--ca-color-brand);
-  color: var(--ca-color-brand);
+  color: var(--ca-color-brand-text);
 }
 
 .ca-table__scrim {
@@ -446,8 +508,9 @@ const sortedRows = computed<T[]>(() => {
   font-weight: var(--ca-font-weight-semibold);
   font-size: var(--ca-text-200);
   line-height: var(--ca-line-200);
-  color: var(--ca-fg-2);
-  padding: var(--ca-space-3) var(--ca-space-6);
+  color: var(--ca-fg-3);
+  background: var(--ca-bg-surface-2);
+  padding: var(--ca-space-4) var(--ca-space-6);
   border-bottom: 1px solid var(--ca-stroke-2);
   white-space: nowrap;
 }
@@ -467,18 +530,54 @@ const sortedRows = computed<T[]>(() => {
   color: var(--ca-fg-1);
 }
 .ca-table__sort--active {
-  color: var(--ca-color-brand);
+  color: var(--ca-color-brand-text);
 }
 
 .ca-table td {
-  padding: var(--ca-space-4) var(--ca-space-6);
-  border-bottom: 1px solid var(--ca-stroke-3);
+  padding: var(--ca-space-5) var(--ca-space-6);
+  border-bottom: 1px solid var(--ca-stroke-2);
   color: var(--ca-fg-1);
   vertical-align: middle;
 }
 
 .ca-table__row--hover:hover td {
   background: var(--ca-bg-surface-hover);
+}
+
+.ca-table__row--selected td {
+  background: var(--ca-color-brand-subtle);
+}
+
+.ca-table__row--hover.ca-table__row--selected:hover td {
+  background: var(--ca-color-brand-subtle-hover);
+}
+
+.ca-table__check {
+  width: 40px;
+  padding-right: 0 !important;
+}
+
+.ca-table__check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--ca-color-brand-strong);
+  cursor: pointer;
+}
+
+.ca-table__bulk {
+  display: flex;
+  align-items: center;
+  gap: var(--ca-space-4);
+  margin-bottom: var(--ca-space-4);
+  padding: var(--ca-space-3) var(--ca-space-6);
+  border-radius: var(--ca-radius-md);
+  background: var(--ca-color-brand-subtle);
+  color: var(--ca-fg-1);
+}
+
+.ca-table__bulk-count {
+  font-weight: var(--ca-font-weight-semibold);
 }
 
 .ca-table tbody tr:last-child td {

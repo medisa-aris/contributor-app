@@ -14,6 +14,7 @@ const router = useRouter();
 const auth = useAuthStore();
 const config = useConfigStore();
 const navigation = useNavigationStore();
+const appVersion = __APP_VERSION__;
 
 // Cabang ini dibuang saat build bila `__QUICK_LOGIN__` false, beserta seluruh modulnya.
 const devPanel = __QUICK_LOGIN__
@@ -54,68 +55,77 @@ async function submit(): Promise<void> {
 
 <template>
   <main class="login">
-    <div class="login__card">
+    <section class="login__hero" :aria-label="t('login.aboutLabel', { app: config.appName })">
       <div class="login__brand">
-        <span class="login__logo" aria-hidden="true">C</span>
+        <span class="login__logo" aria-hidden="true">{{ config.appName.charAt(0) }}</span>
         <span class="login__app">{{ config.appName }}</span>
       </div>
-      <h1 class="login__title">{{ t('login.title') }}</h1>
-      <p class="login__subtitle">{{ t('login.subtitle') }}</p>
+      <div class="login__pitch">
+        <h1 class="login__hero-title">{{ t('login.heroTitle') }}</h1>
+        <p class="login__hero-lead">{{ t('login.heroLead') }}</p>
+        <ul class="login__trust">
+          <li v-for="key in ['trustMasking', 'trustAudit', 'trustApproval']" :key="key">
+            <svg viewBox="0 0 20 20" width="20" height="20" fill="none" aria-hidden="true">
+              <path d="m4.5 10 3.5 3.5 7.5-7.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <span>{{ t(`login.${key}`) }}</span>
+          </li>
+        </ul>
+      </div>
+      <span class="login__version">Fusi Solusi · v{{ appVersion }}</span>
+    </section>
 
-      <p v-if="errorMessage" class="login__error" role="alert">{{ errorMessage }}</p>
+    <section class="login__panel">
+      <div class="login__card">
+        <h2 class="login__title">{{ t('login.title') }}</h2>
+        <p class="login__subtitle">{{ t('login.subtitle') }}</p>
 
-      <form class="login__form" @submit.prevent="submit">
-        <CaField :label="t('login.email')" required>
-          <template #default="{ id, describedBy }">
-            <CaInput
-              :id="id"
-              v-model="email"
-              :aria-describedby="describedBy"
-              type="email"
-              size="large"
-              autocomplete="username"
-              placeholder="nama@perusahaan.co.id"
-            />
-          </template>
-        </CaField>
-        <CaField :label="t('login.password')" required>
-          <template #default="{ id, describedBy }">
-            <div class="login__password">
+        <p v-if="errorMessage" class="login__error" role="alert">{{ errorMessage }}</p>
+
+        <form class="login__form" @submit.prevent="submit">
+          <CaField :label="t('login.email')" required>
+            <template #default="{ id, describedBy }">
               <CaInput
                 :id="id"
-                v-model="password"
+                v-model="email"
                 :aria-describedby="describedBy"
-                :type="showPassword ? 'text' : 'password'"
-                size="large"
-                autocomplete="current-password"
-                :placeholder="t('login.passwordPlaceholder')"
+                type="email"
+                autocomplete="username"
+                placeholder="nama@perusahaan.co.id"
               />
-              <CaIconButton
-                class="login__password-toggle"
-                :label="showPassword ? t('login.hidePassword') : t('login.showPassword')"
-                :aria-pressed="showPassword"
-                size="small"
-                @click="showPassword = !showPassword"
-              >
-                <CaIcon :name="showPassword ? 'eye-off' : 'eye'" :size="16" />
-              </CaIconButton>
-            </div>
-          </template>
-        </CaField>
-        <CaButton
-          variant="primary"
-          size="large"
-          type="submit"
-          block
-          :loading="submitting"
-          :disabled="!canSubmit"
-        >
-          {{ submitting ? t('login.submitting') : t('login.submit') }}
-        </CaButton>
-      </form>
-      <component :is="devPanel" v-if="devPanel" />
-      <p class="login__footer">{{ t('login.footer') }}</p>
-    </div>
+            </template>
+          </CaField>
+          <CaField :label="t('login.password')" required>
+            <template #default="{ id, describedBy }">
+              <div class="login__password">
+                <CaInput
+                  :id="id"
+                  v-model="password"
+                  :aria-describedby="describedBy"
+                  :type="showPassword ? 'text' : 'password'"
+                  autocomplete="current-password"
+                  :placeholder="t('login.passwordPlaceholder')"
+                />
+                <CaIconButton
+                  class="login__password-toggle"
+                  :label="showPassword ? t('login.hidePassword') : t('login.showPassword')"
+                  :aria-pressed="showPassword"
+                  size="small"
+                  @click="showPassword = !showPassword"
+                >
+                  <CaIcon :name="showPassword ? 'eye-off' : 'eye'" :size="16" />
+                </CaIconButton>
+              </div>
+            </template>
+          </CaField>
+          <CaButton variant="primary" type="submit" block :loading="submitting" :disabled="!canSubmit">
+            {{ submitting ? t('login.submitting') : t('login.submit') }}
+          </CaButton>
+        </form>
+        <component :is="devPanel" v-if="devPanel" />
+        <p class="login__footer">{{ t('login.footer') }}</p>
+      </div>
+    </section>
   </main>
 </template>
 
@@ -123,78 +133,133 @@ async function submit(): Promise<void> {
 .login {
   min-height: 100vh;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--ca-space-8);
-  background:
-    radial-gradient(1200px 600px at 20% -10%, var(--ca-color-brand-subtle), transparent 60%),
-    var(--ca-bg-canvas);
+  flex-wrap: wrap;
+  background: var(--ca-bg-canvas);
 }
 
-.login__card {
-  width: 100%;
-  max-width: 400px;
-  background: var(--ca-bg-surface);
-  border: 1px solid var(--ca-stroke-2);
-  border-top: 4px solid var(--ca-brand-60);
-  border-radius: var(--ca-radius-xl);
-  box-shadow: var(--ca-shadow-8);
-  padding: var(--ca-space-12) var(--ca-space-10);
+.login__hero {
+  flex: 1 1 420px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--ca-space-16);
+  padding: var(--ca-space-24);
+  background: var(--ca-color-brand-strong);
+  color: var(--ca-fg-on-brand-strong);
 }
 
 .login__brand {
   display: flex;
   align-items: center;
-  gap: var(--ca-space-4);
-  margin-bottom: var(--ca-space-8);
+  gap: var(--ca-space-6);
 }
 
 .login__logo {
-  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--ca-radius-lg);
-  background: var(--ca-color-brand);
-  color: var(--ca-fg-on-brand);
-  font-weight: var(--ca-font-weight-bold);
-  font-size: var(--ca-text-400);
+  border-radius: var(--ca-radius-xl);
+  background: var(--ca-fg-on-brand-strong);
+  color: var(--ca-color-brand-strong);
+  font-weight: var(--ca-font-weight-semibold);
+  font-size: var(--ca-text-500);
 }
 
 .login__app {
-  font-size: var(--ca-text-400);
+  font-size: var(--ca-text-500);
+  line-height: var(--ca-line-500);
   font-weight: var(--ca-font-weight-semibold);
 }
 
+.login__pitch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ca-space-12);
+  max-width: 480px;
+}
+
+.login__hero-title {
+  font-size: var(--ca-text-900);
+  line-height: var(--ca-line-900);
+  font-weight: var(--ca-font-weight-semibold);
+}
+
+.login__hero-lead {
+  font-size: var(--ca-text-450);
+  line-height: var(--ca-line-450);
+}
+
+.login__trust {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ca-space-6);
+}
+
+.login__trust li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ca-space-6);
+}
+
+.login__trust svg {
+  flex: none;
+  color: var(--ca-brand-50);
+}
+
+.login__version {
+  font-size: var(--ca-text-200);
+  line-height: var(--ca-line-200);
+}
+
+.login__panel {
+  flex: 1 1 480px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ca-space-24) var(--ca-space-12);
+}
+
+.login__card {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ca-space-10);
+  padding: var(--ca-space-16);
+  background: var(--ca-bg-surface);
+  border: 1px solid var(--ca-stroke-2);
+  border-radius: var(--ca-radius-xl);
+  box-shadow: var(--ca-shadow-16);
+}
+
 .login__title {
-  font-size: var(--ca-text-600);
-  line-height: var(--ca-line-600);
+  font-size: var(--ca-text-700);
+  line-height: var(--ca-line-700);
   font-weight: var(--ca-font-weight-semibold);
 }
 
 .login__subtitle {
-  margin-top: var(--ca-space-1);
+  margin-top: calc(var(--ca-space-8) * -1);
   color: var(--ca-fg-3);
-  font-size: var(--ca-text-300);
 }
 
 .login__error {
-  margin-top: var(--ca-space-6);
   padding: var(--ca-space-4) var(--ca-space-6);
   border-radius: var(--ca-radius-md);
   background: var(--ca-danger-bg);
   border: 1px solid var(--ca-danger-stroke);
   color: var(--ca-danger-fg);
-  font-size: var(--ca-text-200);
-  line-height: var(--ca-line-200);
 }
 
 .login__form {
-  margin-top: var(--ca-space-8);
   display: flex;
   flex-direction: column;
-  gap: var(--ca-space-8);
+  gap: var(--ca-space-10);
 }
 
 .login__password {
@@ -207,14 +272,32 @@ async function submit(): Promise<void> {
 
 .login__password-toggle {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 4px;
+  right: 4px;
 }
 
 .login__footer {
-  margin-top: var(--ca-space-8);
-  text-align: center;
   font-size: var(--ca-text-200);
-  color: var(--ca-fg-4);
+  line-height: var(--ca-line-200);
+  color: var(--ca-fg-3);
+}
+
+@media (max-width: 900px) {
+  .login__hero {
+    padding: var(--ca-space-16) var(--ca-space-8);
+  }
+
+  .login__hero-title {
+    font-size: var(--ca-text-700);
+    line-height: var(--ca-line-700);
+  }
+
+  .login__panel {
+    padding: var(--ca-space-16) var(--ca-space-8);
+  }
+
+  .login__card {
+    padding: var(--ca-space-12);
+  }
 }
 </style>

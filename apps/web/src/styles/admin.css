@@ -1,9 +1,9 @@
 .admin-filters {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--ca-space-3);
+  gap: var(--ca-space-4);
   align-items: flex-end;
-  margin-bottom: var(--ca-space-4);
+  margin-bottom: var(--ca-space-8);
 }
 
 .admin-filters__field {
@@ -34,11 +34,12 @@
 
 .admin-cell__sub {
   color: var(--ca-fg-3);
-  font-size: var(--ca-text-100);
+  font-size: var(--ca-text-200);
+  line-height: var(--ca-line-200);
 }
 
 .admin-name-link {
-  color: var(--ca-color-brand);
+  color: var(--ca-color-brand-text);
   font-weight: var(--ca-font-weight-medium);
   text-decoration: none;
 }
@@ -53,7 +54,7 @@
   background: var(--ca-danger-bg);
   border: 1px solid var(--ca-danger-stroke);
   color: var(--ca-danger-fg);
-  font-size: var(--ca-text-200);
+  font-size: var(--ca-text-300);
 }
 
 .admin-form {
@@ -94,4 +95,48 @@
   font-size: var(--ca-text-400);
   font-weight: var(--ca-font-weight-semibold);
   margin-bottom: var(--ca-space-3);
+}
+
+/* Fluent Green: baris KPI di atas tabel dan panel kartu */
+.ca-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--ca-space-8);
+  margin-bottom: var(--ca-space-12);
+}
+
+.ca-panel {
+  padding: var(--ca-space-10);
+  border-radius: var(--ca-radius-xl);
+  background: var(--ca-bg-surface);
+  border: 1px solid var(--ca-stroke-2);
+  box-shadow: var(--ca-shadow-4);
+}
+
+.ca-panel + .ca-panel {
+  margin-top: var(--ca-space-12);
+}
+
+.ca-panel__title {
+  font-size: var(--ca-text-500);
+  line-height: var(--ca-line-500);
+  font-weight: var(--ca-font-weight-semibold);
+}
+
+.ca-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ca-space-4);
+  flex: 1 1 auto;
+}
+
+.ca-toolbar__search {
+  flex: 0 1 320px;
+  min-width: 200px;
+}
+
+.ca-toolbar__select {
+  flex: 0 1 220px;
+  min-width: 160px;
 }

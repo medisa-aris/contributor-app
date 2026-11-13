@@ -35,6 +35,7 @@ import { WebSearchService } from './web-search/web-search.service';
   ],
   exports: [
     AiGatewayService,
+    GuardrailsService,
     AttachmentsService,
     ConversationsService,
     TasksService,
