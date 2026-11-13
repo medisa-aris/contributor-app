@@ -35,6 +35,12 @@ export class DocumentsController {
   }
 
   @RequirePermission(PERMISSIONS.documentsManage)
+  @Get(':id')
+  get(@CurrentAuth() auth: AuthContext, @Param('id', ParseUUIDPipe) id: string) {
+    return this.documents.get(auth.user.id, id);
+  }
+
+  @RequirePermission(PERMISSIONS.documentsManage)
   @Get(':id/preview')
   preview(@CurrentAuth() auth: AuthContext, @Param('id', ParseUUIDPipe) id: string) {
     return this.documents.preview(auth.user.id, id);

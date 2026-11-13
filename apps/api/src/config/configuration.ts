@@ -29,6 +29,13 @@ export interface AppConfig {
   webSearchTimeoutMs: number;
   webSearchMaxResults: number;
   webSearchMaxCallsPerTurn: number;
+  onlyofficeEnabled: boolean;
+  /** Alamat Document Server yang dibuka browser (api.js dimuat dari sini). */
+  onlyofficePublicUrl: string | null;
+  /** Alamat API yang dapat dijangkau Document Server (unduh berkas + callback simpan). */
+  onlyofficeApiInternalUrl: string;
+  onlyofficeJwtSecret: string | null;
+  officeFileTokenSecret: string | null;
 }
 
 function parseBoolean(value: string | undefined, fallback: boolean): boolean {
@@ -75,5 +82,12 @@ export default (): { app: AppConfig } => ({
     webSearchTimeoutMs: Number(process.env.WEB_SEARCH_TIMEOUT_MS || 15000),
     webSearchMaxResults: Number(process.env.WEB_SEARCH_MAX_RESULTS || 5),
     webSearchMaxCallsPerTurn: Number(process.env.WEB_SEARCH_MAX_CALLS_PER_TURN || 5),
+    onlyofficeEnabled: parseBoolean(process.env.ONLYOFFICE_ENABLED, false),
+    onlyofficePublicUrl: process.env.ONLYOFFICE_PUBLIC_URL?.trim().replace(/\/+$/, '') || null,
+    onlyofficeApiInternalUrl: (
+      process.env.ONLYOFFICE_API_INTERNAL_URL?.trim() || `http://host.docker.internal:${process.env.PORT ?? 3000}`
+    ).replace(/\/+$/, ''),
+    onlyofficeJwtSecret: process.env.ONLYOFFICE_JWT_SECRET?.trim() || null,
+    officeFileTokenSecret: process.env.OFFICE_FILE_TOKEN_SECRET?.trim() || null,
   },
 });

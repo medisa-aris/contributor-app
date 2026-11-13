@@ -29,7 +29,10 @@
     "infra:down": "bash scripts/infra.sh down",
     "infra:ps": "bash scripts/infra.sh ps",
     "infra:logs": "bash scripts/infra.sh logs",
-    "infra:backup": "bash scripts/infra.sh backup"
+    "infra:backup": "bash scripts/infra.sh backup",
+    "office:up": "docker compose --env-file apps/api/.env -f infra/onlyoffice/docker-compose.local.yml up -d",
+    "office:down": "docker compose --env-file apps/api/.env -f infra/onlyoffice/docker-compose.local.yml down",
+    "office:logs": "docker compose --env-file apps/api/.env -f infra/onlyoffice/docker-compose.local.yml logs -f --tail=200"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",

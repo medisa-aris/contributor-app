@@ -26,13 +26,15 @@ import { useToastStore } from '@/stores/toast.store';
 import { CaButton, CaEmptyState, CaIcon, CaSpinner, CaSwitch } from '@/components/ui';
 import { formatDateTime, formatNumber } from '@/utils/format';
 import { useFullscreen } from '@/composables/useFullscreen';
-import type { UserDocument } from '@/api/documents';
+import { isOfficeFormat, type OfficeSourceKind, type UserDocument } from '@/api/documents';
 import ChatMessage from './ChatMessage.vue';
 import ConversationConnectorsBar from './ConversationConnectorsBar.vue';
 import WebSearchToggle from './WebSearchToggle.vue';
 import type { ToolTraceStep } from '@/api/ai';
 import { decideConversationApproval } from '@/api/ai';
 import DocumentViewerPanel from './DocumentViewerPanel.vue';
+import StyleTemplatePicker from './StyleTemplatePicker.vue';
+import type { DocumentTemplate } from '@/api/office-styles';
 
 interface SpeechResultAlternative {
   transcript: string;
@@ -171,6 +173,8 @@ const addingUrl = ref(false);
 const attachmentBusyId = ref<string | null>(null);
 const attachmentInput = ref<HTMLInputElement | null>(null);
 const viewerDoc = ref<UserDocument | null>(null);
+/** 'att' = lampiran Office dibuka baca saja di OnlyOffice + inspektur gaya. */
+const viewerKind = ref<OfficeSourceKind>('doc');
 const showAttachmentsPane = computed(
   () => supportsAttachments.value && attachmentsOpen.value && viewerDoc.value === null,
 );
@@ -185,10 +189,48 @@ function toggleAttachments(): void {
 }
 
 function openDocument(doc: UserDocument): void {
+  viewerKind.value = 'doc';
   viewerDoc.value = doc;
+}
+
+function isOfficeAttachment(item: ConversationAttachment): boolean {
+  return item.source_type === 'file' && item.kind === 'document' && isOfficeFormat(item.extension.replace(/^\./, ''));
+}
+
+/** Lampiran Word/Excel/PowerPoint: buka di panel yang sama sebagai dokumen baca saja. */
+function openAttachment(item: ConversationAttachment): void {
+  const format = item.extension.replace(/^\./, '') as UserDocument['format'];
+  viewerKind.value = 'att';
+  viewerDoc.value = {
+    id: item.id,
+    conversation_id: item.conversation_id,
+    message_id: null,
+    title: item.file_name.replace(/\.[^.]+$/, ''),
+    format,
+    file_name: item.file_name,
+    mime_type: item.mime_type,
+    size_bytes: item.size_bytes,
+    created_at: item.created_at,
+  };
+}
+
+function insertTemplateHint(template: DocumentTemplate): void {
+  const hint = t('workspace.documents.styles.useTemplate', { name: template.name, id: template.id });
+  draft.value = draft.value.trim() ? `${draft.value.trimEnd()}\n${hint}` : hint;
+  void nextTick(() => composerInput.value?.focus());
 }
 function closeViewer(): void {
   viewerDoc.value = null;
+}
+/** Dokumen disimpan dari OnlyOffice: perbarui kartu di pesan dan panel penampil. */
+function onDocumentUpdated(doc: UserDocument): void {
+  if (viewerDoc.value?.id === doc.id) viewerDoc.value = doc;
+  for (const message of messages.value) {
+    const list = message.documents;
+    if (!list) continue;
+    const index = list.findIndex((d) => d.id === doc.id);
+    if (index >= 0) list.splice(index, 1, doc);
+  }
 }
 const canAddUrl = computed(
   () =>
@@ -1280,6 +1322,7 @@ onBeforeUnmount(() => {
                 listening ? t('workspace.chat.voiceListening') : t('workspace.chat.voiceStart')
               }}</span>
             </button>
+            <StyleTemplatePicker :disabled="streaming || regenerating" @pick="insertTemplateHint" />
             <span class="chat__hint">
               {{ listening ? t('workspace.chat.voiceHint') : t('workspace.chat.composerHint') }}
             </span>
@@ -1307,7 +1350,9 @@ onBeforeUnmount(() => {
       :key="viewerDoc.id"
       class="chat__viewer"
       :doc="viewerDoc"
+      :kind="viewerKind"
       @close="closeViewer"
+      @updated="onDocumentUpdated"
     />
 
     <aside
@@ -1441,6 +1486,15 @@ onBeforeUnmount(() => {
                 >
                   {{ item.file_name }}
                 </a>
+                <button
+                  v-else-if="isOfficeAttachment(item)"
+                  type="button"
+                  class="chat__attachment-open"
+                  :title="t('workspace.documents.viewer.view')"
+                  @click="openAttachment(item)"
+                >
+                  {{ item.file_name }}
+                </button>
                 <template v-else>{{ item.file_name }}</template>
               </p>
               <p class="chat__attachment-meta">
@@ -2366,6 +2420,24 @@ onBeforeUnmount(() => {
   color: var(--ca-danger-fg);
   font-size: var(--ca-text-200);
   border-top: 1px solid var(--ca-stroke-2);
+}
+
+.chat__attachment-open {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--ca-color-brand-fg, inherit);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.chat__attachment-open:hover {
+  text-decoration: underline;
 }
 
 .chat__composer {

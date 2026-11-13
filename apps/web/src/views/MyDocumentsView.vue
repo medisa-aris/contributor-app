@@ -46,6 +46,12 @@ const columns = computed<CaTableColumn[]>(() => [
   { key: 'actions', label: t('table.actions'), sortable: false },
 ]);
 
+function onDocumentUpdated(doc: UserDocument): void {
+  selected.value = doc;
+  const index = items.value.findIndex((d) => d.id === doc.id);
+  if (index >= 0) items.value.splice(index, 1, doc);
+}
+
 function applyFilters(): void {
   setFilter({ search: search.value.trim() || undefined });
 }
@@ -155,6 +161,7 @@ onMounted(() => void load());
         class="mydocs__viewer"
         :doc="selected"
         @close="selected = null"
+        @updated="onDocumentUpdated"
       />
     </div>
   </div>

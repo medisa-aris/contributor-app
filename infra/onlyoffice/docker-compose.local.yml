@@ -1,0 +1,32 @@
+# OnlyOffice Docs Community untuk pengembangan lokal (Docker Desktop di Mac).
+# Jalankan: npm run office:up   (membaca ONLYOFFICE_JWT_SECRET dari apps/api/.env)
+# Browser memuat editor dari http://localhost:8080; Document Server menghubungi API
+# lewat host.docker.internal:3000 (lihat ONLYOFFICE_API_INTERNAL_URL).
+name: bara-office
+
+services:
+  onlyoffice:
+    image: onlyoffice/documentserver:9.3.0
+    container_name: bara-onlyoffice
+    restart: unless-stopped
+    environment:
+      JWT_ENABLED: 'true'
+      JWT_SECRET: ${ONLYOFFICE_JWT_SECRET:?ONLYOFFICE_JWT_SECRET must be set in apps/api/.env}
+      JWT_HEADER: Authorization
+      JWT_IN_BODY: 'true'
+      # API berjalan di host (alamat privat); izinkan Document Server mengunduh dari sana.
+      ALLOW_PRIVATE_IP_ADDRESS: 'true'
+      ALLOW_META_IP_ADDRESS: 'false'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    ports:
+      - '127.0.0.1:8080:80'
+    volumes:
+      - office_data:/var/www/onlyoffice/Data
+      - office_logs:/var/log/onlyoffice
+      - office_cache:/var/lib/onlyoffice
+
+volumes:
+  office_data:
+  office_logs:
+  office_cache:
