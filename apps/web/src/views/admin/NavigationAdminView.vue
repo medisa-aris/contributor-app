@@ -370,7 +370,7 @@ onMounted(load);
               <span class="nav-item__label">{{ item.label_default }}</span>
               <span class="admin-mono nav-item__route">{{ item.route_path ?? '—' }}</span>
             </div>
-            <CaBadge v-if="item.is_future" variant="informative">
+            <CaBadge v-if="item.is_future" variant="informative" no-icon>
               {{ t('admin.nav.futureBadge') }}
             </CaBadge>
             <CaBadge v-if="!item.is_active" variant="neutral">
@@ -442,7 +442,7 @@ onMounted(load);
                   <span class="nav-item__label">{{ item.label_default }}</span>
                   <span class="admin-mono nav-item__route">{{ item.route_path ?? '—' }}</span>
                 </div>
-                <CaBadge v-if="item.is_future" variant="informative">
+                <CaBadge v-if="item.is_future" variant="informative" no-icon>
                   {{ t('admin.nav.futureBadge') }}
                 </CaBadge>
                 <CaBadge v-if="!item.is_active" variant="neutral">
@@ -469,7 +469,7 @@ onMounted(load);
                 <span class="nav-item__label">{{ item.label_default }}</span>
                 <span class="admin-mono nav-item__route">{{ item.route_path ?? '—' }}</span>
               </div>
-              <CaBadge v-if="item.is_future" variant="informative">
+              <CaBadge v-if="item.is_future" variant="informative" no-icon>
                 {{ t('admin.nav.futureBadge') }}
               </CaBadge>
               <CaBadge v-if="!item.is_active" variant="neutral">

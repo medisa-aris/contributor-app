@@ -789,7 +789,7 @@ onBeforeUnmount(() => {
 
 .dep-org-node__code {
   font-size: var(--ca-text-100);
-  font-family: var(--ca-font-family-monospace, monospace);
+  font-family: var(--ca-font-family-mono, monospace);
   color: var(--ca-color-brand-text);
   background: var(--ca-color-brand-subtle);
   border-radius: var(--ca-radius-sm);

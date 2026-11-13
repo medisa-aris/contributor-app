@@ -119,7 +119,12 @@ const filteredDecisions = computed<EffectiveDecision[]>(() => {
 
 const columns = computed<CaTableColumn[]>(() => [
   { key: 'permission', label: t('admin.effectivePermissions.columnPermission') },
-  { key: 'decision', label: t('admin.effectivePermissions.columnDecision'), width: '120px', sortValue: (row) => row.allowed },
+  {
+    key: 'decision',
+    label: t('admin.effectivePermissions.columnDecision'),
+    width: '120px',
+    sortValue: (row) => row.allowed,
+  },
   { key: 'reason', label: t('admin.effectivePermissions.columnReason'), width: '220px' },
   { key: 'scope', label: t('admin.effectivePermissions.columnScope'), width: '120px' },
 ]);
@@ -147,7 +152,9 @@ function openChain(decision: EffectiveDecision) {
   chainOpen.value = true;
 }
 
-function chainEffectVariant(effect: EffectiveChainEntry['effect']): 'success' | 'danger' | 'neutral' {
+function chainEffectVariant(
+  effect: EffectiveChainEntry['effect'],
+): 'success' | 'danger' | 'neutral' {
   if (effect === 'allow') return 'success';
   if (effect === 'deny') return 'danger';
   return 'neutral';
@@ -222,46 +229,53 @@ function chainEffectVariant(effect: EffectiveChainEntry['effect']): 'success' | 
 
         <div class="eff-decisions">
           <h2 class="eff-section__title">{{ t('admin.effectivePermissions.decisionsTitle') }}</h2>
-          <div class="admin-filters">
-            <div class="admin-filters__field">
-              <CaSelect v-model="decisionFilter" :options="decisionOptions" />
-            </div>
-            <div class="admin-filters__field admin-filters__wide">
-              <CaInput
-                v-model="permissionFilter"
-                type="search"
-                :placeholder="t('admin.effectivePermissions.filterPlaceholder')"
-              />
-            </div>
-            <div class="admin-filters__spacer" />
-            <span class="eff-user__version">
-              {{ filteredDecisions.length }} / {{ effective.decisions.length }}
-            </span>
-          </div>
-
-          <CaTable
-            table-key="admin-effective-permissions"
-            :columns="columns"
-            :rows="filteredDecisions"
-            :row-key="(row) => row.permission"
-          >
-            <template #cell-permission="{ row }">
-              <button type="button" class="eff-perm-link admin-mono" @click="openChain(row)">
-                {{ row.permission }}
-              </button>
-            </template>
-            <template #cell-decision="{ row }">
-              <CaBadge :variant="row.allowed ? 'success' : 'danger'">
-                {{ row.allowed ? t('admin.effectivePermissions.allowed') : t('admin.effectivePermissions.denied') }}
-              </CaBadge>
-            </template>
-            <template #cell-reason="{ row }">
-              {{ reasonLabel(row.reason) }}
-            </template>
-            <template #cell-scope="{ row }">
-              {{ scopeLabel(row.scope) }}
-            </template>
-          </CaTable>
+          <section class="ca-panel">
+            <CaTable
+              table-key="admin-effective-permissions"
+              :columns="columns"
+              :rows="filteredDecisions"
+              :row-key="(row) => row.permission"
+            >
+              <template #toolbar>
+                <div class="ca-toolbar">
+                  <div class="ca-toolbar__select">
+                    <CaSelect v-model="decisionFilter" :options="decisionOptions" />
+                  </div>
+                  <div class="ca-toolbar__select ca-toolbar__search">
+                    <CaInput
+                      v-model="permissionFilter"
+                      type="search"
+                      :placeholder="t('admin.effectivePermissions.filterPlaceholder')"
+                    />
+                  </div>
+                  <div class="admin-filters__spacer" />
+                  <span class="eff-user__version">
+                    {{ filteredDecisions.length }} / {{ effective.decisions.length }}
+                  </span>
+                </div>
+              </template>
+              <template #cell-permission="{ row }">
+                <button type="button" class="eff-perm-link admin-mono" @click="openChain(row)">
+                  {{ row.permission }}
+                </button>
+              </template>
+              <template #cell-decision="{ row }">
+                <CaBadge :variant="row.allowed ? 'success' : 'danger'">
+                  {{
+                    row.allowed
+                      ? t('admin.effectivePermissions.allowed')
+                      : t('admin.effectivePermissions.denied')
+                  }}
+                </CaBadge>
+              </template>
+              <template #cell-reason="{ row }">
+                {{ reasonLabel(row.reason) }}
+              </template>
+              <template #cell-scope="{ row }">
+                {{ scopeLabel(row.scope) }}
+              </template>
+            </CaTable>
+          </section>
         </div>
       </template>
 

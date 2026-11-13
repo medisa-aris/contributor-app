@@ -1,14 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import { ApiError } from '@/api/http';
-import {
-  createAgent,
-  deleteAgent,
-  listAgents,
-  updateAgent,
-  type AgentRow,
-} from '@/api/agents';
+import { createAgent, deleteAgent, listAgents, updateAgent, type AgentRow } from '@/api/agents';
 import { useAuthStore } from '@/stores/auth.store';
 import { useToastStore } from '@/stores/toast.store';
 import { usePagedList } from '@/composables/usePagedList';
@@ -22,6 +17,7 @@ import {
   CaInput,
   CaPageHeader,
   CaPagination,
+  CaRowMenu,
   CaSelect,
   CaTable,
   CaTextarea,
@@ -30,12 +26,18 @@ import {
 } from '@/components/ui';
 
 const { t } = useI18n();
+const router = useRouter();
 const auth = useAuthStore();
 const toast = useToastStore();
 
+function onRowAction(key: string, row: AgentRow): void {
+  if (key === 'run') void router.push(`/agents/operations?agent=${row.id}`);
+  else if (key === 'edit') openEdit(row);
+  else void removeAgent(row);
+}
+
 const canManage = computed(
-  () =>
-    auth.can('agents.create') || auth.can('agents.update') || auth.can('agents.delete'),
+  () => auth.can('agents.create') || auth.can('agents.update') || auth.can('agents.delete'),
 );
 const canExecute = computed(() => auth.can('agents.execute'));
 
@@ -191,57 +193,54 @@ function statusLabel(row: AgentRow): string {
 
     <p v-if="error" class="admin-error" role="alert">{{ error }}</p>
 
-    <CaTable
-      table-key="agent-definitions"
-      :columns="columns"
-      :rows="items"
-      :row-key="(row) => row.id"
-      :loading="loading"
-      :empty-title="t('table.empty')"
-    >
-      <template #cell-name="{ row }">
-        <div class="agents-cell">
-          <span class="agents-cell__name">{{ row.name }}</span>
-          <span class="agents-cell__sub">{{ row.code }}</span>
-        </div>
-      </template>
-      <template #cell-approval="{ row }">
-        <CaBadge :variant="row.require_approval ? 'warning' : 'neutral'" size="small">
-          {{
-            row.require_approval ? t('agents.approvalRequired') : t('agents.approvalNotRequired')
-          }}
-        </CaBadge>
-      </template>
-      <template #cell-tasks="{ row }">
-        {{ row.task_count ?? 0 }}
-      </template>
-      <template #cell-status="{ row }">
-        <CaBadge :variant="statusVariant(row)" size="small">{{ statusLabel(row) }}</CaBadge>
-      </template>
-      <template #cell-updated="{ row }">
-        {{ formatDateTime(row.updated_at) }}
-      </template>
-      <template #cell-actions="{ row }">
-        <div class="agents-row-actions">
-          <CaButton
-            v-if="canExecute && row.status === 'active'"
-            size="small"
-            variant="secondary"
-            :to="`/agents/operations?agent=${row.id}`"
-          >
-            {{ t('agents.runAction') }}
-          </CaButton>
-          <CaButton size="small" variant="secondary" @click="openEdit(row as AgentRow)">
-            {{ t('common.edit') }}
-          </CaButton>
-          <CaButton size="small" variant="danger" @click="removeAgent(row as AgentRow)">
-            {{ t('common.delete') }}
-          </CaButton>
-        </div>
-      </template>
-    </CaTable>
+    <section class="ca-panel">
+      <CaTable
+        table-key="agent-definitions"
+        :columns="columns"
+        :rows="items"
+        :row-key="(row) => row.id"
+        :loading="loading"
+        :empty-title="t('table.empty')"
+      >
+        <template #cell-name="{ row }">
+          <div class="agents-cell">
+            <span class="agents-cell__name">{{ row.name }}</span>
+            <span class="agents-cell__sub">{{ row.code }}</span>
+          </div>
+        </template>
+        <template #cell-approval="{ row }">
+          <CaBadge :variant="row.require_approval ? 'warning' : 'neutral'" size="small">
+            {{
+              row.require_approval ? t('agents.approvalRequired') : t('agents.approvalNotRequired')
+            }}
+          </CaBadge>
+        </template>
+        <template #cell-tasks="{ row }">
+          {{ row.task_count ?? 0 }}
+        </template>
+        <template #cell-status="{ row }">
+          <CaBadge :variant="statusVariant(row)" size="small">{{ statusLabel(row) }}</CaBadge>
+        </template>
+        <template #cell-updated="{ row }">
+          {{ formatDateTime(row.updated_at) }}
+        </template>
+        <template #cell-actions="{ row }">
+          <CaRowMenu
+            :label="t('table.rowActions')"
+            :items="[
+              ...(canExecute && row.status === 'active'
+                ? [{ key: 'run', label: t('agents.runAction') }]
+                : []),
+              { key: 'edit', label: t('common.edit') },
+              { key: 'delete', label: t('common.delete'), danger: true, divider: true },
+            ]"
+            @select="(key: string) => onRowAction(key, row as AgentRow)"
+          />
+        </template>
+      </CaTable>
 
-    <CaPagination :page="page" :limit="pageSize" :total="total" @change="goPage" />
+      <CaPagination :page="page" :limit="pageSize" :total="total" @change="goPage" />
+    </section>
 
     <CaDialog
       v-model:open="editOpen"
@@ -250,7 +249,12 @@ function statusLabel(row: AgentRow): string {
     >
       <p v-if="editError" class="admin-error" role="alert">{{ editError }}</p>
       <form class="admin-form" @submit.prevent="submitEdit">
-        <CaField v-if="!editTarget" :label="t('agents.formCode')" :hint="t('knowledge.formSourceCodeHint')" required>
+        <CaField
+          v-if="!editTarget"
+          :label="t('agents.formCode')"
+          :hint="t('knowledge.formSourceCodeHint')"
+          required
+        >
           <template #default="{ id, describedBy }">
             <CaInput :id="id" v-model="editForm.code" :aria-describedby="describedBy" />
           </template>
@@ -262,12 +266,26 @@ function statusLabel(row: AgentRow): string {
         </CaField>
         <CaField :label="t('agents.formDescription')">
           <template #default="{ id, describedBy }">
-            <CaTextarea :id="id" v-model="editForm.description" :aria-describedby="describedBy" :rows="2" />
+            <CaTextarea
+              :id="id"
+              v-model="editForm.description"
+              :aria-describedby="describedBy"
+              :rows="2"
+            />
           </template>
         </CaField>
-        <CaField :label="t('agents.formInstruction')" :hint="t('agents.formInstructionHint')" required>
+        <CaField
+          :label="t('agents.formInstruction')"
+          :hint="t('agents.formInstructionHint')"
+          required
+        >
           <template #default="{ id, describedBy }">
-            <CaTextarea :id="id" v-model="editForm.instruction" :aria-describedby="describedBy" :rows="6" />
+            <CaTextarea
+              :id="id"
+              v-model="editForm.instruction"
+              :aria-describedby="describedBy"
+              :rows="6"
+            />
           </template>
         </CaField>
         <CaField :label="t('agents.formTools')" :hint="t('agents.formToolsHint')">
@@ -277,7 +295,12 @@ function statusLabel(row: AgentRow): string {
         </CaField>
         <CaField v-if="editTarget" :label="t('agents.columnStatus')">
           <template #default="{ id, describedBy }">
-            <CaSelect :id="id" v-model="editForm.status" :aria-describedby="describedBy" :options="statusOptions" />
+            <CaSelect
+              :id="id"
+              v-model="editForm.status"
+              :aria-describedby="describedBy"
+              :options="statusOptions"
+            />
           </template>
         </CaField>
         <CaCheckbox v-model="editForm.requireApproval">
@@ -309,7 +332,7 @@ function statusLabel(row: AgentRow): string {
 .agents-cell__sub {
   font-size: var(--ca-text-200);
   color: var(--ca-fg-3);
-  font-family: var(--ca-font-family-monospace, monospace);
+  font-family: var(--ca-font-family-mono, monospace);
 }
 
 .agents-row-actions {

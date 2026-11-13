@@ -39,11 +39,8 @@ const toast = useToastStore();
 const canExecute = computed(() => auth.can('agents.execute'));
 
 const agents = ref<AgentRow[]>([]);
-const agentOptions = computed<CaSelectOption[]>(
-  () =>
-    agents.value
-      .filter((a) => a.status === 'active')
-      .map((a) => ({ value: a.id, label: a.name })),
+const agentOptions = computed<CaSelectOption[]>(() =>
+  agents.value.filter((a) => a.status === 'active').map((a) => ({ value: a.id, label: a.name })),
 );
 const agentById = computed(() => new Map(agents.value.map((a) => [a.id, a])));
 
@@ -128,9 +125,7 @@ async function runAgent(): Promise<void> {
     title.value = '';
     toast.push({
       variant: 'success',
-      title: result.approvalId
-        ? t('agents.executionQueuedApproval')
-        : t('agents.executionStarted'),
+      title: result.approvalId ? t('agents.executionQueuedApproval') : t('agents.executionStarted'),
     });
     currentTask.value = await agentTaskDetail(result.task.id);
     if (ACTIVE_STATUSES.has(currentTask.value.status)) startPolling();
@@ -235,7 +230,12 @@ onBeforeUnmount(() => stopPolling());
       <form class="ops-form" @submit.prevent="runAgent">
         <CaField :label="t('agents.formAgent')" required>
           <template #default="{ id, describedBy }">
-            <CaSelect :id="id" v-model="selectedAgentId" :aria-describedby="describedBy" :options="agentOptions" />
+            <CaSelect
+              :id="id"
+              v-model="selectedAgentId"
+              :aria-describedby="describedBy"
+              :options="agentOptions"
+            />
           </template>
         </CaField>
         <CaField :label="t('agents.formTaskTitle')">
@@ -282,7 +282,9 @@ onBeforeUnmount(() => stopPolling());
           class="ops-metrics__row"
         >
           <dt>{{ t('workspace.subordinate.metricsTokens') }}</dt>
-          <dd class="admin-mono">{{ currentTask.tokens_in ?? 0 }} → {{ currentTask.tokens_out ?? 0 }}</dd>
+          <dd class="admin-mono">
+            {{ currentTask.tokens_in ?? 0 }} → {{ currentTask.tokens_out ?? 0 }}
+          </dd>
         </div>
         <div v-if="currentTask.duration_ms !== null" class="ops-metrics__row">
           <dt>{{ t('workspace.subordinate.metricsDuration') }}</dt>
@@ -304,7 +306,7 @@ onBeforeUnmount(() => stopPolling());
       </div>
     </section>
 
-    <section>
+    <section class="ca-panel">
       <div class="ops-log-head">
         <h2 class="ops-panel__heading">{{ t('agents.tasksLogHeading') }}</h2>
         <div class="ops-log-filters">
@@ -341,7 +343,12 @@ onBeforeUnmount(() => stopPolling());
           {{ formatDateTime(row.created_at) }}
         </template>
       </CaTable>
-      <CaPagination :page="taskPage" :limit="taskPageSize" :total="taskTotal" @change="goTaskPage" />
+      <CaPagination
+        :page="taskPage"
+        :limit="taskPageSize"
+        :total="taskTotal"
+        @change="goTaskPage"
+      />
     </section>
 
     <CaDialog
@@ -394,19 +401,26 @@ onBeforeUnmount(() => stopPolling());
 
 <style scoped>
 .ops-panel__heading {
-  margin: 0 0 var(--ca-space-4);
-  font-size: var(--ca-text-400);
+  margin: 0 0 var(--ca-space-8);
+  font-size: var(--ca-text-500);
+  line-height: var(--ca-line-500);
   font-weight: var(--ca-font-weight-semibold);
   color: var(--ca-fg-1);
 }
 
 .ops-panel,
 .ops-current {
-  margin-bottom: var(--ca-space-10);
-  padding: var(--ca-space-6);
-  border: 1px solid var(--ca-border-1);
-  border-radius: var(--ca-radius-3);
-  background: var(--ca-bg-2);
+  margin-bottom: var(--ca-space-12);
+  padding: var(--ca-space-10);
+  border: 1px solid var(--ca-stroke-2);
+  border-radius: var(--ca-radius-xl);
+  background: var(--ca-bg-surface);
+  box-shadow: var(--ca-shadow-4);
+}
+
+.ops-current {
+  background: var(--ca-bg-surface-2);
+  box-shadow: none;
 }
 
 .ops-form {
@@ -478,10 +492,10 @@ onBeforeUnmount(() => stopPolling());
 .ops-result__body {
   margin: 0;
   padding: var(--ca-space-4);
-  border-radius: var(--ca-radius-2);
-  background: var(--ca-bg-3, var(--ca-bg-surface));
+  border-radius: var(--ca-radius-md);
+  background: var(--ca-bg-surface-3, var(--ca-bg-surface));
   border: 1px solid var(--ca-stroke-3);
-  font-family: var(--ca-font-family-monospace, monospace);
+  font-family: var(--ca-font-family-mono, monospace);
   font-size: var(--ca-text-200);
   line-height: var(--ca-line-300);
   color: var(--ca-fg-1);
@@ -547,7 +561,7 @@ onBeforeUnmount(() => stopPolling());
 
 .ops-events__type {
   flex: none;
-  font-family: var(--ca-font-family-monospace, monospace);
+  font-family: var(--ca-font-family-mono, monospace);
   color: var(--ca-color-brand-text);
 }
 

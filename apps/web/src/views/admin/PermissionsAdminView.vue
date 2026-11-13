@@ -41,9 +41,7 @@ const filtered = computed(() => {
   const term = search.value.trim().toLowerCase();
   if (!term) return rows.value;
   return rows.value.filter(
-    (row) =>
-      row.identifier.toLowerCase().includes(term) ||
-      row.name.toLowerCase().includes(term),
+    (row) => row.identifier.toLowerCase().includes(term) || row.name.toLowerCase().includes(term),
   );
 });
 
@@ -87,46 +85,53 @@ onMounted(load);
       </template>
     </CaPageHeader>
 
-    <div class="admin-filters">
-      <div class="admin-filters__field admin-filters__wide">
-        <CaInput
-          v-model="search"
-          type="search"
-          :placeholder="t('admin.permissions.searchPlaceholder')"
-        />
-      </div>
-      <div class="admin-filters__spacer" />
-      <span class="perm-count">{{ filtered.length }} / {{ rows.length }}</span>
-    </div>
-
     <p v-if="error" class="admin-error">{{ error }}</p>
 
-    <CaTable
-      table-key="admin-permissions"
-      :columns="columns"
-      :rows="filtered"
-      :row-key="(row) => row.id"
-      :loading="loading"
-      :empty-title="t('admin.permissions.empty')"
-    >
-      <template #cell-identifier="{ row }">
-        <span class="admin-mono">{{ row.identifier }}</span>
-      </template>
-      <template #cell-name="{ row }">
-        <span class="perm-name">{{ row.name }}</span>
-      </template>
-      <template #cell-description="{ row }">
-        <span class="perm-desc">{{ row.description ?? '—' }}</span>
-      </template>
-      <template #cell-is_system="{ row }">
-        <CaBadge :variant="row.is_system ? 'brand' : 'neutral'">
-          {{ row.is_system ? t('admin.permissions.systemBadge') : t('admin.permissions.customBadge') }}
-        </CaBadge>
-      </template>
-      <template #cell-role_count="{ row }">
-        {{ t('admin.permissions.roleCount', { count: row.role_count }) }}
-      </template>
-    </CaTable>
+    <section class="ca-panel">
+      <CaTable
+        table-key="admin-permissions"
+        :columns="columns"
+        :rows="filtered"
+        :row-key="(row) => row.id"
+        :loading="loading"
+        :empty-title="t('admin.permissions.empty')"
+      >
+        <template #toolbar>
+          <div class="ca-toolbar">
+            <div class="ca-toolbar__select ca-toolbar__search">
+              <CaInput
+                v-model="search"
+                type="search"
+                :placeholder="t('admin.permissions.searchPlaceholder')"
+              />
+            </div>
+            <div class="admin-filters__spacer" />
+            <span class="perm-count">{{ filtered.length }} / {{ rows.length }}</span>
+          </div>
+        </template>
+        <template #cell-identifier="{ row }">
+          <span class="admin-mono">{{ row.identifier }}</span>
+        </template>
+        <template #cell-name="{ row }">
+          <span class="perm-name">{{ row.name }}</span>
+        </template>
+        <template #cell-description="{ row }">
+          <span class="perm-desc">{{ row.description ?? '—' }}</span>
+        </template>
+        <template #cell-is_system="{ row }">
+          <CaBadge :variant="row.is_system ? 'brand' : 'neutral'">
+            {{
+              row.is_system
+                ? t('admin.permissions.systemBadge')
+                : t('admin.permissions.customBadge')
+            }}
+          </CaBadge>
+        </template>
+        <template #cell-role_count="{ row }">
+          {{ t('admin.permissions.roleCount', { count: row.role_count }) }}
+        </template>
+      </CaTable>
+    </section>
   </section>
 </template>
 

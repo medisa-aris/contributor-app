@@ -65,26 +65,28 @@ onMounted(() => {
         </div>
       </CaCard>
 
-      <CaTable
-        class="cred-table"
-        table-key="integration-credentials"
-        :columns="columns"
-        :rows="credentials"
-        :row-key="(row) => row.env"
-        :loading="false"
-        :empty-title="t('table.empty')"
-      >
-        <template #cell-env="{ row }">
-          <span class="admin-mono">{{ row.env }}</span>
-        </template>
-        <template #cell-configured="{ row }">
-          <CaBadge :variant="row.configured ? 'success' : 'neutral'" size="small">
-            {{
-              row.configured ? t('integrations.configuredBadge') : t('integrations.missingBadge')
-            }}
-          </CaBadge>
-        </template>
-      </CaTable>
+      <section class="ca-panel">
+        <CaTable
+          class="cred-table"
+          table-key="integration-credentials"
+          :columns="columns"
+          :rows="credentials"
+          :row-key="(row) => row.env"
+          :loading="false"
+          :empty-title="t('table.empty')"
+        >
+          <template #cell-env="{ row }">
+            <span class="admin-mono">{{ row.env }}</span>
+          </template>
+          <template #cell-configured="{ row }">
+            <CaBadge :variant="row.configured ? 'success' : 'neutral'" size="small">
+              {{
+                row.configured ? t('integrations.configuredBadge') : t('integrations.missingBadge')
+              }}
+            </CaBadge>
+          </template>
+        </CaTable>
+      </section>
     </template>
   </div>
 </template>

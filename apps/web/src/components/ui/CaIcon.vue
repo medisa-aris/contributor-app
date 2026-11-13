@@ -2,10 +2,8 @@
 import { computed } from 'vue';
 
 const ICON_PATHS: Record<string, string> = {
-  desk: 'M2 4h16v3H2V4Zm9 3h7v4h-7V7ZM2 7h2v10H2V7Zm14 4h2v6h-2v-6Zm-1-3h1v1h-1V8Z',
   sparkle:
     'M10 2.25c.22 0 .42.14.5.35l1.6 4.06 4.06 1.6a.52.52 0 0 1 0 .98l-4.06 1.6-1.6 4.06a.52.52 0 0 1-.98 0l-1.6-4.06-4.06-1.6a.52.52 0 0 1 0-.98l4.06-1.6 1.6-4.06c.08-.21.28-.35.5-.35Zm6.9.35a.32.32 0 0 1 .6 0l.55 1.4 1.4.55c.26.1.26.5 0 .6l-1.4.55-.55 1.4c-.1.26-.5.26-.6 0l-.55-1.4-1.4-.55a.32.32 0 0 1 0-.6l1.4-.55.55-1.4Z',
-  book: 'M4 3.5A1.5 1.5 0 0 1 5.5 2H15a1 1 0 0 1 1 1v13.5a1.5 1.5 0 0 1-1.5 1.5H5.5A1.5 1.5 0 0 1 4 16.5v-13ZM6 4v12h9.5a.5.5 0 0 0 .5-.5V4H6Z',
   bot: 'M10 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2Zm-1 2.5h2V5h-2V3.5ZM5.5 5h9A2.5 2.5 0 0 1 17 7.5v5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 3 12.5v-5A2.5 2.5 0 0 1 5.5 5Zm2 3.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm5 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2ZM8 12.25h4a.5.5 0 0 1 0 1H8a.5.5 0 0 1 0-1Z',
   plug: 'M7.5 2.5a.5.5 0 0 0-1 0V5H5A1.5 1.5 0 0 0 3.5 6.5v2A2.5 2.5 0 0 0 6 11h.5v5.5a.5.5 0 0 0 1 0V11h5v5.5a.5.5 0 0 0 1 0V11h.5a2.5 2.5 0 0 0 2.5-2.5v-2A1.5 1.5 0 0 0 15 5h-1.5V2.5a.5.5 0 0 0-1 0V5h-5V2.5Z',
   shield:
@@ -83,6 +81,14 @@ const ICON_PATHS: Record<string, string> = {
     'M3 3.75A.75.75 0 0 1 3.75 3h3.5a.75.75 0 0 1 0 1.5H4.5v2.75a.75.75 0 0 1-1.5 0v-3.5Zm9-.75h4.25a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0V4.5h-2.75a.75.75 0 0 1 0-1.5ZM3.75 12a.75.75 0 0 1 .75.75v2.75h2.75a.75.75 0 0 1 0 1.5h-3.5a.75.75 0 0 1-.75-.75v-3.5a.75.75 0 0 1 .75-.75Zm12.5 0a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-.75.75h-3.5a.75.75 0 0 1 0-1.5h2.75v-2.75a.75.75 0 0 1 .75-.75Z',
 };
 
+/** Ikon garis dari sistem desain Fluent Green (Sidebar kanvas); digambar dengan stroke 1.5. */
+const STROKE_PATHS: Record<string, string[]> = {
+  desk: ['M3.5 4.5h13v9h-8l-5 3.5z', 'M7 8.5h6M7 11h4'],
+  book: [
+    'M2.5 4.5h5.5a2 2 0 0 1 2 2v10a1.5 1.5 0 0 0-1.5-1.5h-6zM17.5 4.5H12a2 2 0 0 0-2 2v10a1.5 1.5 0 0 1 1.5-1.5h6z',
+  ],
+};
+
 const FALLBACK_PATH = 'M10 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16Zm0 5a3 3 0 1 1 0 6 3 3 0 0 1 0-6Z';
 
 const props = withDefaults(
@@ -93,12 +99,28 @@ const props = withDefaults(
   { size: 16 },
 );
 
+const strokePaths = computed(() => STROKE_PATHS[props.name] ?? null);
 const path = computed(() => ICON_PATHS[props.name] ?? FALLBACK_PATH);
 const fallback = computed(() => !(props.name in ICON_PATHS));
 </script>
 
 <template>
   <svg
+    v-if="strokePaths"
+    viewBox="0 0 20 20"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    :width="size"
+    :height="size"
+    aria-hidden="true"
+  >
+    <path v-for="d in strokePaths" :key="d" :d="d" />
+  </svg>
+  <svg
+    v-else
     viewBox="0 0 20 20"
     fill="currentColor"
     :width="size"

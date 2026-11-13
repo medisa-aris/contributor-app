@@ -177,7 +177,7 @@ async function submitUpload(): Promise<void> {
     });
     toast.push({ variant: 'success', title: t('knowledge.documentCreated') });
     uploadOpen.value = false;
-    await load();
+    await Promise.all([load(), loadCounts()]);
   } catch (caught) {
     formError.value = caught instanceof ApiError ? caught.message : t('errors.saveFailed');
   } finally {

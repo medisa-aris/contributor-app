@@ -104,6 +104,7 @@ export const id = {
     toggleNavigation: 'Buka/tutup navigasi',
     userMenu: 'Menu pengguna',
     showcase: 'Sistem Desain',
+    docs: 'Docs',
     searchMenu: 'Cari menu…',
     searchClear: 'Bersihkan pencarian',
     searchEmpty: 'Tidak ada menu yang cocok.',
@@ -115,6 +116,42 @@ export const id = {
     commandHint: 'Panah atas/bawah untuk memilih, Enter untuk membuka.',
     toggleGroup: 'Buka atau tutup {name}',
     profile: 'Profil {name}',
+    commandPlaceholder: 'Ketik untuk mencari menu, percakapan, tugas, atau agen…',
+    commandEmpty: 'Tidak ada hasil untuk “{query}”.',
+    commandSections: {
+      menu: 'Menu',
+      second_brain: 'Multi Brain',
+      counterpart: 'Partner',
+      subordinate: 'Subordinate',
+      agent: 'Agen Subordinate',
+    },
+  },
+  docs: {
+    title: 'Panduan penggunaan',
+    description:
+      'Tutorial langkah demi langkah berdasarkan proses bisnis. Bab yang tampil mengikuti izin akses Anda.',
+    searchPlaceholder: 'Cari panduan…',
+    chaptersLabel: 'Daftar panduan',
+    chapterSelect: 'Pilih panduan',
+    step: 'Langkah {n}',
+    result: 'Hasil',
+    tip: 'Tips',
+    audience: 'Untuk siapa',
+    needsPermission: 'Butuh izin: {name}',
+    prev: 'Sebelumnya',
+    next: 'Berikutnya',
+    stepsCount: '{n} langkah',
+    empty: 'Belum ada panduan yang sesuai dengan izin akses Anda.',
+    noMatch: 'Tidak ada panduan yang cocok dengan “{q}”.',
+    zoom: 'Perbesar gambar: {title}',
+    hubs: {
+      start: 'Mulai',
+      workspace: 'Ruang Kerja AI',
+      knowledge: 'Pusat Pengetahuan',
+      agents: 'Pusat Agen AI',
+      integrations: 'Pusat Integrasi',
+      admin: 'Administrasi',
+    },
   },
   notifications: {
     label: 'Notifikasi',
@@ -613,7 +650,7 @@ export const id = {
     },
     providers: {
       webSearch: {
-        title: 'Prioritas Pencarian Web',
+        title: 'Prioritas pencarian web',
         hint: 'Seret untuk mengatur urutan. Penyedia nomor 1 dicoba lebih dulu; penyedia tanpa API key dilewati. Key diatur di berkas .env server.',
         readOnly: 'Urutan penyedia yang dicoba saat pencarian web. Anda tidak memiliki izin untuk mengubahnya.',
         saved: 'Urutan penyedia disimpan.',
@@ -713,7 +750,7 @@ export const id = {
       },
     },
     documents: {
-      title: 'Dokumen Saya',
+      title: 'Dokumen saya',
       description:
         'Dokumen yang dibuat AI dari percakapan Multi Brain dan Partner. Hanya Anda yang dapat melihatnya.',
       search: 'Cari judul dokumen',
@@ -733,10 +770,10 @@ export const id = {
       },
     },
     mindMap: {
-      title: 'Peta Pikiran',
+      title: 'Peta pikiran',
       description:
         'Judul percakapan Multi Brain, Partner, dan tugas Subordinate tim Anda — hanya judul, tanpa isi pesan.',
-      tabs: { mapping: 'Pemetaan', thinking: 'Struktur Pemikiran', label: 'Peta Pikiran' },
+      tabs: { mapping: 'Pemetaan', thinking: 'Struktur pemikiran', label: 'Peta pikiran' },
       fullscreen: 'Layar penuh',
       exitFullscreen: 'Keluar layar penuh',
       range: { label: 'Rentang waktu', d7: '7 hari', d30: '30 hari', d90: '90 hari' },
@@ -989,7 +1026,7 @@ export const id = {
     },
   },
   knowledge: {
-    documentsTitle: 'Dokumen Pengetahuan',
+    documentsTitle: 'Dokumen pengetahuan',
     documentsDescription:
       'Kelola dokumen yang menjadi sumber jawaban AI: unggah, pantau status indeks, dan cari judul.',
     goSearch: 'Buka pencarian',
@@ -1035,7 +1072,7 @@ export const id = {
     formSourceName: 'Nama sumber',
     formSourceDescription: 'Deskripsi',
     sourceCreated: 'Sumber baru dibuat.',
-    collectionsTitle: 'Koleksi Pengetahuan',
+    collectionsTitle: 'Koleksi pengetahuan',
     collectionsDescription:
       'Koleksi mengelompokkan beberapa sumber agar pencarian AI bisa dibatasi pada satu topik.',
     addCollection: 'Tambah koleksi',
@@ -1054,7 +1091,7 @@ export const id = {
     collectionSourcesTitle: 'Sumber dalam koleksi',
     collectionSourcesHint: 'Centang sumber yang termasuk ke dalam koleksi ini.',
     noSources: 'Belum ada sumber yang bisa dipilih.',
-    searchTitle: 'Pencarian Pengetahuan',
+    searchTitle: 'Pencarian pengetahuan',
     searchDescription:
       'Cari jawaban dari dokumen perusahaan. Hasil menampilkan cuplikan sitasi dari dokumen sumber.',
     searchInputPlaceholder: 'Tulis pertanyaan atau kata kunci…',
@@ -1073,7 +1110,7 @@ export const id = {
     clearSourceFilter: 'Hapus filter sumber {name}',
   },
   agents: {
-    catalogTitle: 'Katalog Agen',
+    catalogTitle: 'Katalog agen',
     catalogDescription:
       'Lihat agen AI yang tersedia beserta status, izin eksekusi, dan jumlah tugas yang pernah dijalankan.',
     manageDefinitions: 'Kelola definisi',
@@ -1101,7 +1138,7 @@ export const id = {
     taskCount: '{count} tugas',
     toolCount: '{count} alat terdaftar',
     runAction: 'Jalankan',
-    definitionsTitle: 'Definisi Agen',
+    definitionsTitle: 'Definisi agen',
     definitionsDescription:
       'Tentukan bagaimana agen berpikir: instruksi, daftar alat yang boleh dipakai, dan apakah perlu persetujuan manusia.',
     addAgent: 'Tambah agen',
@@ -1124,7 +1161,7 @@ export const id = {
     formTools: 'Daftar alat (pisahkan koma)',
     formToolsHint: 'Kosongkan jika agen bekerja murni sebagai instruksi tanpa alat eksternal.',
     formRequireApproval: 'Wajib persetujuan manusia sebelum dijalankan',
-    operationsTitle: 'Operasi Agen',
+    operationsTitle: 'Operasi agen',
     operationsDescription:
       'Jalankan agen dengan instruksi spesifik, lalu pantau hasil dan jejak eksekusinya.',
     runHeading: 'Jalankan agen',
@@ -1139,7 +1176,7 @@ export const id = {
     columnTaskTitle: 'Judul tugas',
     columnAgent: 'Agen',
     columnCreated: 'Dibuat',
-    approvalsTitle: 'Persetujuan Tugas',
+    approvalsTitle: 'Persetujuan tugas',
     approvalsDescription:
       'Tinjau tugas agen yang menunggu izin Anda, lalu setujui atau tolak dengan catatan.',
     approvalsEmpty: 'Tidak ada permintaan persetujuan.',
@@ -1158,7 +1195,7 @@ export const id = {
     columnRequester: 'Peminta',
   },
   integrations: {
-    title: 'Pusat Integrasi',
+    title: 'Pusat integrasi',
     description:
       'Pantau konektor eksternal agen AI: server MCP dan konektor REST, lengkap dengan pemeriksaan kesehatan.',
     checkAll: 'Periksa semua',
@@ -1239,7 +1276,7 @@ export const id = {
       'Satu endpoint per baris, format: GET /path/untuk/alat. Hanya metode GET dan POST yang didukung.',
     endpointsInvalid:
       'Format endpoint tidak valid. Gunakan satu baris per endpoint: GET /path atau POST /path.',
-    credentialsTitle: 'Kredensial Integrasi',
+    credentialsTitle: 'Kredensial integrasi',
     credentialsDescription:
       'Status ketersediaan kredensial server. Yang tampil hanya nama variabel dan status — bukan nilainya.',
     policyHeading: 'Kebijakan kredensial',

@@ -57,8 +57,18 @@ const columns = computed<CaTableColumn[]>(() => [
   { key: 'occurred_at', label: t('admin.audit.columnTime'), width: '170px' },
   { key: 'severity', label: t('admin.audit.columnSeverity'), width: '110px' },
   { key: 'event', label: t('admin.audit.columnEvent'), sortValue: (row) => row.event_key },
-  { key: 'actor', label: t('admin.audit.columnActor'), width: '180px', sortValue: (row) => row.actor_label },
-  { key: 'entity', label: t('admin.audit.columnEntity'), width: '180px', sortValue: (row) => row.entity_type },
+  {
+    key: 'actor',
+    label: t('admin.audit.columnActor'),
+    width: '180px',
+    sortValue: (row) => row.actor_label,
+  },
+  {
+    key: 'entity',
+    label: t('admin.audit.columnEntity'),
+    width: '180px',
+    sortValue: (row) => row.entity_type,
+  },
 ]);
 
 function severityVariant(value: string): 'informative' | 'warning' | 'danger' | 'neutral' {
@@ -95,70 +105,70 @@ onMounted(load);
 
 <template>
   <section>
-    <CaPageHeader
-      :title="t('admin.audit.title')"
-      :description="t('admin.audit.description')"
-    />
-
-    <div class="admin-filters">
-      <div class="admin-filters__field">
-        <CaSelect v-model="severity" :options="severityOptions" />
-      </div>
-      <div class="admin-filters__field">
-        <CaInput
-          v-model="eventKey"
-          type="search"
-          :placeholder="t('admin.audit.eventKeyPlaceholder')"
-        />
-      </div>
-      <div class="admin-filters__field admin-filters__wide">
-        <CaInput
-          v-model="search"
-          type="search"
-          :placeholder="t('admin.audit.searchPlaceholder')"
-        />
-      </div>
-      <div class="admin-filters__spacer" />
-      <CaButton variant="secondary" :loading="loading" @click="load">
-        {{ t('common.refresh') }}
-      </CaButton>
-    </div>
+    <CaPageHeader :title="t('admin.audit.title')" :description="t('admin.audit.description')" />
 
     <p v-if="error" class="admin-error">{{ error }}</p>
 
-    <CaTable
-      table-key="admin-audit"
-      :columns="columns"
-      :rows="items"
-      :row-key="(row) => row.id"
-      :loading="loading"
-    >
-      <template #cell-occurred_at="{ row }">
-        {{ formatDateTime(row.occurred_at) }}
-      </template>
-      <template #cell-severity="{ row }">
-        <CaBadge :variant="severityVariant(row.severity)">
-          {{ severityLabel(row.severity) }}
-        </CaBadge>
-      </template>
-      <template #cell-event="{ row }">
-        <button type="button" class="aud-event" @click="openDetail(row)">
-          <span class="admin-mono">{{ row.event_key }}</span>
-          <span class="aud-event__summary">{{ row.summary }}</span>
-        </button>
-      </template>
-      <template #cell-actor="{ row }">
-        {{ row.actor_label ?? '—' }}
-      </template>
-      <template #cell-entity="{ row }">
-        <span v-if="row.entity_type" class="admin-mono">
-          {{ row.entity_type }}
-        </span>
-        <span v-else>—</span>
-      </template>
-    </CaTable>
+    <section class="ca-panel">
+      <CaTable
+        table-key="admin-audit"
+        :columns="columns"
+        :rows="items"
+        :row-key="(row) => row.id"
+        :loading="loading"
+      >
+        <template #toolbar>
+          <div class="ca-toolbar">
+            <div class="ca-toolbar__select">
+              <CaSelect v-model="severity" :options="severityOptions" />
+            </div>
+            <div class="ca-toolbar__select">
+              <CaInput
+                v-model="eventKey"
+                type="search"
+                :placeholder="t('admin.audit.eventKeyPlaceholder')"
+              />
+            </div>
+            <div class="ca-toolbar__select ca-toolbar__search">
+              <CaInput
+                v-model="search"
+                type="search"
+                :placeholder="t('admin.audit.searchPlaceholder')"
+              />
+            </div>
+            <div class="admin-filters__spacer" />
+            <CaButton variant="secondary" :loading="loading" @click="load">
+              {{ t('common.refresh') }}
+            </CaButton>
+          </div>
+        </template>
+        <template #cell-occurred_at="{ row }">
+          {{ formatDateTime(row.occurred_at) }}
+        </template>
+        <template #cell-severity="{ row }">
+          <CaBadge :variant="severityVariant(row.severity)">
+            {{ severityLabel(row.severity) }}
+          </CaBadge>
+        </template>
+        <template #cell-event="{ row }">
+          <button type="button" class="aud-event" @click="openDetail(row)">
+            <span class="admin-mono">{{ row.event_key }}</span>
+            <span class="aud-event__summary">{{ row.summary }}</span>
+          </button>
+        </template>
+        <template #cell-actor="{ row }">
+          {{ row.actor_label ?? '—' }}
+        </template>
+        <template #cell-entity="{ row }">
+          <span v-if="row.entity_type" class="admin-mono">
+            {{ row.entity_type }}
+          </span>
+          <span v-else>—</span>
+        </template>
+      </CaTable>
 
-    <CaPagination :page="page" :limit="pageSize" :total="total" @change="goPage" />
+      <CaPagination :page="page" :limit="pageSize" :total="total" @change="goPage" />
+    </section>
 
     <CaDialog
       v-model:open="detailOpen"

@@ -115,7 +115,7 @@ watch(
 .shell__content {
   flex: 1;
   width: 100%;
-  max-width: var(--ca-content-max-width);
+  min-width: 0;
   padding: var(--ca-space-16) var(--ca-space-12);
 }
 

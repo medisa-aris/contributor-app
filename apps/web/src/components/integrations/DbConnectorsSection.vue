@@ -563,7 +563,7 @@ defineExpose({ openCreate });
 }
 
 .db-hint--warn {
-  color: var(--ca-fg-warning, var(--ca-fg-2));
+  color: var(--ca-warning-fg, var(--ca-fg-2));
 }
 
 .db-loading {

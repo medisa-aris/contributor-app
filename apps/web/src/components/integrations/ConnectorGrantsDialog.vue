@@ -299,8 +299,8 @@ function addTable(table: string): void {
   gap: var(--ca-space-4);
   flex-wrap: wrap;
   padding: var(--ca-space-3) var(--ca-space-4);
-  border: 1px solid var(--ca-border-subtle, var(--ca-border));
-  border-radius: var(--ca-radius-medium, 8px);
+  border: 1px solid var(--ca-stroke-2, var(--ca-stroke-2));
+  border-radius: var(--ca-radius-xl, 8px);
 }
 
 .grants__who,
@@ -319,13 +319,13 @@ function addTable(table: string): void {
 .grants__tables {
   font-size: var(--ca-text-200);
   color: var(--ca-fg-3);
-  font-family: var(--ca-font-family-monospace, monospace);
+  font-family: var(--ca-font-family-mono, monospace);
 }
 
 .grants__form {
   margin-top: var(--ca-space-6);
   padding-top: var(--ca-space-4);
-  border-top: 1px solid var(--ca-border-subtle, var(--ca-border));
+  border-top: 1px solid var(--ca-stroke-2, var(--ca-stroke-2));
 }
 
 .grants__heading {
@@ -347,7 +347,7 @@ function addTable(table: string): void {
 }
 
 .grants__hint--warn {
-  color: var(--ca-fg-warning, var(--ca-fg-2));
+  color: var(--ca-warning-fg, var(--ca-fg-2));
 }
 
 .grants__chips {
@@ -359,13 +359,13 @@ function addTable(table: string): void {
 }
 
 .grants__chip {
-  border: 1px dashed var(--ca-border);
+  border: 1px dashed var(--ca-stroke-2);
   background: transparent;
   color: var(--ca-fg-2);
   border-radius: 999px;
   padding: 2px 10px;
   font-size: var(--ca-text-200);
-  font-family: var(--ca-font-family-monospace, monospace);
+  font-family: var(--ca-font-family-mono, monospace);
   cursor: pointer;
 }
 

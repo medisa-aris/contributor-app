@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRoute, useRouter } from 'vue-router';
 import { listAvailableConnectors, type AvailableConnector } from '@/api/connectors';
 import {
   listAgents,
@@ -21,6 +22,8 @@ import TaskBoard from '@/components/subordinate/TaskBoard.vue';
 import TaskThread from '@/components/subordinate/TaskThread.vue';
 
 const { t } = useI18n();
+const route = useRoute();
+const router = useRouter();
 const auth = useAuthStore();
 const canManage = computed(() => auth.can('ai.agents.manage'));
 
@@ -36,6 +39,7 @@ const newOpen = ref(false);
 const newTarget = ref<string | null>(null);
 const threadOpen = ref(false);
 const threadId = ref<string | null>(null);
+const focusAgentId = ref<string | null>(null);
 
 const tabs = computed<CaTabItem[]>(() => [
   { key: 'tasks', label: t('subordinate.tabs.tasks') },
@@ -66,7 +70,23 @@ async function loadAll(): Promise<void> {
   loading.value = false;
 }
 
-onMounted(loadAll);
+onMounted(async () => {
+  await loadAll();
+
+  // Dibuka dari palet perintah: lompat ke tugas atau agen yang dipilih, lalu bersihkan query.
+  const taskQuery = route.query.task;
+  const agentQuery = route.query.agent;
+  if (typeof taskQuery === 'string' && taskQuery) {
+    tab.value = 'tasks';
+    openTask(taskQuery);
+  } else if (typeof agentQuery === 'string' && agentQuery && canManage.value) {
+    tab.value = 'agents';
+    focusAgentId.value = agentQuery;
+  }
+  if (taskQuery || agentQuery) {
+    void router.replace({ path: route.path });
+  }
+});
 
 function assign(target: string): void {
   newTarget.value = target;
@@ -98,8 +118,10 @@ function openTask(id: string): void {
       :skills="skills"
       :connectors="connectors"
       :loading="loading"
+      :focus-agent-id="focusAgentId"
       @changed="loadAll"
       @assign="(id: string) => assign(`agent:${id}`)"
+      @focused="focusAgentId = null"
     />
     <GroupsPanel
       v-else-if="tab === 'groups'"

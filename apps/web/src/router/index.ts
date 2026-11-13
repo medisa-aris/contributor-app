@@ -49,6 +49,12 @@ export const router = createRouter({
           name: 'home',
           component: () => import('@/views/HomeView.vue'),
         },
+        {
+          path: 'docs/:chapter?',
+          name: 'docs',
+          component: () => import('@/views/DocsView.vue'),
+          meta: { titleKey: 'docs.title' },
+        },
         admin('administration/users', 'admin-users', () => import('@/views/admin/UsersAdminView.vue'), 'rbac.users.read'),
         admin('administration/users/:id', 'admin-user-detail', () => import('@/views/admin/UserDetailAdminView.vue'), 'rbac.users.read'),
         admin('administration/groups', 'admin-groups', () => import('@/views/admin/GroupsAdminView.vue'), 'rbac.groups.read'),

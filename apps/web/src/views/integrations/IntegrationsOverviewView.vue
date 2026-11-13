@@ -1161,7 +1161,7 @@ onMounted(() => {
 .int-cell__sub {
   font-size: var(--ca-text-200);
   color: var(--ca-fg-3);
-  font-family: var(--ca-font-family-monospace, monospace);
+  font-family: var(--ca-font-family-mono, monospace);
 }
 
 .int-health {

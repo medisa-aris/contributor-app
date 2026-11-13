@@ -7,7 +7,7 @@ const props = withDefaults(
   defineProps<{
     title: string;
     subtitle?: string;
-    size?: 'small' | 'medium' | 'large';
+    size?: 'small' | 'medium' | 'large' | 'xlarge';
     persistent?: boolean;
   }>(),
   { size: 'medium' },
@@ -148,6 +148,10 @@ function onOverlayClick(): void {
 
 .ca-dialog__surface--large {
   max-width: 760px;
+}
+
+.ca-dialog__surface--xlarge {
+  max-width: min(1280px, 100%);
 }
 
 .ca-dialog__header {

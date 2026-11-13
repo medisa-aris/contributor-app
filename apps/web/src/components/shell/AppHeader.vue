@@ -26,6 +26,7 @@ const breadcrumbItems = computed(() => {
   const location = navigation.findByRoute(route.meta.navPath ?? route.path);
   if (location) return [{ label: location.application.name }, { label: location.item.label }];
   if (route.name === 'showcase') return [{ label: t('showcase.title') }];
+  if (route.name === 'docs') return [{ label: t('docs.title') }];
   return [{ label: t('shell.home') }];
 });
 
@@ -37,12 +38,17 @@ const themeMenuItems = computed(() => [
 
 const userMenuItems = computed(() => [
   { key: 'showcase', label: t('shell.showcase') },
+  { key: 'docs', label: t('shell.docs') },
   { key: 'logout', label: t('shell.logout'), danger: true, divider: true },
 ]);
 
 async function onUserMenuSelect(key: string): Promise<void> {
   if (key === 'showcase') {
     await router.push('/showcase');
+    return;
+  }
+  if (key === 'docs') {
+    await router.push('/docs');
     return;
   }
   if (key === 'logout') {

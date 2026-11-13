@@ -232,7 +232,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick));
 }
 
 .cbar__chip--revoked {
-  background: var(--ca-bg-danger-subtle, rgba(200, 0, 0, 0.08));
+  background: var(--ca-danger-bg, rgba(200, 0, 0, 0.08));
   text-decoration: line-through;
 }
 
@@ -251,7 +251,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick));
 }
 
 .cbar__add {
-  border: 1px dashed var(--ca-border);
+  border: 1px dashed var(--ca-stroke-2);
   background: transparent;
   color: var(--ca-fg-2);
   border-radius: 999px;
@@ -273,8 +273,8 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick));
   max-height: 340px;
   overflow-y: auto;
   background: var(--ca-bg-surface, #fff);
-  border: 1px solid var(--ca-border);
-  border-radius: var(--ca-radius-large, 10px);
+  border: 1px solid var(--ca-stroke-2);
+  border-radius: var(--ca-radius-xl, 10px);
   box-shadow: var(--ca-shadow-16, 0 8px 24px rgba(0, 0, 0, 0.15));
   padding: var(--ca-space-3);
 }
@@ -300,8 +300,8 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick));
   gap: var(--ca-space-3);
   flex-wrap: wrap;
   padding: var(--ca-space-2);
-  border-radius: var(--ca-radius-medium, 6px);
-  border: 1px solid var(--ca-border-subtle, var(--ca-border));
+  border-radius: var(--ca-radius-xl, 6px);
+  border: 1px solid var(--ca-stroke-2, var(--ca-stroke-2));
 }
 
 .cbar__menu-info {

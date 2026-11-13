@@ -284,7 +284,7 @@ function statusLabel(agent: AgentRow): string {
 }
 
 .agents-card__code {
-  font-family: var(--ca-font-family-monospace, monospace);
+  font-family: var(--ca-font-family-mono, monospace);
 }
 
 .agents-card__tools {

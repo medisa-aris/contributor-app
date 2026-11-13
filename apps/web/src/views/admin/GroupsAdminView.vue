@@ -3,13 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { RouterLink } from 'vue-router';
 import { ApiError } from '@/api/http';
-import {
-  createGroup,
-  deleteGroup,
-  listGroups,
-  updateGroup,
-  type AdminGroupRow,
-} from '@/api/admin';
+import { createGroup, deleteGroup, listGroups, updateGroup, type AdminGroupRow } from '@/api/admin';
 import { useAuthStore } from '@/stores/auth.store';
 import { useToastStore } from '@/stores/toast.store';
 import {
@@ -18,6 +12,7 @@ import {
   CaField,
   CaInput,
   CaPageHeader,
+  CaRowMenu,
   CaTable,
   type CaTableColumn,
 } from '@/components/ui';
@@ -52,7 +47,8 @@ const columns = computed<CaTableColumn[]>(() => {
     { key: 'role_count', label: t('admin.groups.columnRoles'), width: '110px' },
     { key: 'created_at', label: t('admin.groups.columnCreated'), width: '170px' },
   ];
-  if (canManage.value) base.push({ key: 'actions', label: '', width: '150px', align: 'end', sortable: false });
+  if (canManage.value)
+    base.push({ key: 'actions', label: '', width: '150px', align: 'end', sortable: false });
   return base;
 });
 
@@ -147,10 +143,7 @@ onMounted(load);
 
 <template>
   <section>
-    <CaPageHeader
-      :title="t('admin.groups.title')"
-      :description="t('admin.groups.description')"
-    >
+    <CaPageHeader :title="t('admin.groups.title')" :description="t('admin.groups.description')">
       <template #actions>
         <CaButton v-if="canManage" variant="primary" @click="openCreate">
           {{ t('admin.groups.addButton') }}
@@ -160,33 +153,41 @@ onMounted(load);
 
     <p v-if="error" class="admin-error">{{ error }}</p>
 
-    <CaTable table-key="admin-groups" :columns="columns" :rows="rows" :row-key="(row) => row.id" :loading="loading">
-      <template #cell-name="{ row }">
-        <RouterLink class="admin-name-link" :to="`/administration/groups/${row.id}`">
-          {{ row.name }}
-        </RouterLink>
-        <div class="admin-cell__sub admin-mono">{{ row.code }}</div>
-      </template>
-      <template #cell-member_count="{ row }">
-        {{ t('admin.groups.memberCount', { count: row.member_count }) }}
-      </template>
-      <template #cell-role_count="{ row }">
-        {{ t('admin.groups.roleCount', { count: row.role_count }) }}
-      </template>
-      <template #cell-created_at="{ row }">
-        {{ formatDateTime(row.created_at) }}
-      </template>
-      <template #cell-actions="{ row }">
-        <div class="grp-actions">
-          <CaButton size="small" variant="subtle" @click="openEdit(row)">
-            {{ t('admin.groups.editAction') }}
-          </CaButton>
-          <CaButton size="small" variant="subtle" @click="openDelete(row)">
-            {{ t('admin.groups.deleteAction') }}
-          </CaButton>
-        </div>
-      </template>
-    </CaTable>
+    <section class="ca-panel">
+      <CaTable
+        table-key="admin-groups"
+        :columns="columns"
+        :rows="rows"
+        :row-key="(row) => row.id"
+        :loading="loading"
+      >
+        <template #cell-name="{ row }">
+          <RouterLink class="admin-name-link" :to="`/administration/groups/${row.id}`">
+            {{ row.name }}
+          </RouterLink>
+          <div class="admin-cell__sub admin-mono">{{ row.code }}</div>
+        </template>
+        <template #cell-member_count="{ row }">
+          {{ t('admin.groups.memberCount', { count: row.member_count }) }}
+        </template>
+        <template #cell-role_count="{ row }">
+          {{ t('admin.groups.roleCount', { count: row.role_count }) }}
+        </template>
+        <template #cell-created_at="{ row }">
+          {{ formatDateTime(row.created_at) }}
+        </template>
+        <template #cell-actions="{ row }">
+          <CaRowMenu
+            :label="t('table.rowActions')"
+            :items="[
+              { key: 'edit', label: t('admin.groups.editAction') },
+              { key: 'delete', label: t('admin.groups.deleteAction'), danger: true },
+            ]"
+            @select="(key: string) => (key === 'edit' ? openEdit(row) : openDelete(row))"
+          />
+        </template>
+      </CaTable>
+    </section>
 
     <CaDialog
       v-model:open="showForm"
@@ -194,7 +195,11 @@ onMounted(load);
       size="small"
     >
       <div class="admin-form">
-        <CaField v-if="!editing" :label="t('admin.groups.formCode')" :hint="t('admin.groups.formCodeHint')">
+        <CaField
+          v-if="!editing"
+          :label="t('admin.groups.formCode')"
+          :hint="t('admin.groups.formCodeHint')"
+        >
           <CaInput v-model="form.code" placeholder="project_x" />
         </CaField>
         <CaField :label="t('admin.groups.formName')">
@@ -215,11 +220,7 @@ onMounted(load);
       </template>
     </CaDialog>
 
-    <CaDialog
-      v-model:open="showDelete"
-      :title="t('admin.groups.deleteTitle')"
-      size="small"
-    >
+    <CaDialog v-model:open="showDelete" :title="t('admin.groups.deleteTitle')" size="small">
       <p class="grp-delete-text">
         {{ t('admin.groups.deleteConfirm', { name: deleting?.name ?? '' }) }}
       </p>

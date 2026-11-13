@@ -140,46 +140,49 @@ onMounted(load);
   <section>
     <CaPageHeader :title="t('admin.config.title')" :description="t('admin.config.description')" />
 
-    <div class="admin-filters">
-      <div class="admin-filters__field admin-filters__wide">
-        <CaInput
-          v-model="search"
-          type="search"
-          :placeholder="t('admin.config.searchPlaceholder')"
-        />
-      </div>
-    </div>
-
     <p v-if="error" class="admin-error">{{ error }}</p>
 
-    <CaTable
-      table-key="admin-config"
-      :columns="columns"
-      :rows="filtered"
-      :row-key="(row) => row.key"
-      :loading="loading"
-    >
-      <template #cell-key="{ row }">
-        <span class="admin-mono">{{ row.key }}</span>
-        <div v-if="row.description" class="admin-cell__sub">{{ row.description }}</div>
-      </template>
-      <template #cell-value="{ row }">
-        <span class="cfg-value">{{ valuePreview(row.value) }}</span>
-      </template>
-      <template #cell-is_public="{ row }">
-        <CaBadge :variant="row.is_public ? 'informative' : 'neutral'">
-          {{ row.is_public ? t('admin.config.publicBadge') : t('admin.config.privateBadge') }}
-        </CaBadge>
-      </template>
-      <template #cell-updated_at="{ row }">
-        {{ formatDateTime(row.updated_at) }}
-      </template>
-      <template #cell-actions="{ row }">
-        <CaButton size="small" variant="subtle" @click="openEdit(row)">
-          {{ t('admin.config.editAction') }}
-        </CaButton>
-      </template>
-    </CaTable>
+    <section class="ca-panel">
+      <CaTable
+        table-key="admin-config"
+        :columns="columns"
+        :rows="filtered"
+        :row-key="(row) => row.key"
+        :loading="loading"
+      >
+        <template #toolbar>
+          <div class="ca-toolbar">
+            <div class="ca-toolbar__select ca-toolbar__search">
+              <CaInput
+                v-model="search"
+                type="search"
+                :placeholder="t('admin.config.searchPlaceholder')"
+              />
+            </div>
+          </div>
+        </template>
+        <template #cell-key="{ row }">
+          <span class="admin-mono">{{ row.key }}</span>
+          <div v-if="row.description" class="admin-cell__sub">{{ row.description }}</div>
+        </template>
+        <template #cell-value="{ row }">
+          <span class="cfg-value">{{ valuePreview(row.value) }}</span>
+        </template>
+        <template #cell-is_public="{ row }">
+          <CaBadge :variant="row.is_public ? 'informative' : 'neutral'">
+            {{ row.is_public ? t('admin.config.publicBadge') : t('admin.config.privateBadge') }}
+          </CaBadge>
+        </template>
+        <template #cell-updated_at="{ row }">
+          {{ formatDateTime(row.updated_at) }}
+        </template>
+        <template #cell-actions="{ row }">
+          <CaButton size="small" variant="subtle" @click="openEdit(row)">
+            {{ t('admin.config.editAction') }}
+          </CaButton>
+        </template>
+      </CaTable>
+    </section>
 
     <CaDialog
       v-model:open="showEdit"

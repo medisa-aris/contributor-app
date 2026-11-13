@@ -13,13 +13,7 @@ import {
 } from '@/api/admin';
 import { useAuthStore } from '@/stores/auth.store';
 import { useToastStore } from '@/stores/toast.store';
-import {
-  CaBadge,
-  CaButton,
-  CaCheckbox,
-  CaPageHeader,
-  CaSpinner,
-} from '@/components/ui';
+import { CaBadge, CaButton, CaCheckbox, CaPageHeader, CaSpinner } from '@/components/ui';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -136,9 +130,7 @@ const dirty = computed(() => {
 });
 
 const allIdentifiers = computed(() =>
-  matrix.value.flatMap((app) =>
-    app.modules.flatMap((m) => m.permissions.map((p) => p.identifier)),
-  ),
+  matrix.value.flatMap((app) => app.modules.flatMap((m) => m.permissions.map((p) => p.identifier))),
 );
 
 function toggle(identifier: string, checked: boolean) {
@@ -211,7 +203,13 @@ onMounted(load);
     <template v-else>
       <CaPageHeader :title="role.name" :description="role.description ?? undefined">
         <template #actions>
-          <CaButton v-if="canAssign" variant="primary" :loading="saving" :disabled="!dirty" @click="save">
+          <CaButton
+            v-if="canAssign"
+            variant="primary"
+            :loading="saving"
+            :disabled="!dirty"
+            @click="save"
+          >
             {{ t('admin.roles.matrixSave') }}
           </CaButton>
         </template>
@@ -333,11 +331,17 @@ onMounted(load);
 
 .rd-app {
   margin-top: var(--ca-space-12);
+  padding: var(--ca-space-10);
+  border: 1px solid var(--ca-stroke-2);
+  border-radius: var(--ca-radius-xl);
+  background: var(--ca-bg-surface);
+  box-shadow: var(--ca-shadow-4);
 }
 
 .rd-app__title {
-  margin: 0 0 var(--ca-space-6);
-  font-size: var(--ca-text-400);
+  margin: 0 0 var(--ca-space-8);
+  font-size: var(--ca-text-500);
+  line-height: var(--ca-line-500);
   font-weight: var(--ca-font-weight-semibold);
   color: var(--ca-fg-1);
 }
