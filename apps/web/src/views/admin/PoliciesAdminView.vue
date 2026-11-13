@@ -23,6 +23,7 @@ import {
   CaField,
   CaInput,
   CaPageHeader,
+  CaRowMenu,
   CaSelect,
   CaSwitch,
   CaTable,
@@ -57,12 +58,17 @@ const columns = computed<CaTableColumn[]>(() => {
   const base: CaTableColumn[] = [
     { key: 'name', label: t('admin.policies.columnName') },
     { key: 'effect', label: t('admin.policies.columnEffect'), width: '90px' },
-    { key: 'subject', label: t('admin.policies.columnSubject'), sortValue: (row) => row.subject_label },
+    {
+      key: 'subject',
+      label: t('admin.policies.columnSubject'),
+      sortValue: (row) => row.subject_label,
+    },
     { key: 'permission_pattern', label: t('admin.policies.columnPattern') },
     { key: 'priority', label: t('admin.policies.columnPriority'), width: '90px' },
     { key: 'is_active', label: t('admin.policies.columnActive'), width: '100px' },
   ];
-  if (canManage.value) base.push({ key: 'actions', label: '', width: '150px', align: 'end', sortable: false });
+  if (canManage.value)
+    base.push({ key: 'actions', label: '', width: '150px', align: 'end', sortable: false });
   return base;
 });
 
@@ -249,10 +255,7 @@ onMounted(load);
 
 <template>
   <section>
-    <CaPageHeader
-      :title="t('admin.policies.title')"
-      :description="t('admin.policies.description')"
-    >
+    <CaPageHeader :title="t('admin.policies.title')" :description="t('admin.policies.description')">
       <template #actions>
         <CaButton v-if="canManage" variant="primary" @click="openCreate">
           {{ t('admin.policies.addButton') }}
@@ -262,45 +265,59 @@ onMounted(load);
 
     <p v-if="error" class="admin-error">{{ error }}</p>
 
-    <CaTable table-key="admin-policies" :columns="columns" :rows="rows" :row-key="(row) => row.id" :loading="loading">
-      <template #cell-name="{ row }">
-        <span class="pol-name">{{ row.name }}</span>
-        <div v-if="row.resource_type" class="admin-cell__sub admin-mono">
-          {{ row.resource_type }}{{ row.resource_id ? `:${row.resource_id}` : '' }}
-        </div>
-      </template>
-      <template #cell-effect="{ row }">
-        <CaBadge :variant="row.effect === 'deny' ? 'danger' : 'success'">
-          {{ row.effect === 'deny' ? t('admin.policies.effectDeny') : t('admin.policies.effectAllow') }}
-        </CaBadge>
-      </template>
-      <template #cell-subject="{ row }">
-        {{ row.subject_label ?? row.subject_id }}
-        <div class="admin-cell__sub">{{ subjectTypeLabel(row.subject_type) }}</div>
-      </template>
-      <template #cell-permission_pattern="{ row }">
-        <span class="admin-mono">{{ row.permission_pattern }}</span>
-      </template>
-      <template #cell-priority="{ row }">
-        {{ row.priority }}
-        <div class="admin-cell__sub">{{ formatDateTime(row.created_at) }}</div>
-      </template>
-      <template #cell-is_active="{ row }">
-        <CaBadge :variant="row.is_active ? 'success' : 'neutral'">
-          {{ row.is_active ? t('admin.policies.activeBadge') : t('admin.policies.inactiveBadge') }}
-        </CaBadge>
-      </template>
-      <template #cell-actions="{ row }">
-        <div class="pol-actions">
-          <CaButton size="small" variant="subtle" @click="openEdit(row)">
-            {{ t('admin.policies.editAction') }}
-          </CaButton>
-          <CaButton size="small" variant="subtle" @click="openDelete(row)">
-            {{ t('admin.policies.deleteAction') }}
-          </CaButton>
-        </div>
-      </template>
-    </CaTable>
+    <section class="ca-panel">
+      <CaTable
+        table-key="admin-policies"
+        :columns="columns"
+        :rows="rows"
+        :row-key="(row) => row.id"
+        :loading="loading"
+      >
+        <template #cell-name="{ row }">
+          <span class="pol-name">{{ row.name }}</span>
+          <div v-if="row.resource_type" class="admin-cell__sub admin-mono">
+            {{ row.resource_type }}{{ row.resource_id ? `:${row.resource_id}` : '' }}
+          </div>
+        </template>
+        <template #cell-effect="{ row }">
+          <CaBadge :variant="row.effect === 'deny' ? 'danger' : 'success'">
+            {{
+              row.effect === 'deny'
+                ? t('admin.policies.effectDeny')
+                : t('admin.policies.effectAllow')
+            }}
+          </CaBadge>
+        </template>
+        <template #cell-subject="{ row }">
+          {{ row.subject_label ?? row.subject_id }}
+          <div class="admin-cell__sub">{{ subjectTypeLabel(row.subject_type) }}</div>
+        </template>
+        <template #cell-permission_pattern="{ row }">
+          <span class="admin-mono">{{ row.permission_pattern }}</span>
+        </template>
+        <template #cell-priority="{ row }">
+          {{ row.priority }}
+          <div class="admin-cell__sub">{{ formatDateTime(row.created_at) }}</div>
+        </template>
+        <template #cell-is_active="{ row }">
+          <CaBadge :variant="row.is_active ? 'success' : 'neutral'">
+            {{
+              row.is_active ? t('admin.policies.activeBadge') : t('admin.policies.inactiveBadge')
+            }}
+          </CaBadge>
+        </template>
+        <template #cell-actions="{ row }">
+          <CaRowMenu
+            :label="t('table.rowActions')"
+            :items="[
+              { key: 'edit', label: t('admin.policies.editAction') },
+              { key: 'delete', label: t('admin.policies.deleteAction'), danger: true },
+            ]"
+            @select="(key: string) => (key === 'edit' ? openEdit(row) : openDelete(row))"
+          />
+        </template>
+      </CaTable>
+    </section>
 
     <CaDialog
       v-model:open="showForm"
@@ -311,14 +328,21 @@ onMounted(load);
         <CaField :label="t('admin.policies.formName')">
           <CaInput v-model="editForm.name" />
         </CaField>
-        <CaField :label="t('admin.policies.formPriority')" :hint="t('admin.policies.formPriorityHint')">
+        <CaField
+          :label="t('admin.policies.formPriority')"
+          :hint="t('admin.policies.formPriorityHint')"
+        >
           <CaInput v-model="editForm.priority" />
         </CaField>
         <div class="admin-form__row">
-          <CaField :label="`${t('admin.policies.formResourceType')} (${t('admin.policies.resourceOptional')})`">
+          <CaField
+            :label="`${t('admin.policies.formResourceType')} (${t('admin.policies.resourceOptional')})`"
+          >
             <CaInput v-model="editForm.resourceType" />
           </CaField>
-          <CaField :label="`${t('admin.policies.formResourceId')} (${t('admin.policies.resourceOptional')})`">
+          <CaField
+            :label="`${t('admin.policies.formResourceId')} (${t('admin.policies.resourceOptional')})`"
+          >
             <CaInput v-model="editForm.resourceId" />
           </CaField>
         </div>
@@ -334,7 +358,10 @@ onMounted(load);
           <CaField :label="t('admin.policies.formEffect')">
             <CaSelect v-model="createForm.effect" :options="effectOptions" />
           </CaField>
-          <CaField :label="t('admin.policies.formPriority')" :hint="t('admin.policies.formPriorityHint')">
+          <CaField
+            :label="t('admin.policies.formPriority')"
+            :hint="t('admin.policies.formPriorityHint')"
+          >
             <CaInput v-model="createForm.priority" />
           </CaField>
         </div>
@@ -350,14 +377,21 @@ onMounted(load);
             />
           </CaField>
         </div>
-        <CaField :label="t('admin.policies.formPattern')" :hint="t('admin.policies.formPatternHint')">
+        <CaField
+          :label="t('admin.policies.formPattern')"
+          :hint="t('admin.policies.formPatternHint')"
+        >
           <CaInput v-model="createForm.permissionPattern" placeholder="knowledge.*" />
         </CaField>
         <div class="admin-form__row">
-          <CaField :label="`${t('admin.policies.formResourceType')} (${t('admin.policies.resourceOptional')})`">
+          <CaField
+            :label="`${t('admin.policies.formResourceType')} (${t('admin.policies.resourceOptional')})`"
+          >
             <CaInput v-model="createForm.resourceType" />
           </CaField>
-          <CaField :label="`${t('admin.policies.formResourceId')} (${t('admin.policies.resourceOptional')})`">
+          <CaField
+            :label="`${t('admin.policies.formResourceId')} (${t('admin.policies.resourceOptional')})`"
+          >
             <CaInput v-model="createForm.resourceId" />
           </CaField>
         </div>
@@ -378,11 +412,7 @@ onMounted(load);
       </template>
     </CaDialog>
 
-    <CaDialog
-      v-model:open="showDelete"
-      :title="t('admin.policies.deleteTitle')"
-      size="small"
-    >
+    <CaDialog v-model:open="showDelete" :title="t('admin.policies.deleteTitle')" size="small">
       <p class="pol-delete-text">
         {{ t('admin.policies.deleteConfirm', { name: deleting?.name ?? '' }) }}
       </p>

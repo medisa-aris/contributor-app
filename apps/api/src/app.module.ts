@@ -5,6 +5,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import configuration from './config/configuration';
 import { validateEnv } from './config/env.validation';
 import { DatabaseModule } from './database/database.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AgentsModule } from './modules/agents/agents.module';
 import { AiModule } from './modules/ai/ai.module';
@@ -37,6 +38,7 @@ import { RbacModule } from './modules/rbac/rbac.module';
     DocumentsModule,
     KnowledgeModule,
     AgentsModule,
+    DashboardModule,
     MindMapModule,
     IntegrationsModule,
     ConnectorsModule,

@@ -260,8 +260,8 @@ async function submit(): Promise<void> {
 }
 
 .ae__group {
-  border: 1px solid var(--ca-border-subtle, var(--ca-border));
-  border-radius: var(--ca-radius-medium, 8px);
+  border: 1px solid var(--ca-stroke-2, var(--ca-stroke-2));
+  border-radius: var(--ca-radius-xl, 8px);
   padding: var(--ca-space-3) var(--ca-space-4);
   margin: 0;
 }

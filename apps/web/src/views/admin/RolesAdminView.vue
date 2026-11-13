@@ -3,13 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { RouterLink } from 'vue-router';
 import { ApiError } from '@/api/http';
-import {
-  createRole,
-  deleteRole,
-  listRoles,
-  updateRole,
-  type AdminRoleRow,
-} from '@/api/admin';
+import { createRole, deleteRole, listRoles, updateRole, type AdminRoleRow } from '@/api/admin';
 import { useAuthStore } from '@/stores/auth.store';
 import { useToastStore } from '@/stores/toast.store';
 import {
@@ -19,6 +13,7 @@ import {
   CaField,
   CaInput,
   CaPageHeader,
+  CaRowMenu,
   CaTable,
   type CaTableColumn,
 } from '@/components/ui';
@@ -54,7 +49,8 @@ const columns = computed<CaTableColumn[]>(() => {
     { key: 'is_system', label: t('admin.roles.columnType'), width: '110px' },
     { key: 'created_at', label: t('admin.roles.columnCreated'), width: '170px' },
   ];
-  if (canManage.value) base.push({ key: 'actions', label: '', width: '150px', align: 'end', sortable: false });
+  if (canManage.value)
+    base.push({ key: 'actions', label: '', width: '150px', align: 'end', sortable: false });
   return base;
 });
 
@@ -163,10 +159,7 @@ onMounted(load);
 
 <template>
   <section>
-    <CaPageHeader
-      :title="t('admin.roles.title')"
-      :description="t('admin.roles.description')"
-    >
+    <CaPageHeader :title="t('admin.roles.title')" :description="t('admin.roles.description')">
       <template #actions>
         <CaButton v-if="canManage" variant="primary" @click="openCreate">
           {{ t('admin.roles.addButton') }}
@@ -176,55 +169,50 @@ onMounted(load);
 
     <p v-if="error" class="admin-error">{{ error }}</p>
 
-    <CaTable
-      table-key="admin-roles"
-      :columns="columns"
-      :rows="rows"
-      :row-key="(row) => row.id"
-      :loading="loading"
-    >
-      <template #cell-name="{ row }">
-        <RouterLink class="admin-name-link" :to="`/administration/roles/${row.id}`">
-          {{ row.name }}
-        </RouterLink>
-        <div class="admin-cell__sub admin-mono">{{ row.code }}</div>
-      </template>
-      <template #cell-permission_count="{ row }">
-        {{ t('admin.roles.permissionCount', { count: row.permission_count }) }}
-      </template>
-      <template #cell-assignment_count="{ row }">
-        {{ t('admin.roles.assignmentCount', { count: row.assignment_count }) }}
-      </template>
-      <template #cell-is_system="{ row }">
-        <CaBadge :variant="row.is_system ? 'brand' : 'neutral'">
-          {{ row.is_system ? t('admin.roles.systemBadge') : t('admin.roles.customBadge') }}
-        </CaBadge>
-      </template>
-      <template #cell-created_at="{ row }">
-        {{ formatDateTime(row.created_at) }}
-      </template>
-      <template #cell-actions="{ row }">
-        <div class="roles-actions">
-          <CaButton size="small" variant="subtle" @click="openEdit(row)">
-            {{ t('admin.roles.editAction') }}
-          </CaButton>
-          <CaButton
-            v-if="!row.is_system"
-            size="small"
-            variant="subtle"
-            @click="openDelete(row)"
-          >
-            {{ t('admin.roles.deleteAction') }}
-          </CaButton>
-        </div>
-      </template>
-    </CaTable>
+    <section class="ca-panel">
+      <CaTable
+        table-key="admin-roles"
+        :columns="columns"
+        :rows="rows"
+        :row-key="(row) => row.id"
+        :loading="loading"
+      >
+        <template #cell-name="{ row }">
+          <RouterLink class="admin-name-link" :to="`/administration/roles/${row.id}`">
+            {{ row.name }}
+          </RouterLink>
+          <div class="admin-cell__sub admin-mono">{{ row.code }}</div>
+        </template>
+        <template #cell-permission_count="{ row }">
+          {{ t('admin.roles.permissionCount', { count: row.permission_count }) }}
+        </template>
+        <template #cell-assignment_count="{ row }">
+          {{ t('admin.roles.assignmentCount', { count: row.assignment_count }) }}
+        </template>
+        <template #cell-is_system="{ row }">
+          <CaBadge :variant="row.is_system ? 'brand' : 'neutral'">
+            {{ row.is_system ? t('admin.roles.systemBadge') : t('admin.roles.customBadge') }}
+          </CaBadge>
+        </template>
+        <template #cell-created_at="{ row }">
+          {{ formatDateTime(row.created_at) }}
+        </template>
+        <template #cell-actions="{ row }">
+          <CaRowMenu
+            :label="t('table.rowActions')"
+            :items="[
+              { key: 'edit', label: t('admin.roles.editAction') },
+              ...(row.is_system
+                ? []
+                : [{ key: 'delete', label: t('admin.roles.deleteAction'), danger: true }]),
+            ]"
+            @select="(key: string) => (key === 'edit' ? openEdit(row) : openDelete(row))"
+          />
+        </template>
+      </CaTable>
+    </section>
 
-    <CaDialog
-      v-model:open="showCreate"
-      :title="t('admin.roles.createTitle')"
-      size="small"
-    >
+    <CaDialog v-model:open="showCreate" :title="t('admin.roles.createTitle')" size="small">
       <div class="admin-form">
         <CaField :label="t('admin.roles.formCode')" :hint="t('admin.roles.formCodeHint')">
           <CaInput v-model="createForm.code" placeholder="hr_admin" />
@@ -247,11 +235,7 @@ onMounted(load);
       </template>
     </CaDialog>
 
-    <CaDialog
-      v-model:open="showEdit"
-      :title="t('admin.roles.editTitle')"
-      size="small"
-    >
+    <CaDialog v-model:open="showEdit" :title="t('admin.roles.editTitle')" size="small">
       <div class="admin-form">
         <CaField :label="t('admin.roles.formName')">
           <CaInput v-model="editForm.name" />
@@ -271,11 +255,7 @@ onMounted(load);
       </template>
     </CaDialog>
 
-    <CaDialog
-      v-model:open="showDelete"
-      :title="t('admin.roles.deleteTitle')"
-      size="small"
-    >
+    <CaDialog v-model:open="showDelete" :title="t('admin.roles.deleteTitle')" size="small">
       <p class="roles-delete-text">
         {{ t('admin.roles.deleteConfirm', { name: target?.name ?? '' }) }}
       </p>

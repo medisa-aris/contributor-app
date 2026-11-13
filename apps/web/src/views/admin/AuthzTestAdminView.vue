@@ -112,7 +112,9 @@ function scopeLabel(scope: AdminDataScope | null): string {
   return t('admin.groupDetail.scopeOwn');
 }
 
-function chainEffectVariant(effect: EffectiveChainEntry['effect']): 'success' | 'danger' | 'neutral' {
+function chainEffectVariant(
+  effect: EffectiveChainEntry['effect'],
+): 'success' | 'danger' | 'neutral' {
   if (effect === 'allow') return 'success';
   if (effect === 'deny') return 'danger';
   return 'neutral';
@@ -164,13 +166,19 @@ function chainEffectVariant(effect: EffectiveChainEntry['effect']): 'success' | 
       </CaField>
 
       <div class="admin-form__row">
-        <CaField :label="`${t('admin.authzTest.formResourceType')} (${t('admin.policies.resourceOptional')})`">
+        <CaField
+          :label="`${t('admin.authzTest.formResourceType')} (${t('admin.policies.resourceOptional')})`"
+        >
           <CaInput v-model="form.resourceType" />
         </CaField>
-        <CaField :label="`${t('admin.authzTest.formResourceId')} (${t('admin.policies.resourceOptional')})`">
+        <CaField
+          :label="`${t('admin.authzTest.formResourceId')} (${t('admin.policies.resourceOptional')})`"
+        >
           <CaInput v-model="form.resourceId" />
         </CaField>
-        <CaField :label="`${t('admin.authzTest.formResourceOwner')} (${t('admin.policies.resourceOptional')})`">
+        <CaField
+          :label="`${t('admin.authzTest.formResourceOwner')} (${t('admin.policies.resourceOptional')})`"
+        >
           <CaInput v-model="form.resourceOwnerId" />
         </CaField>
       </div>
@@ -188,7 +196,11 @@ function chainEffectVariant(effect: EffectiveChainEntry['effect']): 'success' | 
       <h2 class="at-result__title">{{ t('admin.authzTest.resultTitle') }}</h2>
       <div class="at-result__verdict">
         <CaBadge :variant="result.allowed ? 'success' : 'danger'">
-          {{ result.allowed ? t('admin.effectivePermissions.allowed') : t('admin.effectivePermissions.denied') }}
+          {{
+            result.allowed
+              ? t('admin.effectivePermissions.allowed')
+              : t('admin.effectivePermissions.denied')
+          }}
         </CaBadge>
         <span class="at-result__reason">{{ reasonLabel(result.reason) }}</span>
         <span class="at-result__scope">{{ scopeLabel(result.scope) }}</span>
@@ -214,7 +226,12 @@ function chainEffectVariant(effect: EffectiveChainEntry['effect']): 'success' | 
   max-width: 720px;
   display: flex;
   flex-direction: column;
-  gap: var(--ca-space-2);
+  gap: var(--ca-space-6);
+  padding: var(--ca-space-10);
+  border: 1px solid var(--ca-stroke-2);
+  border-radius: var(--ca-radius-xl);
+  background: var(--ca-bg-surface);
+  box-shadow: var(--ca-shadow-4);
 }
 
 .at-user {
@@ -268,10 +285,11 @@ function chainEffectVariant(effect: EffectiveChainEntry['effect']): 'success' | 
 
 .at-result {
   margin-top: var(--ca-space-12);
+  padding: var(--ca-space-10);
   border: 1px solid var(--ca-stroke-2);
-  border-radius: var(--ca-radius-lg);
+  border-radius: var(--ca-radius-xl);
   background: var(--ca-bg-surface);
-  padding: var(--ca-space-8);
+  box-shadow: var(--ca-shadow-4);
   max-width: 720px;
 }
 

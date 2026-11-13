@@ -2,11 +2,18 @@ import type { MindMapMode } from '@/api/mindmap/types';
 
 export const MODE_ORDER: readonly MindMapMode[] = ['second_brain', 'counterpart', 'subordinate'];
 
-/** Warna penanda mode; cukup kontras di tema terang maupun gelap. */
+/** Warna penanda mode dari seri grafik Fluent Green (berbeda di tema terang dan gelap). */
 export const MODE_COLORS: Record<MindMapMode, string> = {
-  second_brain: '#3b82f6',
-  counterpart: '#f59e0b',
-  subordinate: '#a855f7',
+  second_brain: 'var(--ca-chart-1)',
+  counterpart: 'var(--ca-chart-2)',
+  subordinate: 'var(--ca-chart-3)',
+};
+
+/** Pola garis per mode agar seri tetap terbedakan tanpa mengandalkan warna. */
+export const MODE_DASH: Record<MindMapMode, 'solid' | 'dashed' | 'dotted'> = {
+  second_brain: 'solid',
+  counterpart: 'dashed',
+  subordinate: 'dotted',
 };
 
 export function dominantMode(counts: Record<MindMapMode, number>): MindMapMode {

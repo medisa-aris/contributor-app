@@ -481,7 +481,7 @@ function departmentName(id: string | null): string {
 }
 
 .udetail-back {
-  color: var(--ca-color-brand);
+  color: var(--ca-color-brand-text);
   text-decoration: none;
   font-weight: var(--ca-font-weight-medium);
   font-size: var(--ca-text-200);

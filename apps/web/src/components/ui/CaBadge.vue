@@ -1,12 +1,29 @@
 <script setup lang="ts">
-withDefaults(
+import { computed, useSlots } from 'vue';
+import CaIcon from './CaIcon.vue';
+
+type Variant = 'brand' | 'danger' | 'success' | 'warning' | 'informative' | 'neutral';
+
+const props = withDefaults(
   defineProps<{
-    variant?: 'brand' | 'danger' | 'success' | 'warning' | 'informative' | 'neutral';
+    variant?: Variant;
     size?: 'small' | 'medium';
     strong?: boolean;
+    noIcon?: boolean;
   }>(),
   { variant: 'neutral', size: 'medium' },
 );
+
+// Status is never color alone: status variants carry an icon next to the word.
+const STATUS_ICON: Partial<Record<Variant, string>> = {
+  success: 'check-circle',
+  warning: 'warning',
+  danger: 'error-circle',
+  informative: 'info',
+};
+
+const slots = useSlots();
+const statusIcon = computed(() => (props.noIcon || slots.icon ? null : (STATUS_ICON[props.variant] ?? null)));
 </script>
 
 <template>
@@ -14,6 +31,7 @@ withDefaults(
     class="ca-badge"
     :class="[`ca-badge--${variant}`, `ca-badge--${size}`, { 'ca-badge--strong': strong }]"
   >
+    <CaIcon v-if="statusIcon" :name="statusIcon" :size="size === 'small' ? 12 : 14" class="ca-badge__icon" />
     <slot name="icon" />
     <slot />
   </span>
@@ -23,28 +41,28 @@ withDefaults(
 .ca-badge {
   display: inline-flex;
   align-items: center;
-  gap: var(--ca-space-1);
-  border-radius: var(--ca-radius-circular);
+  gap: var(--ca-space-2);
+  border-radius: var(--ca-radius-md);
   font-weight: var(--ca-font-weight-semibold);
   white-space: nowrap;
 }
 
 .ca-badge--small {
-  font-size: var(--ca-text-100);
-  line-height: var(--ca-line-100);
-  padding: 1px var(--ca-space-4);
+  font-size: var(--ca-text-200);
+  line-height: var(--ca-line-200);
+  padding: 0 var(--ca-space-3);
 }
 
 .ca-badge--medium {
   font-size: var(--ca-text-200);
   line-height: var(--ca-line-200);
-  padding: 1px var(--ca-space-6);
+  padding: var(--ca-space-1) var(--ca-space-4);
 }
 
 .ca-badge--brand {
   background: var(--ca-color-brand-subtle);
-  color: var(--ca-color-brand);
-  border: 1px solid var(--ca-color-brand);
+  color: var(--ca-color-brand-text);
+  border: 1px solid transparent;
 }
 
 .ca-badge--danger {
@@ -85,25 +103,25 @@ withDefaults(
 
 .ca-badge--strong.ca-badge--danger {
   background: var(--ca-danger-stroke);
-  color: #ffffff;
+  color: var(--ca-fg-on-status);
   border-color: transparent;
 }
 
 .ca-badge--strong.ca-badge--success {
   background: var(--ca-success-stroke);
-  color: #ffffff;
+  color: var(--ca-fg-on-status);
   border-color: transparent;
 }
 
 .ca-badge--strong.ca-badge--warning {
   background: var(--ca-warning-stroke);
-  color: #ffffff;
+  color: var(--ca-fg-on-status);
   border-color: transparent;
 }
 
 .ca-badge--strong.ca-badge--informative {
   background: var(--ca-info-stroke);
-  color: #ffffff;
+  color: var(--ca-fg-on-status);
   border-color: transparent;
 }
 
@@ -111,5 +129,8 @@ withDefaults(
   background: var(--ca-fg-2);
   color: var(--ca-bg-surface);
   border-color: transparent;
+}
+.ca-badge__icon {
+  flex: none;
 }
 </style>

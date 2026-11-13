@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router';
+import CaIcon from './CaIcon.vue';
 
 export interface CaBreadcrumbItem {
   label: string;
@@ -14,7 +15,7 @@ defineProps<{
 <template>
   <nav class="ca-breadcrumb" aria-label="Breadcrumb">
     <template v-for="(item, index) in items" :key="index">
-      <span v-if="index > 0" class="ca-breadcrumb__separator" aria-hidden="true">/</span>
+      <CaIcon v-if="index > 0" name="chevron-right" :size="12" class="ca-breadcrumb__separator" />
       <RouterLink v-if="item.to && index < items.length - 1" :to="item.to" class="ca-breadcrumb__link">
         {{ item.label }}
       </RouterLink>
@@ -33,13 +34,16 @@ defineProps<{
 .ca-breadcrumb {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--ca-space-2);
-  font-size: var(--ca-text-200);
-  line-height: var(--ca-line-200);
+  min-width: 0;
+  font-size: var(--ca-text-300);
+  line-height: var(--ca-line-300);
 }
 
 .ca-breadcrumb__separator {
-  color: var(--ca-fg-4);
+  color: var(--ca-fg-3);
+  flex: none;
 }
 
 .ca-breadcrumb__link {

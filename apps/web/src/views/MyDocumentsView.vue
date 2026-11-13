@@ -17,6 +17,7 @@ import {
   CaInput,
   CaPageHeader,
   CaPagination,
+  CaRowMenu,
   CaTable,
   type CaTableColumn,
 } from '@/components/ui';
@@ -66,7 +67,10 @@ async function remove(doc: UserDocument): Promise<void> {
     await load();
   } catch (caught) {
     toast.push(
-      { variant: 'danger', title: caught instanceof ApiError ? caught.message : t('errors.saveFailed') },
+      {
+        variant: 'danger',
+        title: caught instanceof ApiError ? caught.message : t('errors.saveFailed'),
+      },
       5000,
     );
   }
@@ -84,50 +88,65 @@ onMounted(() => void load());
 
     <div class="mydocs" :class="{ 'mydocs--viewer': selected }">
       <section class="mydocs__list">
-        <div class="admin-filters">
-          <CaInput
-            v-model="search"
-            class="admin-filters__wide"
-            :placeholder="t('workspace.documents.search')"
-            :aria-label="t('workspace.documents.search')"
-            @keyup.enter="applyFilters"
-          />
-          <CaButton variant="secondary" @click="applyFilters">{{ t('common.search') }}</CaButton>
-        </div>
-
         <p v-if="error" class="admin-error" role="alert">{{ error }}</p>
 
-        <CaTable
-          table-key="my-documents"
-          :columns="columns"
-          :rows="items"
-          :row-key="(row) => row.id"
-          :loading="loading"
-          :empty-title="t('workspace.documents.empty')"
-        >
-          <template #cell-title="{ row }">
-            <button type="button" class="mydocs__open" @click="selected = row as UserDocument">
-              {{ row.title }}
-            </button>
-          </template>
-          <template #cell-format="{ row }">
-            <CaBadge size="small">{{ formatLabel(String(row.format)) }}</CaBadge>
-          </template>
-          <template #cell-size="{ row }">{{ formatBytes(Number(row.size_bytes)) }}</template>
-          <template #cell-created="{ row }">{{ formatDateTime(String(row.created_at)) }}</template>
-          <template #cell-actions="{ row }">
-            <div class="mydocs__actions">
-              <CaButton size="small" variant="secondary" @click="download(row as UserDocument)">
-                {{ t('workspace.documents.download') }}
-              </CaButton>
-              <CaButton size="small" variant="danger" @click="remove(row as UserDocument)">
-                {{ t('workspace.documents.delete') }}
-              </CaButton>
-            </div>
-          </template>
-        </CaTable>
+        <section class="ca-panel">
+          <CaTable
+            table-key="my-documents"
+            :columns="columns"
+            :rows="items"
+            :row-key="(row) => row.id"
+            :loading="loading"
+            :empty-title="t('workspace.documents.empty')"
+          >
+            <template #toolbar>
+              <div class="ca-toolbar">
+                <CaInput
+                  v-model="search"
+                  class="ca-toolbar__search"
+                  :placeholder="t('workspace.documents.search')"
+                  :aria-label="t('workspace.documents.search')"
+                  @keyup.enter="applyFilters"
+                />
+                <CaButton variant="secondary" @click="applyFilters">{{
+                  t('common.search')
+                }}</CaButton>
+              </div>
+            </template>
+            <template #cell-title="{ row }">
+              <button type="button" class="mydocs__open" @click="selected = row as UserDocument">
+                {{ row.title }}
+              </button>
+            </template>
+            <template #cell-format="{ row }">
+              <CaBadge size="small">{{ formatLabel(String(row.format)) }}</CaBadge>
+            </template>
+            <template #cell-size="{ row }">{{ formatBytes(Number(row.size_bytes)) }}</template>
+            <template #cell-created="{ row }">{{
+              formatDateTime(String(row.created_at))
+            }}</template>
+            <template #cell-actions="{ row }">
+              <CaRowMenu
+                :label="t('table.rowActions')"
+                :items="[
+                  { key: 'download', label: t('workspace.documents.download') },
+                  {
+                    key: 'delete',
+                    label: t('workspace.documents.delete'),
+                    danger: true,
+                    divider: true,
+                  },
+                ]"
+                @select="
+                  (key: string) =>
+                    key === 'download' ? download(row as UserDocument) : remove(row as UserDocument)
+                "
+              />
+            </template>
+          </CaTable>
 
-        <CaPagination :page="page" :limit="pageSize" :total="total" @change="goPage" />
+          <CaPagination :page="page" :limit="pageSize" :total="total" @change="goPage" />
+        </section>
       </section>
 
       <DocumentViewerPanel

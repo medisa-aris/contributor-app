@@ -24,6 +24,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import { useToastStore } from '@/stores/toast.store';
 import { usePagedList } from '@/composables/usePagedList';
 import { formatDateTime } from '@/utils/format';
+import { listDbConnectors, testDbConnector, type DbConnectorRow } from '@/api/connectors';
 import ConnectorGrantsDialog from '@/components/integrations/ConnectorGrantsDialog.vue';
 import DbConnectorsSection from '@/components/integrations/DbConnectorsSection.vue';
 import McpToolsDialog from '@/components/integrations/McpToolsDialog.vue';
@@ -36,7 +37,9 @@ import {
   CaInput,
   CaPageHeader,
   CaSelect,
+  CaIcon,
   CaSpinner,
+  CaStatCard,
   CaSwitch,
   CaTable,
   CaTextarea,
@@ -294,6 +297,99 @@ function healthLabel(row: McpServerRow | RestConnectorRow): string {
   return row.last_health_ok ? t('integrations.healthOk') : t('integrations.healthFail');
 }
 
+// --- Ringkasan kesehatan & peta koneksi ---
+type Health = 'ok' | 'bad' | 'unknown';
+
+const dbItems = ref<DbConnectorRow[]>([]);
+const dbSectionKey = ref(0);
+const checkingAll = ref(false);
+
+async function loadDb(): Promise<void> {
+  if (!canView.value) return;
+  try {
+    dbItems.value = await listDbConnectors();
+  } catch {
+    dbItems.value = [];
+  }
+}
+
+function healthOf(row: { last_health_ok: boolean | null }): Health {
+  if (row.last_health_ok === null) return 'unknown';
+  return row.last_health_ok ? 'ok' : 'bad';
+}
+
+const providerHealth = computed<Health>(() => {
+  const p = provider.value;
+  if (!p) return 'unknown';
+  const key = p.provider as keyof typeof p.credentials;
+  return key in p.credentials && !p.credentials[key] ? 'bad' : 'ok';
+});
+
+interface MapNode {
+  id: string;
+  name: string;
+  kind: 'provider' | 'mcp' | 'db' | 'rest';
+  health: Health;
+  anchor: string;
+}
+
+const mapNodes = computed<MapNode[]>(() => {
+  const nodes: MapNode[] = [];
+  if (provider.value) {
+    nodes.push({ id: 'provider', name: provider.value.provider, kind: 'provider', health: providerHealth.value, anchor: 'int-provider' });
+  }
+  for (const row of mcpItems.value) nodes.push({ id: `mcp-${row.id}`, name: row.name, kind: 'mcp', health: healthOf(row), anchor: 'int-mcp' });
+  for (const row of dbItems.value) nodes.push({ id: `db-${row.id}`, name: row.name, kind: 'db', health: healthOf(row), anchor: 'int-db' });
+  for (const row of restItems.value) nodes.push({ id: `rest-${row.id}`, name: row.name, kind: 'rest', health: healthOf(row), anchor: 'int-rest' });
+  return nodes;
+});
+
+const healthTotals = computed(() => {
+  const totals = { ok: 0, bad: 0, unknown: 0, total: mapNodes.value.length };
+  for (const node of mapNodes.value) totals[node.health] += 1;
+  return totals;
+});
+
+function problemsHint(rows: { last_health_ok: boolean | null }[]): string {
+  if (rows.length === 0) return t('integrations.kpiNone');
+  const bad = rows.filter((r) => r.last_health_ok === false).length;
+  return bad > 0 ? t('integrations.kpiProblems', { n: bad }) : t('integrations.kpiAllHealthy');
+}
+
+function nodeY(index: number): string {
+  return `${((index + 0.5) / Math.max(1, mapNodes.value.length)) * 100}%`;
+}
+
+function healthWord(health: Health): string {
+  if (health === 'ok') return t('integrations.healthOk');
+  if (health === 'bad') return t('integrations.healthFail');
+  return t('integrations.healthUnknown');
+}
+
+function jumpTo(anchor: string): void {
+  document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function checkAll(): Promise<void> {
+  checkingAll.value = true;
+  try {
+    for (const row of mcpItems.value) await checkMcp(row);
+    for (const row of restItems.value) await checkRest(row);
+    for (const row of dbItems.value) {
+      try {
+        await testDbConnector(row.id);
+      } catch {
+        // hasil gagal tetap tercatat di baris konektor
+      }
+    }
+    await loadDb();
+    dbSectionKey.value += 1;
+    toast.push({ variant: 'success', title: t('integrations.checkAllDone') });
+  } finally {
+    checkingAll.value = false;
+  }
+}
+
 // --- Dialog tambah MCP ---
 const mcpOpen = ref(false);
 const mcpSaving = ref(false);
@@ -421,17 +517,90 @@ onMounted(() => {
   void loadProvider();
   void loadMcp();
   void loadRest();
+  void loadDb();
 });
 </script>
 
 <template>
   <div>
-    <CaPageHeader
-      :title="t('integrations.title')"
-      :description="t('integrations.description')"
-    />
+    <CaPageHeader :title="t('integrations.title')" :description="t('integrations.description')">
+      <template #actions>
+        <CaButton v-if="canConfigure" :loading="checkingAll" @click="checkAll">
+          <template #icon-start><CaIcon name="refresh" :size="16" /></template>
+          {{ t('integrations.checkAll') }}
+        </CaButton>
+      </template>
+    </CaPageHeader>
 
-    <section v-if="canView" class="int-provider">
+    <section v-if="canView" class="ca-kpis" :aria-label="t('integrations.kpiLabel')">
+      <CaStatCard
+        hero
+        :label="t('integrations.kpiHealthy')"
+        :value="t('integrations.kpiHealthyValue', { ok: healthTotals.ok, total: healthTotals.total })"
+        :hint="t('integrations.kpiHealthyHint', { bad: healthTotals.bad, unknown: healthTotals.unknown })"
+      />
+      <CaStatCard
+        :label="t('integrations.kpiProvider')"
+        :value="provider?.provider ?? '—'"
+        :tone="providerHealth === 'bad' ? 'danger' : 'neutral'"
+        :hint="provider?.model ?? ''"
+      />
+      <CaStatCard
+        :label="t('integrations.kpiMcp')"
+        :value="mcpItems.length"
+        :tone="mcpItems.some((r) => r.last_health_ok === false) ? 'danger' : 'success'"
+        :hint="problemsHint(mcpItems)"
+      />
+      <CaStatCard
+        :label="t('integrations.kpiDb')"
+        :value="dbItems.length"
+        :tone="dbItems.some((r) => r.last_health_ok === false) ? 'danger' : 'success'"
+        :hint="problemsHint(dbItems)"
+      />
+    </section>
+
+    <section v-if="canView && mapNodes.length > 0" class="ca-panel int-map" aria-labelledby="int-map-title">
+      <div class="int-map__head">
+        <h2 id="int-map-title" class="ca-panel__title">{{ t('integrations.mapTitle') }}</h2>
+        <span class="int-muted">{{ t('integrations.mapHint') }}</span>
+      </div>
+      <div class="int-map__canvas" :style="{ height: `${Math.max(240, mapNodes.length * 64)}px` }">
+        <svg class="int-map__lines" width="100%" height="100%" aria-hidden="true">
+          <line
+            v-for="(node, index) in mapNodes"
+            :key="node.id"
+            x1="30%"
+            y1="50%"
+            x2="58%"
+            :y2="nodeY(index)"
+            :class="`int-map__line int-map__line--${node.health}`"
+          />
+        </svg>
+        <div class="int-map__hub">
+          <span class="int-map__hub-name">{{ t('integrations.mapHub') }}</span>
+          <span class="int-map__hub-sub">{{ t('integrations.mapHubSub') }}</span>
+        </div>
+        <button
+          v-for="(node, index) in mapNodes"
+          :key="node.id"
+          type="button"
+          class="int-map__node"
+          :style="{ top: nodeY(index) }"
+          @click="jumpTo(node.anchor)"
+        >
+          <span class="int-map__node-text">
+            <span class="int-map__node-name">{{ node.name }}</span>
+            <span class="int-muted">{{ t(`integrations.nodeKinds.${node.kind}`) }}</span>
+          </span>
+          <span class="int-map__status" :class="`int-map__status--${node.health}`">
+            <CaIcon :name="node.health === 'ok' ? 'check-circle' : node.health === 'bad' ? 'error-circle' : 'clock'" :size="14" />
+            {{ healthWord(node.health) }}
+          </span>
+        </button>
+      </div>
+    </section>
+
+    <section v-if="canView" id="int-provider" class="int-provider">
       <h2 class="int-heading">{{ t('integrations.providerHeading') }}</h2>
       <div v-if="providerLoading" class="int-loading"><CaSpinner /></div>
       <p v-else-if="providerError" class="admin-error" role="alert">{{ providerError }}</p>
@@ -471,7 +640,7 @@ onMounted(() => {
       </CaCard>
     </section>
 
-    <section>
+    <section id="int-mcp">
       <div class="int-section-head">
         <h2 class="int-heading">{{ t('integrations.mcpHeading') }}</h2>
         <CaButton v-if="canConfigure" variant="primary" @click="openMcpDialog">
@@ -568,9 +737,11 @@ onMounted(() => {
       />
     </section>
 
-    <DbConnectorsSection v-if="canView" :can-configure="canConfigure" />
+    <div id="int-db">
+      <DbConnectorsSection v-if="canView" :key="dbSectionKey" :can-configure="canConfigure" />
+    </div>
 
-    <section>
+    <section id="int-rest">
       <div class="int-section-head">
         <h2 class="int-heading">{{ t('integrations.restHeading') }}</h2>
         <CaButton v-if="canConfigure" variant="primary" @click="openRestDialog">
@@ -763,6 +934,165 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.int-muted {
+  color: var(--ca-fg-3);
+}
+
+.int-map {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ca-space-8);
+  margin-bottom: var(--ca-space-16);
+}
+
+.int-map__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--ca-space-4);
+}
+
+.int-map__canvas {
+  position: relative;
+  border-radius: var(--ca-radius-xl);
+  background: var(--ca-bg-canvas);
+}
+
+.int-map__lines {
+  position: absolute;
+  inset: 0;
+}
+
+.int-map__line {
+  stroke-width: 1.5;
+}
+
+.int-map__line--ok {
+  stroke: var(--ca-chart-1);
+}
+
+.int-map__line--bad {
+  stroke: var(--ca-danger-stroke);
+  stroke-dasharray: 6 4;
+}
+
+.int-map__line--unknown {
+  stroke: var(--ca-chart-4);
+  stroke-dasharray: 2 4;
+  stroke-linecap: round;
+}
+
+.int-map__hub {
+  position: absolute;
+  left: 4%;
+  width: 26%;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ca-space-2);
+  padding: var(--ca-space-8);
+  border-radius: var(--ca-radius-xl);
+  background: var(--ca-color-brand-strong);
+  color: var(--ca-fg-on-brand-strong);
+  box-shadow: var(--ca-shadow-8);
+}
+
+.int-map__hub-name {
+  font-weight: var(--ca-font-weight-semibold);
+}
+
+.int-map__hub-sub {
+  font-size: var(--ca-text-200);
+  line-height: var(--ca-line-200);
+}
+
+.int-map__node {
+  position: absolute;
+  left: 58%;
+  width: 38%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ca-space-6);
+  padding: var(--ca-space-4) var(--ca-space-6);
+  border: 1px solid var(--ca-stroke-2);
+  border-radius: var(--ca-radius-xl);
+  background: var(--ca-bg-surface);
+  box-shadow: var(--ca-shadow-4);
+  color: var(--ca-fg-1);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.int-map__node:hover {
+  box-shadow: var(--ca-shadow-8);
+}
+
+.int-map__node-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.int-map__node-name {
+  font-weight: var(--ca-font-weight-semibold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.int-map__node-text .int-muted {
+  font-size: var(--ca-text-200);
+  line-height: var(--ca-line-200);
+}
+
+.int-map__status {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ca-space-2);
+  font-size: var(--ca-text-200);
+  line-height: var(--ca-line-200);
+  font-weight: var(--ca-font-weight-semibold);
+}
+
+.int-map__status--ok {
+  color: var(--ca-success-fg);
+}
+
+.int-map__status--bad {
+  color: var(--ca-danger-fg);
+}
+
+.int-map__status--unknown {
+  color: var(--ca-fg-3);
+}
+
+@media (max-width: 900px) {
+  .int-map__canvas {
+    height: auto !important;
+    display: flex;
+    flex-direction: column;
+    gap: var(--ca-space-4);
+    padding: var(--ca-space-6);
+  }
+
+  .int-map__lines {
+    display: none;
+  }
+
+  .int-map__hub,
+  .int-map__node {
+    position: static;
+    width: auto;
+    transform: none;
+  }
+}
+
 .int-heading {
   margin: 0 0 var(--ca-space-4);
   font-size: var(--ca-text-400);
@@ -831,7 +1161,7 @@ onMounted(() => {
 .int-cell__sub {
   font-size: var(--ca-text-200);
   color: var(--ca-fg-3);
-  font-family: var(--ca-font-family-monospace, monospace);
+  font-family: var(--ca-font-family-mono, monospace);
 }
 
 .int-health {

@@ -85,7 +85,7 @@ async function remove(skill: Skill): Promise<void> {
         <div class="sp__info">
           <div class="sp__title">
             <strong>{{ skill.name }}</strong>
-            <CaBadge v-if="skill.is_global" size="small" variant="informative">{{ t('subordinate.skills.global') }}</CaBadge>
+            <CaBadge v-if="skill.is_global" size="small" variant="informative" no-icon>{{ t('subordinate.skills.global') }}</CaBadge>
             <span class="sp__muted">{{ t('subordinate.skills.usedBy', { count: skill.agent_count }) }}</span>
           </div>
           <p class="sp__muted">{{ skill.description }}</p>
@@ -185,8 +185,8 @@ async function remove(skill: Skill): Promise<void> {
   align-items: center;
   flex-wrap: wrap;
   padding: var(--ca-space-3) var(--ca-space-4);
-  border: 1px solid var(--ca-border-subtle, var(--ca-border));
-  border-radius: var(--ca-radius-medium, 8px);
+  border: 1px solid var(--ca-stroke-2, var(--ca-stroke-2));
+  border-radius: var(--ca-radius-xl, 8px);
 }
 
 .sp__info {

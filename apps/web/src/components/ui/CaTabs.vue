@@ -41,13 +41,14 @@ const active = defineModel<string>({ required: true });
 
 .ca-tabs__tab {
   position: relative;
-  padding: var(--ca-space-3) var(--ca-space-6) var(--ca-space-4);
+  font-weight: var(--ca-font-weight-regular);
+  min-height: 40px;
+  padding: var(--ca-space-4) var(--ca-space-6);
   border: none;
   background: transparent;
-  color: var(--ca-fg-2);
+  color: var(--ca-fg-3);
   font-size: var(--ca-text-300);
   line-height: var(--ca-line-300);
-  font-weight: var(--ca-font-weight-semibold);
   cursor: pointer;
   border-radius: var(--ca-radius-md) var(--ca-radius-md) 0 0;
   transition: color var(--ca-duration-faster) var(--ca-curve-easy-ease);
@@ -56,11 +57,11 @@ const active = defineModel<string>({ required: true });
 .ca-tabs__tab::after {
   content: '';
   position: absolute;
-  left: var(--ca-space-4);
-  right: var(--ca-space-4);
+  left: var(--ca-space-6);
+  right: var(--ca-space-6);
   bottom: -1px;
-  height: 2px;
-  border-radius: var(--ca-radius-circular);
+  height: 3px;
+  border-radius: var(--ca-radius-sm);
   background: transparent;
 }
 
@@ -69,7 +70,8 @@ const active = defineModel<string>({ required: true });
 }
 
 .ca-tabs__tab--active {
-  color: var(--ca-color-brand);
+  color: var(--ca-color-brand-text);
+  font-weight: var(--ca-font-weight-semibold);
 }
 
 .ca-tabs__tab--active::after {

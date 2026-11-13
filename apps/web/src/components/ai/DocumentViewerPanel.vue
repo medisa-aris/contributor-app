@@ -295,7 +295,7 @@ onBeforeUnmount(() => {
 
 .viewer__error {
   margin: var(--ca-space-5);
-  color: var(--ca-fg-danger, #b3261e);
+  color: var(--ca-danger-fg);
 }
 
 .viewer__frame {

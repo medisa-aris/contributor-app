@@ -67,7 +67,7 @@ Konfigurasi runtime non-rahasia (mis. `security.lockout_threshold`, `security.se
 1. `npm run typecheck` — semua workspace hijau.
 2. `npm test` — baseline Fase 1–6: API 39 unit + 7 suite integrasi / 114 test; Web 3 file / 11 test.
 3. `npm run build` — build produksi lolos.
-4. Smoke UI: login superadmin → sidebar memuat seluruh seksi; buka **Permission Efektif** untuk satu pengguna; buka **Uji Otorisasi** → jalankan satu kombinasi.
+4. Smoke UI: login superadmin → sidebar memuat semua grup (akordeon; grup halaman aktif terbuka), Ctrl/⌘ K membuka palet menu, lonceng notifikasi memuat daftar, Beranda menampilkan kartu KPI; buka **Pengguna** → pilih baris → **Periksa permission efektif**; buka **Uji Otorisasi** → jalankan satu kombinasi. Cek tema terang dan gelap.
 5. Smoke deny: login akun staf → menu administrasi dan mode AI tidak tampil; akses paksa `GET /api/admin/users` dengan sesi staf → `403 AUTHORIZATION_FORBIDDEN`.
 6. Smoke AI Workspace (login akun dengan tiga izin mode, mis. manajer):
    - **Otak Kedua**: kirim satu pertanyaan → jawaban streaming tuntas dan tersimpan.

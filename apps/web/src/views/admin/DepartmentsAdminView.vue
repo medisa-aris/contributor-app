@@ -604,7 +604,7 @@ onBeforeUnmount(() => {
   padding: 0 6px;
   border-radius: var(--ca-radius-circular);
   background: var(--ca-color-brand-subtle);
-  color: var(--ca-color-brand);
+  color: var(--ca-color-brand-text);
   font-size: var(--ca-text-100);
   font-weight: var(--ca-font-weight-semibold);
   text-align: center;
@@ -789,9 +789,9 @@ onBeforeUnmount(() => {
 
 .dep-org-node__code {
   font-size: var(--ca-text-100);
-  font-family: var(--ca-font-family-monospace, monospace);
-  color: var(--ca-color-brand);
-  background: var(--ca-brand-10);
+  font-family: var(--ca-font-family-mono, monospace);
+  color: var(--ca-color-brand-text);
+  background: var(--ca-color-brand-subtle);
   border-radius: var(--ca-radius-sm);
   padding: 0 var(--ca-space-3);
   white-space: nowrap;
@@ -808,7 +808,7 @@ onBeforeUnmount(() => {
   height: 20px;
   border-radius: var(--ca-radius-circular);
   background: var(--ca-color-brand);
-  color: var(--ca-color-neutral-inverted, #ffffff);
+  color: var(--ca-fg-on-brand);
   font-size: 14px;
   line-height: 20px;
   text-align: center;

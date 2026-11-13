@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRoute } from 'vue-router';
+import { apiGet } from '@/api/http';
 import { COUNTERPART_STYLES, type ConversationMode } from '@bara/shared';
 import {
   addUrlAttachment,
@@ -63,7 +65,8 @@ const props = defineProps<{
   mode: ConversationMode;
 }>();
 
-const { t } = useI18n();
+const { t, tm, rt } = useI18n();
+const route = useRoute();
 const auth = useAuthStore();
 const config = useConfigStore();
 const toast = useToastStore();
@@ -112,6 +115,32 @@ const conversations = ref<ConversationSummary[]>([]);
 const conversationsLoading = ref(false);
 const conversationsError = ref('');
 const searchQuery = ref('');
+const guardrailsEnabled = ref(false);
+
+const examplePrompts = computed<string[]>(() => {
+  const raw = tm(`workspace.chat.prompts.${props.mode}`);
+  return Array.isArray(raw) ? raw.map((item) => rt(item as Parameters<typeof rt>[0])) : [];
+});
+
+const monthFormatter = new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' });
+
+/** Label bulan ditampilkan hanya pada percakapan pertama di bulan tersebut. */
+const monthBreaks = computed<(string | null)[]>(() => {
+  let previous = '';
+  return conversations.value.map((item) => {
+    const label = monthFormatter.format(new Date(item.updated_at));
+    if (label === previous) return null;
+    previous = label;
+    return label;
+  });
+});
+
+const composerInput = ref<HTMLTextAreaElement | null>(null);
+
+function usePrompt(text: string): void {
+  draft.value = text;
+  void nextTick(() => composerInput.value?.focus());
+}
 let searchTimer: number | undefined;
 
 const renamingId = ref<string | null>(null);
@@ -873,6 +902,17 @@ onMounted(() => {
   // langsung berlaku tanpa perlu muat ulang halaman.
   void config.load(true);
   void loadConversations();
+  void apiGet<{ enabled: boolean }>('/guardrails/status')
+    .then((status) => {
+      guardrailsEnabled.value = status.enabled;
+    })
+    .catch(() => {
+      guardrailsEnabled.value = false;
+    });
+  const openId = route.query.c;
+  if (typeof openId === 'string' && openId) void openConversation(openId);
+  const prefill = route.query.q;
+  if (typeof prefill === 'string' && prefill) draft.value = prefill;
 });
 
 onBeforeUnmount(() => {
@@ -959,9 +999,9 @@ onBeforeUnmount(() => {
           :title="searchQuery ? t('workspace.chat.searchEmpty') : t('workspace.chat.historyEmpty')"
         />
         <ul v-else class="chat__list">
+          <template v-for="(item, index) in conversations" :key="item.id">
+          <li v-if="monthBreaks[index]" class="chat__list-month" aria-hidden="true">{{ monthBreaks[index] }}</li>
           <li
-            v-for="item in conversations"
-            :key="item.id"
             class="chat__list-item"
             :class="{ 'chat__list-item--active': item.id === conversationId }"
           >
@@ -1022,6 +1062,7 @@ onBeforeUnmount(() => {
               </button>
             </div>
           </li>
+          </template>
         </ul>
       </div>
     </aside>
@@ -1052,6 +1093,12 @@ onBeforeUnmount(() => {
               <CaIcon name="star" :size="15" />
             </button>
           </div>
+          <p v-if="guardrailsEnabled" class="chat__guardrails">
+            <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true">
+              <path d="M8 2 3 4v3.5c0 3 2 5.2 5 6 3-.8 5-3 5-6V4z" />
+            </svg>
+            {{ t('workspace.chat.guardrailsActive') }}
+          </p>
           <p v-if="showTokenUsage" class="chat__token-total">
             {{
               t('workspace.chat.tokenTotal', {
@@ -1139,12 +1186,27 @@ onBeforeUnmount(() => {
       </div>
 
       <div ref="scrollArea" class="chat__messages">
-        <CaEmptyState
-          v-if="messages.length === 0 && !streaming && !regenerating"
-          class="chat__empty"
-          :title="t('workspace.chat.emptyTitle')"
-          :description="t('workspace.chat.emptyDescription')"
-        />
+        <div v-if="messages.length === 0 && !streaming && !regenerating" class="chat__empty">
+          <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true" class="chat__empty-icon">
+            <path d="M4 5h16v11h-9l-5 4v-4H4z" />
+            <path d="M8 9.5h8M8 12.5h5" stroke-linecap="round" />
+          </svg>
+          <h3 class="chat__empty-title">{{ t('workspace.chat.emptyTitle') }}</h3>
+          <p class="chat__empty-desc">
+            {{ examplePrompts.length > 0 ? t('workspace.chat.emptyDescriptionPrompts') : t('workspace.chat.emptyDescription') }}
+          </p>
+          <div v-if="examplePrompts.length > 0" class="chat__prompts">
+            <button
+              v-for="prompt in examplePrompts"
+              :key="prompt"
+              type="button"
+              class="chat__prompt"
+              @click="usePrompt(prompt)"
+            >
+              {{ prompt }}
+            </button>
+          </div>
+        </div>
         <template v-else>
           <ChatMessage
             v-for="(message, index) in messages"
@@ -1193,6 +1255,7 @@ onBeforeUnmount(() => {
 
       <form class="chat__composer" @submit.prevent="send">
         <textarea
+          ref="composerInput"
           v-model="draft"
           class="chat__input"
           rows="3"
@@ -1435,9 +1498,9 @@ onBeforeUnmount(() => {
 .chat {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
-  gap: var(--ca-space-6);
+  gap: var(--ca-space-8);
   min-height: 0;
-  height: calc(100vh - 220px);
+  height: calc(100vh - 230px);
 }
 
 .chat--attachments {
@@ -1493,6 +1556,7 @@ onBeforeUnmount(() => {
   border: 1px solid var(--ca-stroke-2);
   border-radius: var(--ca-radius-xl);
   background: var(--ca-bg-surface);
+  box-shadow: var(--ca-shadow-4);
   overflow: hidden;
 }
 
@@ -1524,7 +1588,7 @@ onBeforeUnmount(() => {
 }
 
 .chat__rail:hover {
-  color: var(--ca-color-brand);
+  color: var(--ca-color-brand-text);
   background: var(--ca-color-brand-subtle);
 }
 
@@ -1640,9 +1704,86 @@ onBeforeUnmount(() => {
   background: var(--ca-bg-surface-3);
 }
 
-.chat__list-item--active {
-  background: var(--ca-bg-surface-3);
-  outline: 1px solid var(--ca-stroke-1);
+.chat__list-item--active,
+.chat__list-item--active:hover {
+  background: var(--ca-color-brand-subtle);
+}
+
+.chat__list-item--active .chat__list-title {
+  font-weight: var(--ca-font-weight-semibold);
+}
+
+.chat__list-month {
+  padding: var(--ca-space-6) var(--ca-space-4) var(--ca-space-2);
+  font-size: var(--ca-text-200);
+  line-height: var(--ca-line-200);
+  font-weight: var(--ca-font-weight-semibold);
+  color: var(--ca-fg-3);
+  text-transform: capitalize;
+}
+
+.chat__list-month:first-child {
+  padding-top: var(--ca-space-2);
+}
+
+.chat__guardrails {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ca-space-2);
+  font-size: var(--ca-text-200);
+  line-height: var(--ca-line-200);
+  color: var(--ca-fg-3);
+}
+
+.chat__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ca-space-4);
+  min-height: 100%;
+  padding: var(--ca-space-20) var(--ca-space-12);
+  text-align: center;
+}
+
+.chat__empty-icon {
+  color: var(--ca-color-brand-secondary);
+}
+
+.chat__empty-title {
+  font-size: var(--ca-text-500);
+  line-height: var(--ca-line-500);
+  font-weight: var(--ca-font-weight-semibold);
+}
+
+.chat__empty-desc {
+  max-width: 420px;
+  color: var(--ca-fg-3);
+}
+
+.chat__prompts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--ca-space-4);
+  max-width: 640px;
+  margin-top: var(--ca-space-4);
+}
+
+.chat__prompt {
+  min-height: 32px;
+  padding: var(--ca-space-3) var(--ca-space-6);
+  border: 1px solid var(--ca-stroke-2);
+  border-radius: var(--ca-radius-lg);
+  background: var(--ca-bg-surface-2);
+  color: var(--ca-fg-1);
+  font: inherit;
+  cursor: pointer;
+}
+
+.chat__prompt:hover {
+  background: var(--ca-color-brand-subtle);
+  border-color: var(--ca-color-brand);
 }
 
 .chat__list-button {
@@ -1754,7 +1895,7 @@ onBeforeUnmount(() => {
   min-height: 0;
   border: 1px solid var(--ca-stroke-2);
   border-radius: var(--ca-radius-xl);
-  background: var(--ca-bg-surface);
+  background: var(--ca-bg-surface-2);
   overflow: hidden;
 }
 
@@ -1936,7 +2077,7 @@ onBeforeUnmount(() => {
   border: 1px solid var(--ca-stroke-1);
   border-radius: var(--ca-radius-sm);
   background: var(--ca-bg-surface);
-  color: var(--ca-color-brand);
+  color: var(--ca-color-brand-text);
 }
 
 .chat__attachment-info {
@@ -1959,7 +2100,7 @@ onBeforeUnmount(() => {
 }
 
 .chat__attachment-link:hover {
-  color: var(--ca-color-brand);
+  color: var(--ca-color-brand-text);
   text-decoration: underline;
 }
 
@@ -2042,6 +2183,7 @@ onBeforeUnmount(() => {
   border: 1px solid var(--ca-stroke-2);
   border-radius: var(--ca-radius-xl);
   background: var(--ca-bg-surface);
+  box-shadow: var(--ca-shadow-4);
   overflow: hidden;
 }
 
@@ -2143,7 +2285,7 @@ onBeforeUnmount(() => {
 
 .chat__toolbar-button--active {
   background: var(--ca-color-brand-subtle);
-  color: var(--ca-color-brand);
+  color: var(--ca-color-brand-text);
 }
 
 .chat__toolbar-badge {
@@ -2194,7 +2336,7 @@ onBeforeUnmount(() => {
 .chat__style-chip--active {
   background: var(--ca-color-brand-subtle);
   border-color: var(--ca-color-brand);
-  color: var(--ca-color-brand);
+  color: var(--ca-color-brand-text);
 }
 
 .chat__style-desc {

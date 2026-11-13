@@ -302,7 +302,7 @@ function submitDialog(): void {
         <p class="showcase__label">Badge</p>
         <div class="showcase__row">
           <CaBadge variant="brand">Administrator</CaBadge>
-          <CaBadge variant="informative">Manajer</CaBadge>
+          <CaBadge variant="informative" no-icon>Manajer</CaBadge>
           <CaBadge variant="neutral">Staf</CaBadge>
           <CaBadge variant="success">Aktif</CaBadge>
           <CaBadge variant="warning">Menunggu</CaBadge>

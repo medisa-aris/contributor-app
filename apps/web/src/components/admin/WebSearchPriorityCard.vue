@@ -222,7 +222,7 @@ onMounted(load);
 }
 .wsp__move:hover:not(:disabled) {
   background: var(--ca-bg-surface-2);
-  color: var(--ca-color-brand);
+  color: var(--ca-color-brand-text);
 }
 .wsp__move:disabled {
   opacity: 0.35;

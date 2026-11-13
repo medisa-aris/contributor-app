@@ -29,6 +29,7 @@ withDefaults(
   resize: vertical;
   min-height: var(--ca-space-20);
   border: 1px solid var(--ca-stroke-1);
+  border-bottom-color: var(--ca-stroke-accessible);
   border-radius: var(--ca-radius-md);
   background: var(--ca-bg-surface);
   color: var(--ca-fg-1);

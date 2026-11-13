@@ -296,11 +296,22 @@ onMounted(() => {
               </RouterLink>
               <span class="gd-row__sub">{{ member.email }}</span>
             </div>
-            <span v-if="member.department_name" class="gd-row__dept">{{ member.department_name }}</span>
+            <span v-if="member.department_name" class="gd-row__dept">{{
+              member.department_name
+            }}</span>
             <CaBadge :variant="member.status === 'active' ? 'success' : 'neutral'">
-              {{ member.status === 'active' ? t('admin.users.statusActive') : t('admin.users.statusDisabled') }}
+              {{
+                member.status === 'active'
+                  ? t('admin.users.statusActive')
+                  : t('admin.users.statusDisabled')
+              }}
             </CaBadge>
-            <CaButton v-if="canManageMembers" size="small" variant="subtle" @click="openRemoveMember(member)">
+            <CaButton
+              v-if="canManageMembers"
+              size="small"
+              variant="subtle"
+              @click="openRemoveMember(member)"
+            >
               {{ t('admin.groupDetail.removeMember') }}
             </CaButton>
           </li>
@@ -322,7 +333,10 @@ onMounted(() => {
         <ul v-if="group.roles.length > 0" class="gd-rows">
           <li v-for="assignment in group.roles" :key="assignment.id" class="gd-row">
             <div class="gd-row__main">
-              <RouterLink class="admin-name-link" :to="`/administration/roles/${assignment.roleId}`">
+              <RouterLink
+                class="admin-name-link"
+                :to="`/administration/roles/${assignment.roleId}`"
+              >
                 {{ assignment.roleName }}
               </RouterLink>
               <span class="admin-mono gd-row__sub">{{ assignment.roleCode }}</span>
@@ -333,7 +347,12 @@ onMounted(() => {
                 · {{ departmentName(assignment.departmentId) }}
               </template>
             </span>
-            <CaButton v-if="canAssignRoles" size="small" variant="subtle" @click="openRevokeRole(assignment.id, assignment.roleName)">
+            <CaButton
+              v-if="canAssignRoles"
+              size="small"
+              variant="subtle"
+              @click="openRevokeRole(assignment.id, assignment.roleName)"
+            >
               {{ t('common.remove') }}
             </CaButton>
           </li>
@@ -373,7 +392,9 @@ onMounted(() => {
           <p v-else class="gd-search-state">{{ t('admin.groupDetail.memberSearchHint') }}</p>
         </div>
         <template #footer>
-          <span class="gd-selected">{{ t('admin.groupDetail.selectedCount', { count: pendingIds.size }) }}</span>
+          <span class="gd-selected">{{
+            t('admin.groupDetail.selectedCount', { count: pendingIds.size })
+          }}</span>
           <CaButton variant="subtle" @click="showMembers = false">
             {{ t('common.cancel') }}
           </CaButton>
@@ -414,11 +435,7 @@ onMounted(() => {
           <CaButton variant="subtle" @click="showRole = false">
             {{ t('common.cancel') }}
           </CaButton>
-          <CaButton
-            variant="primary"
-            :disabled="saving || !roleForm.roleId"
-            @click="submitRole"
-          >
+          <CaButton variant="primary" :disabled="saving || !roleForm.roleId" @click="submitRole">
             {{ t('common.save') }}
           </CaButton>
         </template>
@@ -430,7 +447,9 @@ onMounted(() => {
         size="small"
       >
         <p class="gd-confirm-text">
-          {{ t('admin.groupDetail.removeMemberConfirm', { name: confirmingUser?.display_name ?? '' }) }}
+          {{
+            t('admin.groupDetail.removeMemberConfirm', { name: confirmingUser?.display_name ?? '' })
+          }}
         </p>
         <template #footer>
           <CaButton variant="subtle" @click="showRemoveConfirm = false">
@@ -493,10 +512,11 @@ onMounted(() => {
 }
 
 .gd-section {
+  padding: var(--ca-space-10);
   border: 1px solid var(--ca-stroke-2);
-  border-radius: var(--ca-radius-lg);
+  border-radius: var(--ca-radius-xl);
   background: var(--ca-bg-surface);
-  padding: var(--ca-space-8);
+  box-shadow: var(--ca-shadow-4);
   margin-bottom: var(--ca-space-12);
 }
 

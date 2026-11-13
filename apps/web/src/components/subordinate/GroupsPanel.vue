@@ -260,8 +260,8 @@ async function remove(group: AgentGroup): Promise<void> {
   flex-direction: column;
   gap: var(--ca-space-3);
   padding: var(--ca-space-4);
-  border: 1px solid var(--ca-border-subtle, var(--ca-border));
-  border-radius: var(--ca-radius-large, 12px);
+  border: 1px solid var(--ca-stroke-2, var(--ca-stroke-2));
+  border-radius: var(--ca-radius-xl, 12px);
 }
 
 .gp__card-head {
@@ -300,8 +300,8 @@ async function remove(group: AgentGroup): Promise<void> {
 }
 
 .gp__fieldset {
-  border: 1px solid var(--ca-border-subtle, var(--ca-border));
-  border-radius: var(--ca-radius-medium, 8px);
+  border: 1px solid var(--ca-stroke-2, var(--ca-stroke-2));
+  border-radius: var(--ca-radius-xl, 8px);
   padding: var(--ca-space-3) var(--ca-space-4);
   margin: 0;
 }

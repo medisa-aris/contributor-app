@@ -9,6 +9,7 @@ import {
   CaDialog,
   CaPageHeader,
   CaPagination,
+  CaRowMenu,
   CaTable,
   type CaTableColumn,
 } from '@/components/ui';
@@ -71,47 +72,47 @@ onMounted(load);
 
     <p v-if="error" class="admin-error">{{ error }}</p>
 
-    <CaTable
-      table-key="admin-sessions"
-      :columns="columns"
-      :rows="items"
-      :row-key="(row) => row.id"
-      :loading="loading"
-      :empty-title="t('admin.sessions.empty')"
-    >
-      <template #cell-user="{ row }">
-        <span class="ses-user">{{ row.display_name }}</span>
-        <div class="admin-cell__sub">{{ row.email }}</div>
-      </template>
-      <template #cell-ip="{ row }">
-        <span class="admin-mono">{{ row.ip ?? '—' }}</span>
-      </template>
-      <template #cell-user_agent="{ row }">
-        <span class="ses-agent">{{ agentSummary(row.user_agent) }}</span>
-      </template>
-      <template #cell-created_at="{ row }">
-        {{ formatDateTime(row.created_at) }}
-      </template>
-      <template #cell-last_seen_at="{ row }">
-        {{ formatDateTime(row.last_seen_at) }}
-      </template>
-      <template #cell-expires_at="{ row }">
-        {{ formatDateTime(row.expires_at) }}
-      </template>
-      <template #cell-actions="{ row }">
-        <CaButton size="small" variant="subtle" @click="openRevoke(row)">
-          {{ t('admin.sessions.revokeAction') }}
-        </CaButton>
-      </template>
-    </CaTable>
+    <section class="ca-panel">
+      <CaTable
+        table-key="admin-sessions"
+        :columns="columns"
+        :rows="items"
+        :row-key="(row) => row.id"
+        :loading="loading"
+        :empty-title="t('admin.sessions.empty')"
+      >
+        <template #cell-user="{ row }">
+          <span class="ses-user">{{ row.display_name }}</span>
+          <div class="admin-cell__sub">{{ row.email }}</div>
+        </template>
+        <template #cell-ip="{ row }">
+          <span class="admin-mono">{{ row.ip ?? '—' }}</span>
+        </template>
+        <template #cell-user_agent="{ row }">
+          <span class="ses-agent">{{ agentSummary(row.user_agent) }}</span>
+        </template>
+        <template #cell-created_at="{ row }">
+          {{ formatDateTime(row.created_at) }}
+        </template>
+        <template #cell-last_seen_at="{ row }">
+          {{ formatDateTime(row.last_seen_at) }}
+        </template>
+        <template #cell-expires_at="{ row }">
+          {{ formatDateTime(row.expires_at) }}
+        </template>
+        <template #cell-actions="{ row }">
+          <CaRowMenu
+            :label="t('table.rowActions')"
+            :items="[{ key: 'revoke', label: t('admin.sessions.revokeAction'), danger: true }]"
+            @select="openRevoke(row)"
+          />
+        </template>
+      </CaTable>
 
-    <CaPagination :page="page" :limit="pageSize" :total="total" @change="goPage" />
+      <CaPagination :page="page" :limit="pageSize" :total="total" @change="goPage" />
+    </section>
 
-    <CaDialog
-      v-model:open="showConfirm"
-      :title="t('admin.sessions.revokeTitle')"
-      size="small"
-    >
+    <CaDialog v-model:open="showConfirm" :title="t('admin.sessions.revokeTitle')" size="small">
       <p class="ses-confirm-text">
         {{ t('admin.sessions.revokeConfirm', { name: confirming?.display_name ?? '' }) }}
       </p>

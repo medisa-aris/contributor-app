@@ -151,7 +151,9 @@ src/
 
 - **Navigasi dinamis**: sidebar dirender dari `GET /api/nav` — pohon Application → Module → Feature → MenuItem, difilter server berdasarkan permission efektif pengguna; item dengan `is_future` tampil dengan lencana "segera".
 - **Guard router**: setiap route admin menyatakan permission yang dibutuhkan; pengguna tanpa izin dialihkan ke beranda tanpa request API apa pun.
-- **Design system**: komponen `Ca*` (24 komponen) memakai token CSS `--ca-*` dari `styles/tokens.css` — warna, ukuran teks, spacing, radius, tinggi topbar/sidebar. Tema terang/gelap.
+- **Design system — Fluent Green**: komponen `Ca*` memakai token CSS `--ca-*` dari `styles/tokens.css`, dipetakan dari `tokens.json` pada kanvas desain "ContributorAI — Fluent Green redesign". Hijau utama `#25D366` hanya untuk isian (teks di atasnya `--ca-fg-on-brand` `#0B2B1F`, bukan putih); teks/tautan hijau memakai `--ca-color-brand-text`; isian hijau tua (logo, KPI utama) memakai `--ca-color-brand-strong`. Status selalu ikon + kata + warna (`CaBadge` menambah ikon otomatis). Jangan menulis hex langsung di komponen.
+- **Shell**: `layouts/AppShell.vue` merangkai `components/shell/AppSidebar.vue` (akordeon per aplikasi navigasi; hanya grup aktif terbuka, mode rel 56 px) dan `AppHeader.vue` (breadcrumb, palet perintah Ctrl/⌘ K, tema, notifikasi, profil).
+- **Data Beranda & notifikasi**: `GET /api/dashboard/summary` (bagian dikirim sesuai izin pemanggil), `GET /api/notifications` (turunan dari tugas, persetujuan, dan dokumen gagal; status baca disimpan di `localStorage`), `GET /api/guardrails/status` (hanya flag aktif).
 - **i18n**: seluruh teks UI Bahasa Indonesia (`locales/id.ts`); identifier teknis (permission, kode, event key) tetap Inggris.
 
 ## 5. Alur Otorisasi (ringkas)

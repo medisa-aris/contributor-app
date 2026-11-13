@@ -330,7 +330,7 @@ function statement(payload: Record<string, unknown>): string {
 .tt__instruction,
 .tt__user {
   background: var(--ca-bg-canvas, rgba(0, 0, 0, 0.03));
-  border-radius: var(--ca-radius-medium, 8px);
+  border-radius: var(--ca-radius-xl, 8px);
   padding: var(--ca-space-3);
 }
 
@@ -365,8 +365,8 @@ function statement(payload: Record<string, unknown>): string {
 .tt__bubble-body {
   flex: 1;
   min-width: 0;
-  border: 1px solid var(--ca-border-subtle, var(--ca-border));
-  border-radius: var(--ca-radius-medium, 8px);
+  border: 1px solid var(--ca-stroke-2, var(--ca-stroke-2));
+  border-radius: var(--ca-radius-xl, 8px);
   padding: var(--ca-space-2) var(--ca-space-3);
 }
 
@@ -387,8 +387,8 @@ function statement(payload: Record<string, unknown>): string {
 
 .tt__question {
   padding: var(--ca-space-3);
-  border-radius: var(--ca-radius-medium, 8px);
-  background: var(--ca-bg-warning-subtle, rgba(224, 178, 82, 0.12));
+  border-radius: var(--ca-radius-xl, 8px);
+  background: var(--ca-warning-bg, rgba(224, 178, 82, 0.12));
   color: var(--ca-fg-1);
 }
 
@@ -426,8 +426,8 @@ function statement(payload: Record<string, unknown>): string {
   margin: var(--ca-space-2) 0 0;
   padding: var(--ca-space-3);
   background: var(--ca-bg-canvas, rgba(0, 0, 0, 0.04));
-  border-radius: var(--ca-radius-medium, 6px);
-  font-family: var(--ca-font-family-monospace, monospace);
+  border-radius: var(--ca-radius-xl, 6px);
+  font-family: var(--ca-font-family-mono, monospace);
   font-size: var(--ca-text-200);
   white-space: pre-wrap;
   word-break: break-word;
@@ -436,9 +436,9 @@ function statement(payload: Record<string, unknown>): string {
 }
 
 .tt__approval {
-  border: 1px solid var(--ca-border-warning, #e0b252);
-  background: var(--ca-bg-warning-subtle, rgba(224, 178, 82, 0.1));
-  border-radius: var(--ca-radius-large, 10px);
+  border: 1px solid var(--ca-warning-stroke);
+  background: var(--ca-warning-bg, rgba(224, 178, 82, 0.1));
+  border-radius: var(--ca-radius-xl, 10px);
   padding: var(--ca-space-3) var(--ca-space-4);
   display: flex;
   flex-direction: column;
@@ -454,7 +454,7 @@ function statement(payload: Record<string, unknown>): string {
   text-align: center;
   font-size: var(--ca-text-200);
   color: var(--ca-fg-3);
-  border-top: 1px dashed var(--ca-border);
+  border-top: 1px dashed var(--ca-stroke-2);
   padding-top: var(--ca-space-2);
 }
 
@@ -483,7 +483,7 @@ function statement(payload: Record<string, unknown>): string {
 .tt__result {
   margin-top: var(--ca-space-5, 20px);
   padding-top: var(--ca-space-4);
-  border-top: 1px solid var(--ca-border-subtle, var(--ca-border));
+  border-top: 1px solid var(--ca-stroke-2, var(--ca-stroke-2));
 }
 
 .tt__result h3 {

@@ -2,11 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { ApiError } from '@/api/http';
-import {
-  decideApproval,
-  listApprovals,
-  type ApprovalRow,
-} from '@/api/agents';
+import { decideApproval, listApprovals, type ApprovalRow } from '@/api/agents';
 import { useAuthStore } from '@/stores/auth.store';
 import { useToastStore } from '@/stores/toast.store';
 import { usePagedList } from '@/composables/usePagedList';
@@ -123,61 +119,72 @@ async function submitDecide(): Promise<void> {
       :description="t('agents.approvalsDescription')"
     />
 
-    <div class="admin-filters">
-      <CaSelect
-        v-model="statusFilter"
-        class="admin-filters__field"
-        :options="statusOptions"
-        :aria-label="t('agents.columnStatus')"
-      />
-      <CaButton variant="secondary" @click="applyFilter">{{ t('common.apply') }}</CaButton>
-    </div>
-
     <p v-if="error" class="admin-error" role="alert">{{ error }}</p>
 
-    <CaTable
-      table-key="agent-approvals"
-      :columns="columns"
-      :rows="items"
-      :row-key="(row) => row.id"
-      :loading="loading"
-      :empty-title="t('agents.approvalsEmpty')"
-    >
-      <template #cell-summary="{ row }">
-        <span class="appr-summary">{{ row.summary }}</span>
-      </template>
-      <template #cell-agent="{ row }">
-        {{ row.agent_name ?? '—' }}
-      </template>
-      <template #cell-requester="{ row }">
-        <div class="appr-requester">
-          <span>{{ row.requester_email ?? '—' }}</span>
-          <span v-if="row.decided_by_email" class="appr-requester__sub">
-            {{ t('agents.decidedBy') }}: {{ row.decided_by_email }}
-          </span>
-        </div>
-      </template>
-      <template #cell-status="{ row }">
-        <CaBadge :variant="statusVariant(row as ApprovalRow)" size="small">
-          {{ statusLabel(row as ApprovalRow) }}
-        </CaBadge>
-      </template>
-      <template #cell-created="{ row }">
-        {{ formatDateTime(row.created_at) }}
-      </template>
-      <template #cell-actions="{ row }">
-        <div v-if="(row as ApprovalRow).status === 'pending'" class="appr-actions">
-          <CaButton size="small" variant="primary" @click="openDecide(row as ApprovalRow, 'approved')">
-            {{ t('agents.approveAction') }}
-          </CaButton>
-          <CaButton size="small" variant="danger" @click="openDecide(row as ApprovalRow, 'rejected')">
-            {{ t('agents.rejectAction') }}
-          </CaButton>
-        </div>
-      </template>
-    </CaTable>
+    <section class="ca-panel">
+      <CaTable
+        table-key="agent-approvals"
+        :columns="columns"
+        :rows="items"
+        :row-key="(row) => row.id"
+        :loading="loading"
+        :empty-title="t('agents.approvalsEmpty')"
+      >
+        <template #toolbar>
+          <div class="ca-toolbar">
+            <CaSelect
+              v-model="statusFilter"
+              class="ca-toolbar__select"
+              :options="statusOptions"
+              :aria-label="t('agents.columnStatus')"
+            />
+            <CaButton variant="secondary" @click="applyFilter">{{ t('common.apply') }}</CaButton>
+          </div>
+        </template>
+        <template #cell-summary="{ row }">
+          <span class="appr-summary">{{ row.summary }}</span>
+        </template>
+        <template #cell-agent="{ row }">
+          {{ row.agent_name ?? '—' }}
+        </template>
+        <template #cell-requester="{ row }">
+          <div class="appr-requester">
+            <span>{{ row.requester_email ?? '—' }}</span>
+            <span v-if="row.decided_by_email" class="appr-requester__sub">
+              {{ t('agents.decidedBy') }}: {{ row.decided_by_email }}
+            </span>
+          </div>
+        </template>
+        <template #cell-status="{ row }">
+          <CaBadge :variant="statusVariant(row as ApprovalRow)" size="small">
+            {{ statusLabel(row as ApprovalRow) }}
+          </CaBadge>
+        </template>
+        <template #cell-created="{ row }">
+          {{ formatDateTime(row.created_at) }}
+        </template>
+        <template #cell-actions="{ row }">
+          <div v-if="(row as ApprovalRow).status === 'pending'" class="appr-actions">
+            <CaButton
+              size="small"
+              variant="primary"
+              @click="openDecide(row as ApprovalRow, 'approved')"
+            >
+              {{ t('agents.approveAction') }}
+            </CaButton>
+            <CaButton
+              size="small"
+              variant="danger"
+              @click="openDecide(row as ApprovalRow, 'rejected')"
+            >
+              {{ t('agents.rejectAction') }}
+            </CaButton>
+          </div>
+        </template>
+      </CaTable>
 
-    <CaPagination :page="page" :limit="pageSize" :total="total" @change="goPage" />
+      <CaPagination :page="page" :limit="pageSize" :total="total" @change="goPage" />
+    </section>
 
     <CaDialog
       v-model:open="decideOpen"
@@ -193,15 +200,15 @@ async function submitDecide(): Promise<void> {
         </CaField>
       </form>
       <template #footer>
-        <CaButton variant="secondary" @click="decideOpen = false">{{ t('common.cancel') }}</CaButton>
+        <CaButton variant="secondary" @click="decideOpen = false">{{
+          t('common.cancel')
+        }}</CaButton>
         <CaButton
           :variant="decideAction === 'approved' ? 'primary' : 'danger'"
           :loading="decideSaving"
           @click="submitDecide"
         >
-          {{
-            decideAction === 'approved' ? t('agents.approveAction') : t('agents.rejectAction')
-          }}
+          {{ decideAction === 'approved' ? t('agents.approveAction') : t('agents.rejectAction') }}
         </CaButton>
       </template>
     </CaDialog>

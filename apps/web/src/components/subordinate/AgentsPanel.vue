@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { ApiError } from '@/api/http';
 import type { AvailableConnector } from '@/api/connectors';
@@ -22,8 +22,9 @@ const props = defineProps<{
   skills: Skill[];
   connectors: AvailableConnector[];
   loading: boolean;
+  focusAgentId?: string | null;
 }>();
-const emit = defineEmits<{ changed: []; assign: [agentId: string] }>();
+const emit = defineEmits<{ changed: []; assign: [agentId: string]; focused: [] }>();
 
 const { t } = useI18n();
 const toast = useToastStore();
@@ -44,6 +45,20 @@ function openEdit(agent: PersonalAgent): void {
   editing.value = agent;
   editorOpen.value = true;
 }
+
+// Dibuka lewat palet perintah (?agent=id): sorot agen begitu daftarnya termuat.
+watch(
+  () => [props.focusAgentId, props.agents] as const,
+  ([id, agents]) => {
+    if (!id) return;
+    const match = agents.find((a) => a.id === id);
+    if (match) {
+      openEdit(match);
+      emit('focused');
+    }
+  },
+  { immediate: true },
+);
 
 async function openTemplates(): Promise<void> {
   templatesOpen.value = true;
@@ -133,7 +148,7 @@ void props;
         <p class="ap__desc">{{ agent.description || agent.responsibilities || agent.instruction }}</p>
         <div v-if="agent.skills.length" class="ap__chips">
           <span class="ap__chip-label">{{ t('subordinate.agents.skills') }}</span>
-          <CaBadge v-for="skill in agent.skills" :key="skill.id" size="small" variant="informative">{{ skill.name }}</CaBadge>
+          <CaBadge v-for="skill in agent.skills" :key="skill.id" size="small" variant="informative" no-icon>{{ skill.name }}</CaBadge>
         </div>
         <div v-if="agent.connectors.length" class="ap__chips">
           <span class="ap__chip-label">{{ t('subordinate.agents.connectors') }}</span>
@@ -237,8 +252,8 @@ void props;
   flex-direction: column;
   gap: var(--ca-space-3);
   padding: var(--ca-space-4);
-  border: 1px solid var(--ca-border-subtle, var(--ca-border));
-  border-radius: var(--ca-radius-large, 12px);
+  border: 1px solid var(--ca-stroke-2, var(--ca-stroke-2));
+  border-radius: var(--ca-radius-xl, 12px);
   background: var(--ca-bg-surface, transparent);
 }
 
@@ -312,7 +327,7 @@ void props;
   gap: var(--ca-space-4);
   align-items: center;
   padding: var(--ca-space-3);
-  border: 1px solid var(--ca-border-subtle, var(--ca-border));
-  border-radius: var(--ca-radius-medium, 8px);
+  border: 1px solid var(--ca-stroke-2, var(--ca-stroke-2));
+  border-radius: var(--ca-radius-xl, 8px);
 }
 </style>

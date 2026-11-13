@@ -160,9 +160,9 @@ function cell(value: unknown): string {
 }
 
 .trace__approval {
-  border: 1px solid var(--ca-border-warning, #e0b252);
-  background: var(--ca-bg-warning-subtle, rgba(224, 178, 82, 0.1));
-  border-radius: var(--ca-radius-large, 10px);
+  border: 1px solid var(--ca-warning-stroke);
+  background: var(--ca-warning-bg, rgba(224, 178, 82, 0.1));
+  border-radius: var(--ca-radius-xl, 10px);
   padding: var(--ca-space-4);
   display: flex;
   flex-direction: column;
@@ -193,8 +193,8 @@ function cell(value: unknown): string {
   margin: 0;
   padding: var(--ca-space-3);
   background: var(--ca-bg-canvas, rgba(0, 0, 0, 0.04));
-  border-radius: var(--ca-radius-medium, 6px);
-  font-family: var(--ca-font-family-monospace, monospace);
+  border-radius: var(--ca-radius-xl, 6px);
+  font-family: var(--ca-font-family-mono, monospace);
   font-size: var(--ca-text-200);
   white-space: pre-wrap;
   word-break: break-word;
@@ -206,7 +206,7 @@ function cell(value: unknown): string {
   display: inline-flex;
   align-items: center;
   gap: var(--ca-space-2);
-  border: 1px solid var(--ca-border-subtle, var(--ca-border));
+  border: 1px solid var(--ca-stroke-2, var(--ca-stroke-2));
   background: transparent;
   color: var(--ca-fg-2);
   border-radius: 999px;
@@ -229,8 +229,8 @@ function cell(value: unknown): string {
 }
 
 .trace__item {
-  border: 1px solid var(--ca-border-subtle, var(--ca-border));
-  border-radius: var(--ca-radius-medium, 8px);
+  border: 1px solid var(--ca-stroke-2, var(--ca-stroke-2));
+  border-radius: var(--ca-radius-xl, 8px);
 }
 
 .trace__item-head {
@@ -282,7 +282,7 @@ function cell(value: unknown): string {
 
 .trace__table th,
 .trace__table td {
-  border-bottom: 1px solid var(--ca-border-subtle, var(--ca-border));
+  border-bottom: 1px solid var(--ca-stroke-2, var(--ca-stroke-2));
   padding: 4px 8px;
   text-align: left;
   white-space: nowrap;

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { ApiError } from '@/api/http';
+import type { DashboardSummaryDto } from '@bara/shared';
+import { ApiError, apiGet } from '@/api/http';
 import {
   createDocument,
   createSource,
@@ -14,16 +15,20 @@ import {
 import { useAuthStore } from '@/stores/auth.store';
 import { useToastStore } from '@/stores/toast.store';
 import { usePagedList } from '@/composables/usePagedList';
+import { downloadCsv } from '@/utils/csv';
 import { formatDateTime } from '@/utils/format';
 import {
   CaBadge,
   CaButton,
   CaDialog,
   CaField,
+  CaIcon,
   CaInput,
   CaPageHeader,
   CaPagination,
+  CaRowMenu,
   CaSelect,
+  CaStatCard,
   CaTable,
   CaTextarea,
   type CaSelectOption,
@@ -68,17 +73,51 @@ const columns = computed<CaTableColumn[]>(() => {
   return cols;
 });
 
-const stats = computed(() => {
-  let indexed = 0;
-  let pending = 0;
-  let failed = 0;
-  for (const doc of items.value) {
-    if (doc.status === 'indexed') indexed += 1;
-    else if (doc.status === 'pending') pending += 1;
-    else if (doc.status === 'failed') failed += 1;
-  }
-  return { indexed, pending, failed };
+const counts = ref<DashboardSummaryDto['documents'] | null>(null);
+const indexedPct = computed(() => {
+  const c = counts.value;
+  const all = c ? c.indexed + c.pending + c.failed : 0;
+  return c && all > 0 ? Math.round((c.indexed / all) * 100) : 0;
 });
+
+async function loadCounts(): Promise<void> {
+  try {
+    counts.value = (await apiGet<DashboardSummaryDto>('/dashboard/summary')).documents ?? null;
+  } catch {
+    counts.value = null;
+  }
+}
+
+const selection = ref<string[]>([]);
+const confirmOpen = ref(false);
+const bulkDeleting = ref(false);
+
+function rowMenuItems() {
+  return [{ key: 'delete', label: t('common.delete'), danger: true }];
+}
+
+async function bulkDelete(): Promise<void> {
+  bulkDeleting.value = true;
+  const ids = [...selection.value];
+  const results = await Promise.allSettled(ids.map((id) => deleteDocument(id)));
+  const failed = results.filter((r) => r.status === 'rejected').length;
+  bulkDeleting.value = false;
+  confirmOpen.value = false;
+  selection.value = [];
+  if (failed > 0) toast.push({ variant: 'danger', title: t('errors.saveFailed') });
+  if (ids.length - failed > 0) {
+    toast.push({ variant: 'success', title: t('knowledge.documentsDeleted', { n: ids.length - failed }) });
+  }
+  await Promise.all([load(), loadCounts()]);
+}
+
+function exportCsv(): void {
+  downloadCsv(
+    'dokumen-pengetahuan',
+    [t('knowledge.columnTitle'), t('knowledge.columnSource'), t('knowledge.columnStatus'), t('knowledge.columnUpdated')],
+    items.value.map((row) => [row.title, row.source_name ?? '', statusLabel(row), formatDateTime(row.updated_at)]),
+  );
+}
 
 function applyFilters(): void {
   setFilter({
@@ -100,6 +139,7 @@ async function loadSources(): Promise<void> {
 onMounted(() => {
   void load();
   void loadSources();
+  void loadCounts();
 });
 
 // --- Dialog unggah dokumen ---
@@ -137,7 +177,7 @@ async function submitUpload(): Promise<void> {
     });
     toast.push({ variant: 'success', title: t('knowledge.documentCreated') });
     uploadOpen.value = false;
-    await load();
+    await Promise.all([load(), loadCounts()]);
   } catch (caught) {
     formError.value = caught instanceof ApiError ? caught.message : t('errors.saveFailed');
   } finally {
@@ -149,7 +189,7 @@ async function removeDocument(row: KnowledgeDocumentRow): Promise<void> {
   try {
     await deleteDocument(row.id);
     toast.push({ variant: 'success', title: t('knowledge.documentDeleted') });
-    await load();
+    await Promise.all([load(), loadCounts()]);
   } catch (caught) {
     toast.push({
       variant: 'danger',
@@ -226,60 +266,72 @@ function statusLabel(row: KnowledgeDocumentRow): string {
       </template>
     </CaPageHeader>
 
-    <div class="kdoc-stats">
-      <div class="kdoc-stat">
-        <span class="kdoc-stat__value">{{ stats.indexed }}</span>
-        <span class="kdoc-stat__label">{{ t('knowledge.statusIndexed') }}</span>
-      </div>
-      <div class="kdoc-stat">
-        <span class="kdoc-stat__value">{{ stats.pending }}</span>
-        <span class="kdoc-stat__label">{{ t('knowledge.statusPending') }}</span>
-      </div>
-      <div class="kdoc-stat">
-        <span class="kdoc-stat__value">{{ stats.failed }}</span>
-        <span class="kdoc-stat__label">{{ t('knowledge.statusFailed') }}</span>
-      </div>
-      <div class="kdoc-stat">
-        <span class="kdoc-stat__value">{{ total }}</span>
-        <span class="kdoc-stat__label">{{ t('knowledge.totalDocuments') }}</span>
-      </div>
-    </div>
-
-    <div class="admin-filters">
-      <CaInput
-        v-model="search"
-        class="admin-filters__wide"
-        :placeholder="t('knowledge.searchPlaceholder')"
-        :aria-label="t('common.search')"
-        @keyup.enter="applyFilters"
+    <section v-if="counts" class="ca-kpis" :aria-label="t('knowledge.documentsTitle')">
+      <CaStatCard
+        :label="t('knowledge.statusIndexed')"
+        :value="counts.indexed"
+        tone="success"
+        :hint="t('knowledge.statIndexedHint', { pct: indexedPct })"
       />
-      <CaSelect
-        v-model="sourceFilter"
-        class="admin-filters__field"
-        :options="sourceOptions"
-        :aria-label="t('knowledge.filterSource')"
-        @update:model-value="applyFilters"
+      <CaStatCard :label="t('knowledge.statusPending')" :value="counts.pending" :hint="t('knowledge.statPendingHint')" />
+      <CaStatCard
+        :label="t('knowledge.statusFailed')"
+        :value="counts.failed"
+        :tone="counts.failed > 0 ? 'danger' : 'neutral'"
+        :hint="counts.failed > 0 ? t('knowledge.statFailedHint') : t('knowledge.statFailedNone')"
       />
-      <CaSelect
-        v-model="statusFilter"
-        class="admin-filters__field"
-        :options="statusOptions"
-        :aria-label="t('knowledge.filterStatus')"
-        @update:model-value="applyFilters"
-      />
-      <CaButton variant="secondary" @click="applyFilters">{{ t('common.search') }}</CaButton>
-    </div>
+      <CaStatCard :label="t('knowledge.statSources')" :value="counts.sources" :hint="t('knowledge.statSourcesHint')" />
+    </section>
 
     <p v-if="error" class="admin-error" role="alert">{{ error }}</p>
 
+    <section class="ca-panel">
     <CaTable
+      v-model:selection="selection"
       table-key="knowledge-documents"
       :columns="columns"
       :rows="items"
       :row-key="(row) => row.id"
       :loading="loading"
+      :selectable="canManage"
       :empty-title="t('table.empty')"
     >
+      <template #toolbar>
+        <div class="ca-toolbar">
+          <CaInput
+            v-model="search"
+            type="search"
+            class="ca-toolbar__search"
+            :placeholder="t('knowledge.searchPlaceholder')"
+            :aria-label="t('common.search')"
+            @keyup.enter="applyFilters"
+          />
+          <CaSelect
+            v-model="sourceFilter"
+            class="ca-toolbar__select"
+            :options="sourceOptions"
+            :aria-label="t('knowledge.filterSource')"
+            @update:model-value="applyFilters"
+          />
+          <CaSelect
+            v-model="statusFilter"
+            class="ca-toolbar__select"
+            :options="statusOptions"
+            :aria-label="t('knowledge.filterStatus')"
+            @update:model-value="applyFilters"
+          />
+          <CaButton @click="applyFilters">{{ t('common.search') }}</CaButton>
+        </div>
+        <CaButton :disabled="items.length === 0" @click="exportCsv">
+          <template #icon-start><CaIcon name="download" :size="16" /></template>
+          {{ t('knowledge.exportCsv') }}
+        </CaButton>
+      </template>
+      <template #bulk-actions>
+        <CaButton variant="danger" size="small" @click="confirmOpen = true">
+          {{ t('knowledge.bulkDelete', { n: selection.length }) }}
+        </CaButton>
+      </template>
       <template #cell-title="{ row }">
         <div class="kdoc-title">{{ row.title }}</div>
       </template>
@@ -293,17 +345,26 @@ function statusLabel(row: KnowledgeDocumentRow): string {
         {{ formatDateTime(row.updated_at) }}
       </template>
       <template #cell-actions="{ row }">
-        <CaButton
-          size="small"
-          variant="danger"
-          @click="removeDocument(row as KnowledgeDocumentRow)"
-        >
-          {{ t('common.delete') }}
-        </CaButton>
+        <CaRowMenu
+          :items="rowMenuItems()"
+          :label="t('knowledge.rowMenu', { title: row.title })"
+          @select="removeDocument(row as KnowledgeDocumentRow)"
+        />
       </template>
     </CaTable>
 
     <CaPagination :page="page" :limit="pageSize" :total="total" @change="goPage" />
+    </section>
+
+    <CaDialog v-model:open="confirmOpen" :title="t('knowledge.bulkDeleteTitle')" size="small">
+      <p>{{ t('knowledge.bulkDeleteBody', { n: selection.length }) }}</p>
+      <template #footer>
+        <CaButton @click="confirmOpen = false">{{ t('common.cancel') }}</CaButton>
+        <CaButton variant="danger" :loading="bulkDeleting" @click="bulkDelete">
+          {{ t('knowledge.bulkDelete', { n: selection.length }) }}
+        </CaButton>
+      </template>
+    </CaDialog>
 
     <CaDialog
       v-model:open="uploadOpen"
@@ -370,43 +431,8 @@ function statusLabel(row: KnowledgeDocumentRow): string {
 </template>
 
 <style scoped>
-.kdoc-stats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--ca-space-6);
-  margin-bottom: var(--ca-space-8);
-}
-
-.kdoc-stat {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ca-space-1);
-  padding: var(--ca-space-5) var(--ca-space-6);
-  border: 1px solid var(--ca-border-1);
-  border-radius: var(--ca-radius-3);
-  background: var(--ca-bg-2);
-}
-
-.kdoc-stat__value {
-  font-size: var(--ca-text-700);
+.kdoc-title {
   font-weight: var(--ca-font-weight-semibold);
   color: var(--ca-fg-1);
-  line-height: 1.1;
-}
-
-.kdoc-stat__label {
-  font-size: var(--ca-text-200);
-  color: var(--ca-fg-3);
-}
-
-.kdoc-title {
-  font-weight: var(--ca-font-weight-medium);
-  color: var(--ca-fg-1);
-}
-
-@media (max-width: 900px) {
-  .kdoc-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 </style>

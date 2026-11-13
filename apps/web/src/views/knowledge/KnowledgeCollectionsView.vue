@@ -24,6 +24,7 @@ import {
   CaField,
   CaInput,
   CaPageHeader,
+  CaRowMenu,
   CaTextarea,
 } from '@/components/ui';
 
@@ -224,9 +225,11 @@ async function removeCollection(row: KnowledgeCollectionRow): Promise<void> {
             <CaButton size="small" variant="secondary" @click="openEdit(col)">
               {{ t('common.edit') }}
             </CaButton>
-            <CaButton size="small" variant="danger" @click="removeCollection(col)">
-              {{ t('common.delete') }}
-            </CaButton>
+            <CaRowMenu
+              :label="t('table.rowActions')"
+              :items="[{ key: 'delete', label: t('common.delete'), danger: true }]"
+              @select="removeCollection(col)"
+            />
           </div>
         </div>
       </CaCard>
@@ -239,7 +242,11 @@ async function removeCollection(row: KnowledgeCollectionRow): Promise<void> {
     >
       <p v-if="formError" class="admin-error" role="alert">{{ formError }}</p>
       <form class="admin-form" @submit.prevent="submitCreate">
-        <CaField :label="t('knowledge.formCollectionCode')" :hint="t('knowledge.formSourceCodeHint')" required>
+        <CaField
+          :label="t('knowledge.formCollectionCode')"
+          :hint="t('knowledge.formSourceCodeHint')"
+          required
+        >
           <template #default="{ id, describedBy }">
             <CaInput :id="id" v-model="form.code" :aria-describedby="describedBy" />
           </template>
@@ -251,12 +258,19 @@ async function removeCollection(row: KnowledgeCollectionRow): Promise<void> {
         </CaField>
         <CaField :label="t('knowledge.formSourceDescription')">
           <template #default="{ id, describedBy }">
-            <CaTextarea :id="id" v-model="form.description" :aria-describedby="describedBy" :rows="3" />
+            <CaTextarea
+              :id="id"
+              v-model="form.description"
+              :aria-describedby="describedBy"
+              :rows="3"
+            />
           </template>
         </CaField>
       </form>
       <template #footer>
-        <CaButton variant="secondary" @click="createOpen = false">{{ t('common.cancel') }}</CaButton>
+        <CaButton variant="secondary" @click="createOpen = false">{{
+          t('common.cancel')
+        }}</CaButton>
         <CaButton variant="primary" :loading="saving" @click="submitCreate">
           {{ t('common.save') }}
         </CaButton>
@@ -277,7 +291,12 @@ async function removeCollection(row: KnowledgeCollectionRow): Promise<void> {
         </CaField>
         <CaField :label="t('knowledge.formSourceDescription')">
           <template #default="{ id, describedBy }">
-            <CaTextarea :id="id" v-model="editForm.description" :aria-describedby="describedBy" :rows="3" />
+            <CaTextarea
+              :id="id"
+              v-model="editForm.description"
+              :aria-describedby="describedBy"
+              :rows="3"
+            />
           </template>
         </CaField>
       </form>
@@ -310,7 +329,9 @@ async function removeCollection(row: KnowledgeCollectionRow): Promise<void> {
         </li>
       </ul>
       <template #footer>
-        <CaButton variant="secondary" @click="sourcesOpen = false">{{ t('common.cancel') }}</CaButton>
+        <CaButton variant="secondary" @click="sourcesOpen = false">{{
+          t('common.cancel')
+        }}</CaButton>
         <CaButton variant="primary" :loading="sourcesSaving" @click="submitSources">
           {{ t('common.save') }}
         </CaButton>
@@ -396,6 +417,6 @@ async function removeCollection(row: KnowledgeCollectionRow): Promise<void> {
   margin-left: var(--ca-space-2);
   font-size: var(--ca-text-200);
   color: var(--ca-fg-3);
-  font-family: var(--ca-font-family-monospace, monospace);
+  font-family: var(--ca-font-family-mono, monospace);
 }
 </style>

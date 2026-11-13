@@ -6,7 +6,7 @@ import type { MindMapMode, MindMapQuery } from '@/api/mindmap/types';
 import { useFullscreen } from '@/composables/useFullscreen';
 import MappingTab from './MappingTab.vue';
 import ThoughtStructureTab from './ThoughtStructureTab.vue';
-import { MODE_COLORS, MODE_ORDER } from './mode-colors';
+import { MODE_COLORS, MODE_DASH, MODE_ORDER } from './mode-colors';
 
 const { t } = useI18n();
 const tab = ref<'mapping' | 'thinking'>('mapping');
@@ -81,7 +81,7 @@ const { ui, setFullscreen } = useFullscreen();
             :aria-pressed="activeModes.includes(mode)"
             @click="toggleMode(mode)"
           >
-            <span class="mm__chip-dot" :style="{ background: MODE_COLORS[mode] }" />
+            <span class="mm__chip-line" :style="{ borderTopColor: MODE_COLORS[mode], borderTopStyle: MODE_DASH[mode] }" />
             {{ t(`workspace.mindMap.modes.${mode}`) }}
           </button>
         </div>
@@ -92,7 +92,7 @@ const { ui, setFullscreen } = useFullscreen();
           :aria-label="ui.fullscreen ? t('workspace.mindMap.exitFullscreen') : t('workspace.mindMap.fullscreen')"
           @click="setFullscreen(!ui.fullscreen)"
         >
-          <CaIcon :name="ui.fullscreen ? 'close' : 'columns'" :size="16" />
+          <CaIcon :name="ui.fullscreen ? 'close' : 'fullscreen'" :size="16" />
           <span class="mm__full-text">
             {{ ui.fullscreen ? t('workspace.mindMap.exitFullscreen') : t('workspace.mindMap.fullscreen') }}
           </span>
@@ -105,7 +105,6 @@ const { ui, setFullscreen } = useFullscreen();
       <ThoughtStructureTab v-else :query="query" />
     </div>
 
-    <p class="mm__notice">{{ t('workspace.mindMap.auditNotice') }}</p>
   </section>
 </template>
 
@@ -113,8 +112,8 @@ const { ui, setFullscreen } = useFullscreen();
 .mm {
   display: flex;
   flex-direction: column;
-  gap: var(--ca-space-3);
-  height: calc(100vh - var(--ca-topbar-height) - var(--ca-space-6) * 2);
+  gap: var(--ca-space-8);
+  height: calc(100vh - var(--ca-topbar-height) - var(--ca-space-16) * 2);
   min-height: 560px;
 }
 .mm--full {
@@ -125,21 +124,23 @@ const { ui, setFullscreen } = useFullscreen();
 .mm__head {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: var(--ca-space-3) var(--ca-space-5);
+  align-items: flex-end;
+  gap: var(--ca-space-6) var(--ca-space-8);
 }
 .mm__titles {
   min-width: 0;
 }
 .mm__title {
   margin: 0;
-  font-size: var(--ca-text-500, 20px);
+  font-size: var(--ca-text-700);
+  line-height: var(--ca-line-700);
+  font-weight: var(--ca-font-weight-semibold);
   color: var(--ca-fg-1);
 }
 .mm__desc {
-  margin: 2px 0 0;
-  color: var(--ca-fg-2);
-  max-width: 60ch;
+  margin: var(--ca-space-2) 0 0;
+  color: var(--ca-fg-3);
+  max-width: 680px;
 }
 .mm__filters {
   margin-left: auto;
@@ -150,36 +151,40 @@ const { ui, setFullscreen } = useFullscreen();
 }
 .mm__seg {
   display: inline-flex;
-  border: 1px solid var(--ca-stroke-1);
+  border: 1px solid var(--ca-stroke-accessible);
   border-radius: var(--ca-radius-md);
   overflow: hidden;
 }
 .mm__seg-btn {
-  padding: 6px 12px;
+  height: 30px;
+  padding: 0 12px;
   background: var(--ca-bg-surface);
-  color: var(--ca-fg-2);
+  color: var(--ca-fg-1);
   border: 0;
   cursor: pointer;
   font: inherit;
 }
 .mm__seg-btn + .mm__seg-btn {
-  border-left: 1px solid var(--ca-stroke-1);
+  border-left: 1px solid var(--ca-stroke-accessible);
 }
 .mm__seg-btn--on {
-  background: var(--ca-color-brand);
-  color: var(--ca-fg-on-brand);
+  background: var(--ca-color-brand-subtle);
+  color: var(--ca-color-brand-text);
+  font-weight: var(--ca-font-weight-semibold);
 }
 .mm__modes {
   display: flex;
-  gap: var(--ca-space-1);
+  flex-wrap: wrap;
+  gap: var(--ca-space-4);
 }
 .mm__chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 10px;
-  border-radius: var(--ca-radius-circular);
-  border: 1px solid var(--ca-stroke-1);
+  height: 30px;
+  padding: 0 10px;
+  border-radius: var(--ca-radius-lg);
+  border: 1px solid var(--ca-stroke-2);
   background: var(--ca-bg-surface);
   color: var(--ca-fg-3);
   cursor: pointer;
@@ -191,22 +196,24 @@ const { ui, setFullscreen } = useFullscreen();
   border-color: var(--ca-stroke-2);
   opacity: 1;
 }
-.mm__chip-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.mm__chip-line {
+  width: 16px;
+  height: 0;
+  border-top-width: 2px;
 }
 .mm__full {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
+  height: 32px;
+  padding: 0 12px;
   border-radius: var(--ca-radius-md);
-  border: 1px solid var(--ca-stroke-1);
+  border: 1px solid var(--ca-stroke-accessible);
   background: var(--ca-bg-surface);
   color: var(--ca-fg-1);
   cursor: pointer;
   font: inherit;
+  font-weight: var(--ca-font-weight-semibold);
 }
 .mm__full:hover {
   border-color: var(--ca-color-brand);
@@ -215,11 +222,7 @@ const { ui, setFullscreen } = useFullscreen();
   position: relative;
   flex: 1;
   min-height: 0;
-  border: 1px solid var(--ca-stroke-1);
-  border-radius: var(--ca-radius-lg);
-  background:
-    radial-gradient(circle at 50% 50%, var(--ca-bg-surface) 0%, var(--ca-bg-canvas) 100%);
-  overflow: hidden;
+  overflow: visible;
 }
 .mm__notice {
   margin: 0;

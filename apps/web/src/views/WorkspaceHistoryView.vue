@@ -24,6 +24,7 @@ import {
   CaIcon,
   CaPageHeader,
   CaPagination,
+  CaRowMenu,
   CaSelect,
   CaTable,
   CaTabs,
@@ -243,7 +244,7 @@ onMounted(() => {
     />
 
     <template v-if="tab === 'conversations'">
-      <div class="history__filters">
+      <div class="history__filters ca-toolbar">
         <div class="history__filter">
           <CaSelect v-model="modeFilter" :options="modeOptions" />
         </div>
@@ -255,46 +256,51 @@ onMounted(() => {
 
       <p v-if="convError" class="history__error" role="alert">{{ convError }}</p>
 
-      <CaTable
-        table-key="history-conversations"
-        :columns="conversationColumns"
-        :rows="convItems"
-        :row-key="(row) => row.id"
-        :loading="convLoading"
-      >
-        <template #cell-title="{ row }">
-          <button type="button" class="history__title" @click="openConversation(row.id)">
-            {{ row.title }}
-          </button>
-        </template>
-        <template #cell-mode="{ row }">
-          <CaBadge :variant="modeVariant(row.mode)">{{ modeLabel(row.mode) }}</CaBadge>
-        </template>
-        <template #cell-updated_at="{ row }">
-          {{ formatDateTime(row.updated_at) }}
-        </template>
-        <template #cell-actions="{ row }">
-          <div class="history__actions">
-            <CaButton size="small" variant="subtle" @click="openConversation(row.id)">
-              {{ t('common.details') }}
-            </CaButton>
-            <CaButton size="small" variant="transparent" @click="removeConversation(row.id)">
-              {{ t('common.delete') }}
-            </CaButton>
-          </div>
-        </template>
-      </CaTable>
+      <section class="ca-panel">
+        <CaTable
+          table-key="history-conversations"
+          :columns="conversationColumns"
+          :rows="convItems"
+          :row-key="(row) => row.id"
+          :loading="convLoading"
+        >
+          <template #cell-title="{ row }">
+            <button type="button" class="history__title" @click="openConversation(row.id)">
+              {{ row.title }}
+            </button>
+          </template>
+          <template #cell-mode="{ row }">
+            <CaBadge :variant="modeVariant(row.mode)" no-icon>{{ modeLabel(row.mode) }}</CaBadge>
+          </template>
+          <template #cell-updated_at="{ row }">
+            {{ formatDateTime(row.updated_at) }}
+          </template>
+          <template #cell-actions="{ row }">
+            <CaRowMenu
+              :label="t('table.rowActions')"
+              :items="[
+                { key: 'open', label: t('common.details') },
+                { key: 'delete', label: t('common.delete'), danger: true, divider: true },
+              ]"
+              @select="
+                (key: string) =>
+                  key === 'open' ? openConversation(row.id) : removeConversation(row.id)
+              "
+            />
+          </template>
+        </CaTable>
 
-      <CaPagination
-        :page="convPage"
-        :limit="convPageSize"
-        :total="convTotal"
-        @change="convGoPage"
-      />
+        <CaPagination
+          :page="convPage"
+          :limit="convPageSize"
+          :total="convTotal"
+          @change="convGoPage"
+        />
+      </section>
     </template>
 
     <template v-else>
-      <div class="history__filters">
+      <div class="history__filters ca-toolbar">
         <div class="history__filter">
           <CaSelect v-model="statusFilter" :options="statusOptions" />
         </div>
@@ -306,32 +312,34 @@ onMounted(() => {
 
       <p v-if="taskError" class="history__error" role="alert">{{ taskError }}</p>
 
-      <CaTable
-        table-key="history-tasks"
-        :columns="taskColumns"
-        :rows="taskItems"
-        :row-key="(row) => row.id"
-        :loading="taskLoading"
-      >
-        <template #cell-title="{ row }">
-          <button type="button" class="history__title" @click="openTask(row.id)">
-            {{ row.title }}
-          </button>
-        </template>
-        <template #cell-status="{ row }">
-          <CaBadge :variant="statusVariant(row.status)">{{ statusLabel(row.status) }}</CaBadge>
-        </template>
-        <template #cell-created_at="{ row }">
-          {{ formatDateTime(row.created_at) }}
-        </template>
-      </CaTable>
+      <section class="ca-panel">
+        <CaTable
+          table-key="history-tasks"
+          :columns="taskColumns"
+          :rows="taskItems"
+          :row-key="(row) => row.id"
+          :loading="taskLoading"
+        >
+          <template #cell-title="{ row }">
+            <button type="button" class="history__title" @click="openTask(row.id)">
+              {{ row.title }}
+            </button>
+          </template>
+          <template #cell-status="{ row }">
+            <CaBadge :variant="statusVariant(row.status)">{{ statusLabel(row.status) }}</CaBadge>
+          </template>
+          <template #cell-created_at="{ row }">
+            {{ formatDateTime(row.created_at) }}
+          </template>
+        </CaTable>
 
-      <CaPagination
-        :page="taskPage"
-        :limit="taskPageSize"
-        :total="taskTotal"
-        @change="taskGoPage"
-      />
+        <CaPagination
+          :page="taskPage"
+          :limit="taskPageSize"
+          :total="taskTotal"
+          @change="taskGoPage"
+        />
+      </section>
     </template>
 
     <CaDialog

@@ -114,7 +114,7 @@ const tools = computed(() => state.value?.tools ?? []);
         <div class="mcp__info">
           <span class="mcp__name">
             {{ tool.title ?? tool.name }}
-            <CaBadge v-if="tool.annotations?.readOnlyHint" size="small" variant="informative">read-only</CaBadge>
+            <CaBadge v-if="tool.annotations?.readOnlyHint" size="small" variant="informative" no-icon>read-only</CaBadge>
             <CaBadge v-if="tool.annotations?.destructiveHint" size="small" variant="danger">destructive</CaBadge>
           </span>
           <span class="mcp__code">{{ tool.name }}</span>
@@ -184,8 +184,8 @@ const tools = computed(() => state.value?.tools ?? []);
   justify-content: space-between;
   gap: var(--ca-space-4);
   padding: var(--ca-space-3);
-  border: 1px solid var(--ca-border-subtle, var(--ca-border));
-  border-radius: var(--ca-radius-medium, 8px);
+  border: 1px solid var(--ca-stroke-2, var(--ca-stroke-2));
+  border-radius: var(--ca-radius-xl, 8px);
   flex-wrap: wrap;
 }
 
@@ -206,7 +206,7 @@ const tools = computed(() => state.value?.tools ?? []);
 }
 
 .mcp__code {
-  font-family: var(--ca-font-family-monospace, monospace);
+  font-family: var(--ca-font-family-mono, monospace);
 }
 
 .mcp__controls {
