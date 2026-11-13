@@ -1,7 +1,29 @@
 import { ApiError, apiDelete, apiGet, apiGetPaged, apiUrl } from '@/api/http';
-import type { DocumentPreview, UserDocument } from './types';
+import type { DocumentPreview, OfficeEditorConfig, OfficeSourceKind, UserDocument } from './types';
 
-export type { DocumentFormat, DocumentPreview, UserDocument } from './types';
+export type {
+  DocumentFormat,
+  DocumentPreview,
+  OfficeEditorConfig,
+  OfficeSourceKind,
+  UserDocument,
+} from './types';
+
+/** Format yang dibuka di OnlyOffice. */
+export const OFFICE_FORMATS = ['docx', 'xlsx', 'pptx'] as const;
+
+export function isOfficeFormat(format: string): boolean {
+  return (OFFICE_FORMATS as readonly string[]).includes(format);
+}
+
+/** Konfigurasi editor OnlyOffice bertanda tangan (enabled=false bila server belum dipasang). */
+export function fetchEditorConfig(kind: OfficeSourceKind, id: string): Promise<OfficeEditorConfig> {
+  return apiGet<OfficeEditorConfig>(`/office/${kind}/${id}/editor-config`);
+}
+
+export function getUserDocument(id: string): Promise<UserDocument> {
+  return apiGet<UserDocument>(`/documents/${id}`);
+}
 
 export function listUserDocuments(query: { search?: string; page: number; pageSize: number }) {
   return apiGetPaged<UserDocument>('/documents', query);

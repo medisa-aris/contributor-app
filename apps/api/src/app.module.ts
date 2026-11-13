@@ -10,6 +10,8 @@ import { AdminModule } from './modules/admin/admin.module';
 import { AgentsModule } from './modules/agents/agents.module';
 import { AiModule } from './modules/ai/ai.module';
 import { DocumentsModule } from './modules/documents/documents.module';
+import { OfficeModule } from './modules/office/office.module';
+import { OfficeStylesModule } from './modules/office-styles/office-styles.module';
 import { MindMapModule } from './modules/mind-map/mind-map.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -36,6 +38,8 @@ import { RbacModule } from './modules/rbac/rbac.module';
     AuditModule,
     AiModule,
     DocumentsModule,
+    OfficeModule,
+    OfficeStylesModule,
     KnowledgeModule,
     AgentsModule,
     DashboardModule,

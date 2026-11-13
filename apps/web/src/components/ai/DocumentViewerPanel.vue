@@ -7,14 +7,20 @@ import {
   downloadUserDocument,
   fetchDocumentBlob,
   formatLabel,
+  getUserDocument,
+  isOfficeFormat,
   type DocumentPreview,
+  type OfficeSourceKind,
   type UserDocument,
 } from '@/api/documents';
 import { writeClipboard } from '@/utils/clipboard';
 import MarkdownContent from './MarkdownContent.vue';
+import OfficeEditor from './OfficeEditor.vue';
+import OfficeStyleInspector from './OfficeStyleInspector.vue';
 
-const props = defineProps<{ doc: UserDocument }>();
-const emit = defineEmits<{ close: [] }>();
+/** kind 'att' = lampiran percakapan: dibuka baca saja, tanpa ringkasan/unduh. */
+const props = withDefaults(defineProps<{ doc: UserDocument; kind?: OfficeSourceKind }>(), { kind: 'doc' });
+const emit = defineEmits<{ close: []; updated: [doc: UserDocument] }>();
 
 const { t } = useI18n();
 
@@ -27,8 +33,19 @@ const copied = ref(false);
 const downloading = ref(false);
 let loadToken = 0;
 let copiedTimer: number | undefined;
+let refreshTimer: number | undefined;
 
 const format = computed(() => props.doc.format);
+/** Word/Excel/PowerPoint dibuka di OnlyOffice; pratinjau ringkas tetap tersedia sebagai cadangan. */
+const isOffice = computed(() => isOfficeFormat(props.doc.format));
+const officeAvailable = ref(true);
+type ViewMode = 'edit' | 'preview' | 'styles';
+const mode = ref<ViewMode>('edit');
+const expanded = ref(false);
+const showEditor = computed(() => isOffice.value && officeAvailable.value && mode.value === 'edit');
+const isAttachment = computed(() => props.kind === 'att');
+/** Ringkasan teks hanya tersedia untuk dokumen AI. */
+const needsPreview = computed(() => !isAttachment.value && mode.value !== 'styles' && !showEditor.value);
 const sheet = computed(() => preview.value?.sheets?.[sheetIndex.value] ?? null);
 /** JSON/CSV/teks ditampilkan sebagai blok kode agar spasi terjaga. */
 const codeMarkdown = computed(() => {
@@ -87,24 +104,125 @@ async function copy(): Promise<void> {
   }, 1600);
 }
 
-watch(() => props.doc.id, load, { immediate: true });
+function onEditorUnavailable(): void {
+  officeAvailable.value = false;
+  mode.value = isAttachment.value ? 'styles' : 'preview';
+}
+
+/** Document Server memanggil callback simpan secara asinkron; ambil metadata terbaru sesudahnya. */
+function scheduleRefresh(delayMs = 4000): void {
+  window.clearTimeout(refreshTimer);
+  refreshTimer = window.setTimeout(async () => {
+    try {
+      const fresh = await getUserDocument(props.doc.id);
+      emit('updated', fresh);
+    } catch {
+      /* metadata lama tetap dipakai */
+    }
+  }, delayMs);
+}
+
+function setMode(next: ViewMode): void {
+  if (mode.value === next) return;
+  if (mode.value === 'edit' && !isAttachment.value) scheduleRefresh(1500);
+  mode.value = next;
+}
+
+function onKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape' && expanded.value) expanded.value = false;
+}
+
+watch(
+  () => props.doc.id,
+  () => {
+    mode.value = 'edit';
+    officeAvailable.value = true;
+  },
+);
+watch(
+  [() => props.doc.id, () => props.doc.version, needsPreview],
+  () => {
+    if (needsPreview.value) void load();
+  },
+  { immediate: true },
+);
+window.addEventListener('keydown', onKeydown);
 onBeforeUnmount(() => {
   loadToken += 1;
   revokePdf();
   window.clearTimeout(copiedTimer);
+  window.clearTimeout(refreshTimer);
+  window.removeEventListener('keydown', onKeydown);
 });
 </script>
 
 <template>
-  <aside class="viewer" :aria-label="t('workspace.documents.viewer.title')">
+  <aside
+    class="viewer"
+    :class="{ 'viewer--expanded': expanded }"
+    :aria-label="t('workspace.documents.viewer.title')"
+  >
     <header class="viewer__head">
       <div class="viewer__heading">
         <h2 class="viewer__title" :title="doc.title">{{ doc.title }}</h2>
-        <p class="viewer__format">{{ formatLabel(doc.format) }}</p>
+        <p class="viewer__format">
+          {{ formatLabel(doc.format) }}
+          <template v-if="(doc.version ?? 1) > 1">
+            · {{ t('workspace.documents.viewer.version', { n: doc.version }) }}
+          </template>
+        </p>
+      </div>
+      <div v-if="isOffice" class="viewer__modes" role="tablist">
+        <button
+          v-if="officeAvailable"
+          type="button"
+          role="tab"
+          class="viewer__mode"
+          :class="{ 'viewer__mode--on': mode === 'edit' }"
+          :aria-selected="mode === 'edit'"
+          @click="setMode('edit')"
+        >
+          <CaIcon :name="isAttachment ? 'eye' : 'pencil'" :size="14" />
+          <span>{{ isAttachment ? t('workspace.documents.viewer.view') : t('workspace.documents.viewer.edit') }}</span>
+        </button>
+        <button
+          v-if="!isAttachment"
+          type="button"
+          role="tab"
+          class="viewer__mode"
+          :class="{ 'viewer__mode--on': mode === 'preview' }"
+          :aria-selected="mode === 'preview'"
+          @click="setMode('preview')"
+        >
+          <CaIcon name="file" :size="14" />
+          <span>{{ t('workspace.documents.viewer.preview') }}</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          class="viewer__mode"
+          :class="{ 'viewer__mode--on': mode === 'styles' }"
+          :aria-selected="mode === 'styles'"
+          @click="setMode('styles')"
+        >
+          <CaIcon name="sparkle" :size="14" />
+          <span>{{ t('workspace.documents.viewer.styles') }}</span>
+        </button>
       </div>
       <div class="viewer__actions">
         <button
-          v-if="preview?.text"
+          v-if="isOffice"
+          type="button"
+          class="viewer__btn viewer__btn--icon"
+          :aria-pressed="expanded"
+          :title="expanded ? t('workspace.documents.viewer.collapse') : t('workspace.documents.viewer.expand')"
+          :aria-label="expanded ? t('workspace.documents.viewer.collapse') : t('workspace.documents.viewer.expand')"
+          @click="expanded = !expanded"
+        >
+          <CaIcon name="fullscreen" :size="14" />
+        </button>
+        <button
+          v-if="preview?.text && mode === 'preview'"
           type="button"
           class="viewer__btn"
           :title="t('workspace.chat.copy')"
@@ -114,6 +232,7 @@ onBeforeUnmount(() => {
           <span>{{ copied ? t('workspace.chat.copied') : t('workspace.chat.copy') }}</span>
         </button>
         <button
+          v-if="!isAttachment"
           type="button"
           class="viewer__btn"
           :disabled="downloading"
@@ -136,7 +255,21 @@ onBeforeUnmount(() => {
     </header>
 
     <div class="viewer__body">
-      <CaSpinner v-if="loading" class="viewer__state" />
+      <OfficeEditor
+        v-if="showEditor"
+        :id="doc.id"
+        :key="doc.id"
+        :kind="kind"
+        @unavailable="onEditorUnavailable"
+        @saved="!isAttachment && scheduleRefresh()"
+      />
+      <OfficeStyleInspector
+        v-else-if="isOffice && mode === 'styles'"
+        :id="doc.id"
+        :kind="kind"
+        :name="doc.title"
+      />
+      <CaSpinner v-else-if="loading" class="viewer__state" />
       <p v-else-if="error" class="viewer__error" role="alert">{{ error }}</p>
 
       <iframe
@@ -217,16 +350,64 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
+/* Spesifisitas lebih tinggi dari kelas tata letak induk (mis. .mydocs__viewer yang sticky). */
+.viewer.viewer--expanded {
+  position: fixed;
+  inset: var(--ca-space-3);
+  width: auto;
+  height: auto;
+  max-height: none;
+  margin: 0;
+  /* Di atas shell aplikasi (sticky 1100), di bawah toast agar notifikasi simpan tetap terlihat. */
+  z-index: var(--ca-z-modal);
+  box-shadow: var(--ca-shadow-28, 0 14px 28px rgb(0 0 0 / 0.24));
+}
+
+.viewer__modes {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--ca-radius-md, 6px);
+  background: var(--ca-bg-surface-3);
+  flex: none;
+}
+
+.viewer__mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  border-radius: var(--ca-radius-sm);
+  background: none;
+  padding: 3px 8px;
+  font: inherit;
+  font-size: var(--ca-text-200);
+  color: var(--ca-fg-3);
+  cursor: pointer;
+}
+
+.viewer__mode--on {
+  background: var(--ca-bg-surface);
+  color: var(--ca-fg-1);
+}
+
+.viewer__mode:focus-visible {
+  outline: 2px solid var(--ca-stroke-focus);
+  outline-offset: 1px;
+}
+
 .viewer__head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--ca-space-3);
+  gap: var(--ca-space-2) var(--ca-space-3);
   padding: var(--ca-space-3) var(--ca-space-4);
   border-bottom: 1px solid var(--ca-stroke-2);
 }
 
 .viewer__heading {
+  flex: 1 1 160px;
   min-width: 0;
 }
 
@@ -283,6 +464,7 @@ onBeforeUnmount(() => {
 
 .viewer__body {
   flex: 1;
+  min-width: 0;
   min-height: 0;
   overflow: auto;
   display: flex;

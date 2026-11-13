@@ -35,6 +35,12 @@ export interface SlideSpec {
   title: string;
   bullets: string[];
   notes?: string;
+  /** Nama slide layout templat (mis. "Title and Content", "Two Content"). */
+  layout?: string;
+  /** Nomor slide templat (1-based) yang disalin beserta desain, shape, dan SmartArt-nya. */
+  templateSlide?: number;
+  /** Teks baru untuk node SmartArt pada slide templat yang disalin, berurutan. */
+  diagramItems?: string[];
 }
 
 export interface DocumentSpec {
@@ -44,6 +50,8 @@ export interface DocumentSpec {
   content?: string;
   sheets?: SheetSpec[];
   slides?: SlideSpec[];
+  /** Templat gaya (id document_templates atau id lampiran Office) untuk docx/pptx/xlsx. */
+  templateId?: string;
 }
 
 /** Definisi tool yang ditawarkan ke model pada percakapan Multi Brain / Partner. */
@@ -55,11 +63,19 @@ export const CREATE_DOCUMENT_TOOL: ChatTool = {
     'presentasi, halaman HTML, JSON). Jangan dipakai untuk jawaban percakapan biasa. ' +
     'Pilih format: md, txt, html, json, csv, xlsx, docx, pptx, atau pdf. ' +
     'Untuk md/txt/html/json/csv isi `content` apa adanya. Untuk docx dan pdf isi `content` dengan Markdown ' +
-    '(judul #, daftar -, tabel |, **tebal**). Untuk xlsx isi `sheets`. Untuk pptx isi `slides`.',
+    '(judul #, daftar -, tabel |, **tebal**). Untuk xlsx isi `sheets`. Untuk pptx isi `slides`. ' +
+    'Bila pengguna ingin memakai gaya/tema/master/header-footer dari berkas Office yang dilampirkan atau dari ' +
+    'templat tersimpan, isi `template_id` dengan id yang tercantum di konteks (format harus sama).',
   inputSchema: {
     type: 'object',
     properties: {
       format: { type: 'string', enum: [...DOCUMENT_FORMATS] },
+      template_id: {
+        type: 'string',
+        description:
+          'Opsional, hanya docx/pptx/xlsx: id templat gaya atau id lampiran Office. Dokumen baru memakai tema, ' +
+          'style, slide master/layout, header/footer, dan media dari berkas tersebut.',
+      },
       title: { type: 'string', description: 'Judul dokumen (maks. 200 karakter).' },
       content: {
         type: 'string',
@@ -86,6 +102,21 @@ export const CREATE_DOCUMENT_TOOL: ChatTool = {
             title: { type: 'string' },
             bullets: { type: 'array', items: { type: 'string' } },
             notes: { type: 'string' },
+            layout: {
+              type: 'string',
+              description: 'Opsional (dengan template_id): nama slide layout templat yang dipakai.',
+            },
+            template_slide: {
+              type: 'integer',
+              description:
+                'Opsional (dengan template_id): nomor slide templat (mulai 1) yang disalin utuh — desain, shape, ' +
+                'SmartArt — lalu judul/poinnya diganti.',
+            },
+            diagram_items: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Opsional (dengan template_slide berisi SmartArt): teks baru node SmartArt, berurutan.',
+            },
           },
           required: ['title'],
         },
@@ -115,6 +146,16 @@ export function parseDocumentSpec(input: Record<string, unknown>): DocumentSpec 
   if (!title) throw invalid('Judul dokumen wajib diisi.');
 
   const spec: DocumentSpec = { format, title };
+  const templateId = asString(input.template_id).trim();
+  if (templateId) {
+    if (!['docx', 'pptx', 'xlsx'].includes(format)) {
+      throw invalid('template_id hanya berlaku untuk docx, pptx, dan xlsx.');
+    }
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(templateId)) {
+      throw invalid('template_id tidak valid.');
+    }
+    spec.templateId = templateId.toLowerCase();
+  }
 
   if (format === 'xlsx') {
     const rawSheets = Array.isArray(input.sheets) ? input.sheets : [];
@@ -137,13 +178,35 @@ export function parseDocumentSpec(input: Record<string, unknown>): DocumentSpec 
   if (format === 'pptx') {
     const rawSlides = Array.isArray(input.slides) ? input.slides : [];
     const slides: SlideSpec[] = rawSlides.slice(0, DOCUMENT_LIMITS.maxSlides).map((raw) => {
-      const slide = (raw ?? {}) as { title?: unknown; bullets?: unknown; notes?: unknown };
+      const slide = (raw ?? {}) as {
+        title?: unknown;
+        bullets?: unknown;
+        notes?: unknown;
+        layout?: unknown;
+        template_slide?: unknown;
+        diagram_items?: unknown;
+      };
       const bullets = (Array.isArray(slide.bullets) ? slide.bullets : [])
         .slice(0, DOCUMENT_LIMITS.maxBullets)
         .map(asString)
         .filter((b) => b.trim().length > 0);
       const notes = asString(slide.notes).trim();
-      return { title: asString(slide.title).trim() || 'Slide', bullets, ...(notes ? { notes } : {}) };
+      const layout = asString(slide.layout).trim().slice(0, 120);
+      const templateSlide = Number(slide.template_slide);
+      const diagramItems = (Array.isArray(slide.diagram_items) ? slide.diagram_items : [])
+        .slice(0, DOCUMENT_LIMITS.maxBullets * 2)
+        .map(asString)
+        .map((d) => d.trim());
+      return {
+        title: asString(slide.title).trim() || 'Slide',
+        bullets,
+        ...(notes ? { notes } : {}),
+        ...(spec.templateId && layout ? { layout } : {}),
+        ...(spec.templateId && Number.isInteger(templateSlide) && templateSlide > 0 && templateSlide <= 500
+          ? { templateSlide }
+          : {}),
+        ...(spec.templateId && diagramItems.length ? { diagramItems } : {}),
+      };
     });
     if (slides.length === 0) throw invalid('Dokumen pptx membutuhkan setidaknya satu slide.');
     spec.slides = slides;

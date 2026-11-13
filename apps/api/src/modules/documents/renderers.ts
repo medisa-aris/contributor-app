@@ -122,7 +122,7 @@ function docxBlock(block: MdBlock): Array<Paragraph | Table> {
   }
 }
 
-async function renderDocx(spec: DocumentSpec): Promise<RenderedDocument> {
+export async function renderDocx(spec: DocumentSpec): Promise<RenderedDocument> {
   const content = spec.content ?? '';
   const children = [
     new Paragraph({

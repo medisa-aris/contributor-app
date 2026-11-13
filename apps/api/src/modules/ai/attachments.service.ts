@@ -13,6 +13,8 @@ import { updatedRows } from '../../database/query-result';
 import type { ChatImageAttachment } from './providers/types';
 import { AiGatewayService } from './gateway.service';
 import { WEB_SOURCE_LIMITS, WebSourceService, type WebSourceResult } from './web-source.service';
+import { extractStyleProfile } from '../office-styles/ooxml-extractor';
+import { isOfficeFormat } from '../office/office-content';
 
 export const ATTACHMENT_LIMITS = {
   maxFileBytes: 20 * 1024 * 1024,
@@ -66,6 +68,8 @@ interface AttachmentRow {
 }
 
 interface AttachmentContextRow {
+  id: string;
+  style_summary: string | null;
   file_name: string;
   mime_type: string;
   kind: AttachmentKind;
@@ -243,12 +247,27 @@ export class AttachmentsService {
       }
     }
 
+    // Profil gaya (tema, style, layout, SmartArt) untuk inspektur dan templat; kegagalan tidak memblokir unggah.
+    let styleProfile: string | null = null;
+    const officeFormat = extension.slice(1);
+    if (kind === 'document' && isOfficeFormat(officeFormat)) {
+      try {
+        styleProfile = JSON.stringify(await extractStyleProfile(officeFormat, file.buffer));
+      } catch (error) {
+        this.logger.warn(
+          `Ekstraksi gaya gagal untuk ${fileName}: ${
+            error instanceof Error ? error.message : 'kesalahan tidak dikenal'
+          }`,
+        );
+      }
+    }
+
     try {
       const inserted = (await this.dataSource.query(
         `INSERT INTO conversation_attachments
            (conversation_id, file_name, mime_type, extension, size_bytes, kind,
-            storage_path, extraction_status, extracted_chars, extracted_text)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            storage_path, extraction_status, extracted_chars, extracted_text, style_profile)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          RETURNING ${ATTACHMENT_COLUMNS}`,
         [
           conversationId,
@@ -261,6 +280,7 @@ export class AttachmentsService {
           extractionStatus,
           extractedText?.length ?? 0,
           extractedText,
+          styleProfile,
         ],
       )) as AttachmentRow[];
       return this.toPublic(inserted[0]!);
@@ -402,6 +422,44 @@ export class AttachmentsService {
     });
   }
 
+  /** Lampiran Office milik pengguna untuk dibuka (baca saja) di OnlyOffice atau diekstrak gayanya. */
+  async officeSource(
+    userId: string,
+    attachmentId: string,
+  ): Promise<{
+    id: string;
+    fileName: string;
+    extension: string;
+    absolutePath: string;
+    sizeBytes: number;
+    styleProfile: Record<string, unknown> | null;
+  }> {
+    const rows = (await this.dataSource.query(
+      `SELECT a.id, a.file_name, a.extension, a.storage_path, a.size_bytes, a.style_profile
+         FROM conversation_attachments a
+         JOIN conversations c ON c.id = a.conversation_id
+        WHERE a.id = $1 AND c.user_id = $2 AND a.source_type = 'file' AND a.kind = 'document'`,
+      [attachmentId, userId],
+    )) as Array<{
+      id: string;
+      file_name: string;
+      extension: string;
+      storage_path: string | null;
+      size_bytes: string | number;
+      style_profile: Record<string, unknown> | null;
+    }>;
+    const row = rows[0];
+    if (!row?.storage_path) throw new AppError(ERROR_CODES.notFound, 'Lampiran tidak ditemukan.', 404);
+    return {
+      id: row.id,
+      fileName: row.file_name,
+      extension: row.extension.replace(/^\./, ''),
+      absolutePath: this.absolutePath(row.storage_path),
+      sizeBytes: Number(row.size_bytes),
+      styleProfile: row.style_profile,
+    };
+  }
+
   /** Hapus seluruh berkas disk milik percakapan (baris DB ikut terhapus lewat CASCADE). */
   async purgeConversationFiles(conversationId: string): Promise<void> {
     await rm(join(this.uploadRoot(), conversationId), { recursive: true, force: true }).catch(
@@ -423,7 +481,8 @@ export class AttachmentsService {
     const rows = (await this.dataSource.query(
       `SELECT a.file_name, a.mime_type, a.kind, a.extraction_status, a.extracted_chars,
               left(a.extracted_text, $2) AS excerpt, a.storage_path,
-              a.source_type, a.source_url, a.summary
+              a.source_type, a.source_url, a.summary, a.id,
+              a.style_profile->>'summary' AS style_summary
          FROM conversation_attachments a
          JOIN conversations c ON c.id = a.conversation_id
         WHERE a.conversation_id = $1 AND a.enabled = true AND c.mode = 'second_brain'
@@ -431,7 +490,8 @@ export class AttachmentsService {
       [conversationId, ATTACHMENT_LIMITS.maxDocCharsPerFile],
     )) as AttachmentContextRow[];
 
-    if (rows.length === 0) return { text: null, images: [] };
+    const templates = await this.templatesContext(conversationId);
+    if (rows.length === 0) return { text: templates, images: [] };
 
     const sections: string[] = [];
     const images: ChatImageAttachment[] = [];
@@ -507,6 +567,12 @@ export class AttachmentsService {
         continue;
       }
 
+      if (row.style_summary) {
+        sections.push(
+          `${label}\nGAYA DOKUMEN: ${row.style_summary}\n` +
+            `(Untuk dokumen baru berformat sama dengan gaya/master/header-footer ini, isi template_id = "${row.id}" pada create_document.)`,
+        );
+      }
       if (row.extraction_status !== 'ready' || !row.excerpt) {
         sections.push(`${label}\n(Teks dokumen tidak dapat diekstrak oleh server.)`);
         continue;
@@ -527,9 +593,32 @@ export class AttachmentsService {
       );
     }
 
+    const text = sections.length > 0 ? `${CONTEXT_HEADER}\n\n${sections.join('\n\n')}` : null;
     return {
-      text: sections.length > 0 ? `${CONTEXT_HEADER}\n\n${sections.join('\n\n')}` : null,
+      text: [text, templates].filter(Boolean).join('\n\n') || null,
       images,
     };
+  }
+
+  /** Templat gaya tersimpan milik pemilik percakapan, agar model dapat mengisi template_id. */
+  private async templatesContext(conversationId: string): Promise<string | null> {
+    const rows = (await this.dataSource.query(
+      `SELECT t.id, t.name, t.format, t.profile_json->>'summary' AS summary
+         FROM document_templates t
+         JOIN conversations c ON c.user_id = t.user_id
+        WHERE c.id = $1
+        ORDER BY t.created_at DESC
+        LIMIT 20`,
+      [conversationId],
+    )) as Array<{ id: string; name: string; format: string; summary: string | null }>;
+    if (rows.length === 0) return null;
+    const lines = rows.map(
+      (t) => `- template_id "${t.id}" · ${t.format} · ${t.name}${t.summary ? ` — ${t.summary.slice(0, 300)}` : ''}`,
+    );
+    return (
+      'TEMPLAT GAYA TERSIMPAN (pakai lewat template_id pada create_document hanya bila pengguna memintanya ' +
+      'atau menyebut templat/gaya tersebut; format harus sama):\n' +
+      lines.join('\n')
+    );
   }
 }
