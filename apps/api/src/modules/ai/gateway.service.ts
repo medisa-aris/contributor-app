@@ -1,15 +1,25 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { AppError, ERROR_CODES } from '../../common/errors/app-error';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CREATE_DOCUMENT_TOOL } from '../documents/document-spec';
-import { GuardedProvider } from './guardrails/guarded-provider';
-import { GuardrailsService } from './guardrails/guardrails.service';
+import {
+  CONTEXT_LIMITS,
+  COMPACTION_PROMPT,
+  clearOldToolResults,
+  compactionCut,
+  estimateTokens,
+  transcriptText,
+  type ContextCache,
+} from './context-budget';
 import { AI_LIMITS, validateChatMessages } from './limits';
-import { buildSystemPrompt, type PromptMode } from './prompts';
-import { resolveProviderConfig, type AiProviderSettings } from './provider-resolver';
-import { AnthropicProvider } from './providers/anthropic.provider';
+import { buildSystemPrompt, LONG_RUN_RULES, type PromptMode } from './prompts';
+import { ModelAccessService, type AuthorizedCall } from './models/model-access.service';
+import { ModelCatalogService } from './models/model-catalog.service';
+import { ProviderRegistryService } from './models/provider-registry.service';
+import { UsageLedgerService, type AiUsageSource } from './models/usage-ledger.service';
 import { OpenAiCompatibleProvider } from './providers/openai-compatible.provider';
 import type {
-  AiProviderAdapter,
+  NativeOptions,
   ChatImageAttachment,
   ChatMessage,
   ChatRequestOptions,
@@ -42,6 +52,31 @@ export interface GatewayChatOptions {
   toolRules?: string;
   /** Pemilik permintaan untuk kamus per percakapan dan audit Guardrails. */
   guard?: GuardScope;
+  /** Blok "Memori yang relevan" dari memori terpusat, ditambahkan setelah system prompt. */
+  memoryContext?: string;
+  /** id model penyedia untuk panggilan sistem (mis. model ekstraksi memori); dicocokkan ke katalog. */
+  model?: string;
+  /** Model katalog yang diminta eksplisit; wajib diizinkan untuk pengguna. */
+  modelId?: string | null;
+  /** Agent yang melakukan panggilan (model agent dan izin agent). */
+  agentId?: string;
+  /** Sumber pemakaian untuk buku besar; bawaan diturunkan dari `guard`. */
+  usageSource?: AiUsageSource;
+  /**
+   * Kerja panjang (§14): batas diam stream + batas per panggilan menggantikan AI_TIMEOUT_MS,
+   * riwayat tidak dibatasi jumlah pesan, dan konteks dijaga lewat pembersihan/ringkasan.
+   */
+  longRun?: boolean;
+  /** Cache ringkasan konteks yang dipakai ulang antar-iterasi loop. */
+  contextCache?: ContextCache;
+  /** Dipanggil saat konteks diringkas (untuk event "Konteks diringkas"). */
+  onCompaction?: (info: { cut: number; tokensBefore: number }) => void;
+  /** Tingkat ketelitian (dikirim hanya bila model mendukung effort). */
+  effort?: string;
+  /** Sisa anggaran token run; dipakai sebagai task budget bila model mendukung. */
+  taskBudget?: number;
+  /** Run yang melakukan panggilan (untuk buku besar). */
+  runId?: string;
 }
 
 /** Hasil eksekusi satu tool di dalam loop. */
@@ -64,12 +99,18 @@ export type ToolLoopEvent =
   | { type: 'delta'; text: string }
   | { type: 'assistant'; content: string; toolCalls: ChatToolCall[] }
   | { type: 'tool_call'; call: ChatToolCall }
-  | { type: 'tool_result'; call: ChatToolCall; outcome: ToolOutcome };
+  | { type: 'tool_result'; call: ChatToolCall; outcome: ToolOutcome }
+  /** Pemakaian satu panggilan model di dalam loop (untuk anggaran kerja panjang). */
+  | { type: 'usage'; tokensIn: number; tokensOut: number };
 
 export interface ToolLoopResult {
   /** Teks jawaban akhir (giliran terakhir model). */
   content: string;
   model: string;
+  /** Model katalog yang menjalankan loop. */
+  modelId?: string;
+  /** Blok asli jawaban terakhir (disimpan bila tidak berisi permintaan tool). */
+  providerContent?: unknown[];
   tokensIn: number;
   tokensOut: number;
   /** Pesan baru yang ditambahkan loop (asisten + hasil tool), untuk disimpan/dilanjutkan. */
@@ -93,6 +134,19 @@ export interface ToolLoopOptions extends GatewayChatOptions {
 const NOT_RUN_AFTER_PENDING =
   'Tidak dijalankan karena panggilan tool sebelumnya menunggu persetujuan manusia. Panggil ulang bila masih diperlukan setelah persetujuan.';
 
+function runIdOf(request: ChatRequestOptions): string | null {
+  return (request as ChatRequestOptions & { runId?: string }).runId ?? null;
+}
+
+/**
+ * Blok asli yang aman disimpan di percakapan untuk diputar ulang: tanpa tool_use (permintaan
+ * tool tanpa hasil akan ditolak penyedia pada giliran berikutnya).
+ */
+export function storableProviderContent(blocks: unknown[] | undefined): unknown[] | undefined {
+  if (!blocks?.length) return undefined;
+  return blocks.some((b) => (b as { type?: string }).type?.endsWith('tool_use')) ? undefined : blocks;
+}
+
 /** Potong hasil tool agar tidak membanjiri konteks model. */
 export function clampToolResult(
   content: string,
@@ -108,56 +162,86 @@ export function clampToolResult(
 @Injectable()
 export class AiGatewayService {
   private readonly logger = new Logger(AiGatewayService.name);
-  private adapter: AiProviderAdapter | null = null;
+  private readonly embedders = new Map<string, OpenAiCompatibleProvider>();
 
   constructor(
     private readonly config: ConfigService,
-    @Optional() private readonly guardrails?: GuardrailsService,
+    private readonly registry: ProviderRegistryService,
+    private readonly catalog: ModelCatalogService,
+    private readonly access: ModelAccessService,
+    private readonly ledger: UsageLedgerService,
   ) {}
 
-  private settings(): AiProviderSettings {
-    return {
-      aiProvider: this.config.get<string>('app.aiProvider', 'openrouter'),
-      aiModel: this.config.get<string>('app.aiModel', ''),
-      aiBaseUrl: this.config.get<string>('app.aiBaseUrl', ''),
-      aiTimeoutMs: this.config.get<number>('app.aiTimeoutMs', 60000),
-      openrouterApiKey: this.config.get<string | null>('app.openrouterApiKey', null),
-      openaiApiKey: this.config.get<string | null>('app.openaiApiKey', null),
-      anthropicApiKey: this.config.get<string | null>('app.anthropicApiKey', null),
-      ollamaBaseUrl: this.config.get<string | null>('app.ollamaBaseUrl', null),
-    };
-  }
-
-  /** Adapter di-cache per proses; kredensial hanya ada di memori server. */
-  resolveAdapter(): AiProviderAdapter {
-    if (this.adapter) return this.adapter;
-    const resolved = resolveProviderConfig(this.settings());
-    this.logger.log(
-      `Penyedia AI aktif: ${resolved.provider} (model ${resolved.model}, batas waktu ${resolved.timeoutMs} ms)`,
-    );
-    const provider: AiProviderAdapter =
-      resolved.adapter === 'anthropic'
-        ? new AnthropicProvider({
-            baseUrl: resolved.baseUrl,
-            apiKey: resolved.apiKey ?? '',
-          })
-        : new OpenAiCompatibleProvider({ baseUrl: resolved.baseUrl, apiKey: resolved.apiKey });
-    this.adapter = this.guardrails ? new GuardedProvider(provider, this.guardrails) : provider;
-    return this.adapter;
-  }
-
+  /** id model bawaan dari env; hanya nilai awal tampilan sebelum hasil panggilan tersedia. */
   activeModel(): string {
-    return this.settings().aiModel;
+    return this.config.get<string>('app.aiModel', '');
   }
 
-  private buildRequest(options: GatewayChatOptions): ChatRequestOptions {
+  /**
+   * Embedding teks lewat penyedia model bawaan bila kompatibel OpenAI. null bila penyedia
+   * itu tidak punya endpoint embedding (Anthropic). Pemanggil wajib menyaring data pribadi.
+   */
+  async embed(texts: string[], model: string, signal?: AbortSignal): Promise<number[][] | null> {
+    const defaultModel = await this.catalog.defaultModel();
+    if (defaultModel.provider === 'anthropic') return null;
+    const settings = this.registry.settings(defaultModel.provider);
+    if (!settings.configured) return null;
+    let embedder = this.embedders.get(settings.code);
+    if (!embedder) {
+      embedder = new OpenAiCompatibleProvider({ baseUrl: settings.baseUrl, apiKey: settings.apiKey });
+      this.embedders.set(settings.code, embedder);
+    }
+    const timeout = AbortSignal.timeout(this.registry.timeoutMs());
+    const vectors = await embedder.embed(texts, model, signal ? AbortSignal.any([timeout, signal]) : timeout);
+    // Biaya embedding masuk buku besar sebagai pemakaian sistem memori (tidak memotong kuota).
+    await this.ledger.record({
+      userId: null,
+      modelId: null,
+      provider: defaultModel.provider,
+      modelKey: model,
+      source: 'memory',
+      tokensIn: Math.ceil(texts.reduce((sum, text) => sum + text.length, 0) / 4),
+      tokensOut: 0,
+      estimated: true,
+    });
+    return vectors;
+  }
+
+  private usageSource(options: GatewayChatOptions): AiUsageSource {
+    if (options.usageSource) return options.usageSource;
+    if (options.guard?.conversationId) return 'conversation';
+    if (options.guard?.taskId) return 'task';
+    return 'system';
+  }
+
+  /** Tentukan model (dan periksa izin/kuota), lalu susun permintaan untuk adapter penyedianya. */
+  private async prepare(
+    options: GatewayChatOptions,
+  ): Promise<{ call: AuthorizedCall; request: ChatRequestOptions; idle: AbortController | null }> {
     const tools = [...(options.documents ? [CREATE_DOCUMENT_TOOL] : []), ...(options.tools ?? [])];
     validateChatMessages(
       options.messages,
-      tools.length > 0 ? AI_LIMITS.maxHistoryMessagesWithTools : AI_LIMITS.maxHistoryMessages,
+      options.longRun
+        ? Number.MAX_SAFE_INTEGER
+        : tools.length > 0
+          ? AI_LIMITS.maxHistoryMessagesWithTools
+          : AI_LIMITS.maxHistoryMessages,
     );
-    const timeout = AbortSignal.timeout(this.settings().aiTimeoutMs);
-    const signal = options.signal ? AbortSignal.any([timeout, options.signal]) : timeout;
+    const images = options.images && options.images.length > 0 ? options.images : undefined;
+    const call = await this.access.authorize({
+      userId: options.guard?.userId ?? null,
+      source: this.usageSource(options),
+      ...(options.guard?.conversationId ? { conversationId: options.guard.conversationId } : {}),
+      ...(options.guard?.taskId ? { taskId: options.guard.taskId } : {}),
+      ...(options.agentId ? { agentId: options.agentId } : {}),
+      ...(options.modelId !== undefined ? { modelId: options.modelId } : {}),
+      ...(options.model ? { modelKey: options.model } : {}),
+      needs: { tools: tools.length > 0, vision: Boolean(images) },
+    });
+    const longRun = options.longRun ? this.registry.longRunTimeouts() : null;
+    const idle = longRun ? new AbortController() : null;
+    const timeout = AbortSignal.timeout(longRun ? longRun.callMs : this.registry.timeoutMs());
+    const signal = AbortSignal.any([timeout, ...(options.signal ? [options.signal] : []), ...(idle ? [idle.signal] : [])]);
     const basePrompt =
       options.systemPrompt ??
       buildSystemPrompt(
@@ -166,28 +250,181 @@ export class AiGatewayService {
         options.extraContext,
         options.documents === true,
       );
+    const imageNote =
+      images && call.dropImages
+        ? `Catatan sistem: ${images.length} gambar terlampir tidak dikirim karena model ${call.model.displayName} tidak mendukung gambar.`
+        : undefined;
+    const systemPrompt = [basePrompt, options.memoryContext, options.toolRules, options.longRun ? LONG_RUN_RULES : undefined, imageNote]
+      .filter((part): part is string => Boolean(part?.trim()))
+      .join('\n\n');
+    const baseMax =
+      options.documents || (options.tools?.length ?? 0) > 0
+        ? AI_LIMITS.maxOutputTokensWithDocuments
+        : AI_LIMITS.maxOutputTokens;
+    const native = await this.nativeOptions(call, options);
+    // Penyedia yang meringkas/membersihkan konteks sendiri butuh riwayat append-only:
+    // lapisan netral dimatikan agar blok thinking tetap sah.
+    const serverManaged = native.compaction || native.contextEditing;
+    const messages =
+      (options.longRun || options.contextCache) && !serverManaged
+        ? await this.fitContext(call, systemPrompt, options.messages, options, signal)
+        : options.messages;
     return {
-      model: this.settings().aiModel,
-      systemPrompt: options.toolRules ? `${basePrompt}\n\n${options.toolRules}` : basePrompt,
-      messages: options.messages,
-      maxTokens:
-        options.documents || (options.tools?.length ?? 0) > 0
-          ? AI_LIMITS.maxOutputTokensWithDocuments
-          : AI_LIMITS.maxOutputTokens,
-      temperature: MODE_TEMPERATURE[options.mode],
-      signal,
-      ...(options.images && options.images.length > 0 ? { images: options.images } : {}),
-      ...(tools.length > 0 ? { tools } : {}),
-      ...(options.guard ? { guard: options.guard } : {}),
+      call,
+      idle,
+      request: {
+        model: call.model.modelKey,
+        systemPrompt,
+        messages,
+        maxTokens: call.maxTokens === null ? baseMax : Math.max(1, Math.min(baseMax, call.maxTokens)),
+        // Model Claude terbaru menolak parameter sampling (400); hanya dikirim bila diterima.
+        ...(call.model.acceptsSamplingParams ? { temperature: MODE_TEMPERATURE[options.mode] } : {}),
+        signal,
+        ...(images && !call.dropImages ? { images } : {}),
+        ...(tools.length > 0 ? { tools } : {}),
+        ...(options.guard ? { guard: options.guard } : {}),
+        ...(Object.keys(native).length > 0 ? { native } : {}),
+        ...(options.runId ? { runId: options.runId } : {}),
+      } as ChatRequestOptions,
     };
   }
 
-  async chat(options: GatewayChatOptions): Promise<ChatResult> {
-    return this.resolveAdapter().chat(this.buildRequest(options));
+  /** Fitur bawaan penyedia dari flag kemampuan model (§14.6). */
+  private async nativeOptions(call: AuthorizedCall, options: GatewayChatOptions): Promise<NativeOptions> {
+    const model = call.model;
+    const native: NativeOptions = {};
+    const effort = options.effort ?? (options.longRun ? 'high' : model.defaultEffort ?? undefined);
+    if (model.supportsEffort && effort) native.effort = effort;
+    if (model.supportsThinking) native.thinking = true;
+    if (options.longRun && model.supportsCompaction) native.compaction = true;
+    else if (options.longRun && model.supportsContextEditing) native.contextEditing = true;
+    if (options.longRun && model.supportsTaskBudget && options.taskBudget && options.taskBudget >= 20_000) {
+      native.taskBudget = options.taskBudget;
+    }
+    if (model.supportsPromptCache) native.promptCache = true;
+    if (model.provider === 'anthropic' && call.userId) {
+      const fallbacks = await this.access.fallbackModelKeys(call.userId, model);
+      if (fallbacks.length > 0) native.fallbackModels = fallbacks;
+    }
+    return native;
   }
 
-  stream(options: GatewayChatOptions): AsyncGenerator<string, ChatResult> {
-    return this.resolveAdapter().stream(this.buildRequest(options));
+  /**
+   * Jaga permintaan di bawah jendela konteks model (§14.6): bersihkan hasil tool lama di atas
+   * 50%, ringkas bagian awal di atas 75%. Transkrip asli tidak berubah.
+   */
+  private async fitContext(
+    call: AuthorizedCall,
+    systemPrompt: string,
+    messages: ChatMessage[],
+    options: GatewayChatOptions,
+    signal: AbortSignal,
+  ): Promise<ChatMessage[]> {
+    const window = call.model.contextWindow ?? CONTEXT_LIMITS.defaultWindow;
+    const before = estimateTokens(messages, systemPrompt);
+    if (before <= window * CONTEXT_LIMITS.clearToolResultsAt) return messages;
+    let fitted = clearOldToolResults(messages);
+    if (estimateTokens(fitted, systemPrompt) <= window * CONTEXT_LIMITS.compactAt) return fitted;
+    const cut = compactionCut(fitted);
+    if (cut === 0) return fitted;
+    const cache = options.contextCache;
+    let summary = cache?.cut === cut ? cache.summary : undefined;
+    if (!summary) {
+      // Bagian yang diringkas dipotong dari belakang agar permintaan ringkasan sendiri muat.
+      const text = transcriptText(fitted.slice(0, cut)).slice(-Math.floor(window * 0.6 * 4));
+      const request: ChatRequestOptions = {
+        model: call.model.modelKey,
+        systemPrompt: COMPACTION_PROMPT,
+        messages: [{ role: 'user', content: text }],
+        maxTokens: 4000,
+        signal,
+      };
+      const result = await call.adapter.chat(request);
+      await this.record(call, request, result);
+      summary = result.content.trim();
+      if (cache) {
+        cache.cut = cut;
+        cache.summary = summary;
+        cache.compactions += 1;
+      }
+      options.onCompaction?.({ cut, tokensBefore: before });
+    }
+    fitted = [{ role: 'user', content: `Ringkasan kerja sejauh ini:\n${summary}` }, ...fitted.slice(cut)];
+    return fitted;
+  }
+
+  /** Satu baris buku besar per panggilan; token diestimasi bila penyedia tidak melaporkannya. */
+  private async record(call: AuthorizedCall, request: ChatRequestOptions & { runId?: string }, result: ChatResult): Promise<void> {
+    const estimated = result.tokensIn === null || result.tokensOut === null;
+    // Model pengganti (fallback) yang menjawab: kuota dibebankan ke model itu.
+    const served =
+      call.model.provider === 'anthropic' && result.model && result.model !== call.model.modelKey
+        ? ((await this.catalog.list()).find((m) => m.provider === call.model.provider && m.modelKey === result.model) ?? call.model)
+        : call.model;
+    const inputChars =
+      request.systemPrompt.length + request.messages.reduce((sum, m) => sum + (m.content?.length ?? 0), 0);
+    await this.ledger.record({
+      userId: call.userId,
+      modelId: served.id,
+      provider: served.provider,
+      modelKey: result.model || served.modelKey,
+      source: call.source,
+      sourceId: call.sourceId,
+      agentId: call.agentId,
+      tokensIn: result.tokensIn ?? Math.ceil(inputChars / 4),
+      tokensOut: result.tokensOut ?? Math.ceil(result.content.length / 4),
+      estimated,
+      cacheReadTokens: result.cacheReadTokens ?? 0,
+      cacheWriteTokens: result.cacheWriteTokens ?? 0,
+      runId: runIdOf(request),
+    });
+  }
+
+  async chat(options: GatewayChatOptions): Promise<ChatResult> {
+    const { call, request } = await this.prepare(options);
+    try {
+      const result = await call.adapter.chat(request);
+      await this.record(call, request, result);
+      return { ...result, modelId: call.model.id };
+    } catch (error) {
+      // Batas waktu penyedia (AbortSignal.timeout) muncul sebagai TimeoutError mentah; jadikan 504
+      // yang dapat dibaca pengguna, bukan "kesalahan internal".
+      if (error instanceof Error && error.name === 'TimeoutError') {
+        throw new AppError(
+          ERROR_CODES.aiUpstreamError,
+          `Penyedia AI tidak menjawab dalam ${Math.round(this.registry.timeoutMs() / 1000)} detik. Coba lagi.`,
+          504,
+        );
+      }
+      throw error;
+    } finally {
+      await this.access.release(call.reservationId);
+    }
+  }
+
+  async *stream(options: GatewayChatOptions): AsyncGenerator<string, ChatResult> {
+    const { call, request, idle } = await this.prepare(options);
+    try {
+      const inner = call.adapter.stream(request);
+      const idleMs = idle ? this.registry.longRunTimeouts().idleMs : 0;
+      for (;;) {
+        // Kerja panjang: putus hanya bila penyedia diam terlalu lama, bukan karena total durasi.
+        const timer = idle ? setTimeout(() => idle.abort(new Error('Penyedia AI tidak mengirim data terlalu lama.')), idleMs) : null;
+        let step: IteratorResult<string, ChatResult>;
+        try {
+          step = await inner.next();
+        } finally {
+          if (timer) clearTimeout(timer);
+        }
+        if (step.done) {
+          await this.record(call, request, step.value);
+          return { ...step.value, modelId: call.model.id };
+        }
+        yield step.value;
+      }
+    } finally {
+      await this.access.release(call.reservationId);
+    }
   }
 
   /**
@@ -204,14 +441,17 @@ export class AiGatewayService {
     let tokensIn = 0;
     let tokensOut = 0;
     let model = this.activeModel();
+    let modelId: string | undefined;
     const guardrails: Record<string, number> = {};
     const guardrailsResult = () =>
       Object.keys(guardrails).length > 0 ? { guardrails: { ...guardrails } } : {};
 
+    const contextCache = options.contextCache ?? (options.longRun ? { compactions: 0 } : undefined);
     for (let iteration = 1; iteration <= maxIterations; iteration += 1) {
       options.signal?.throwIfAborted();
       const request: GatewayChatOptions = {
         ...options,
+        ...(contextCache ? { contextCache } : {}),
         tools,
         messages: [...options.messages, ...appended],
         // Gambar hanya relevan untuk giliran pertama.
@@ -233,7 +473,9 @@ export class AiGatewayService {
       }
       tokensIn += result.tokensIn ?? 0;
       tokensOut += result.tokensOut ?? 0;
+      yield { type: 'usage', tokensIn: result.tokensIn ?? 0, tokensOut: result.tokensOut ?? 0 };
       model = result.model || model;
+      modelId = result.modelId ?? modelId;
       for (const [category, count] of Object.entries(result.guardrails ?? {})) {
         guardrails[category] = Math.max(guardrails[category] ?? 0, count);
       }
@@ -246,6 +488,8 @@ export class AiGatewayService {
         return {
           content: result.content,
           model,
+          ...(modelId ? { modelId } : {}),
+          ...(result.providerContent ? { providerContent: result.providerContent } : {}),
           tokensIn,
           tokensOut,
           appended,
@@ -260,7 +504,12 @@ export class AiGatewayService {
       const normalized = calls.map((call, index) =>
         call.id ? call : { ...call, id: `call_${iteration}_${index}` },
       );
-      appended.push({ role: 'assistant', content: result.content, toolCalls: normalized });
+      appended.push({
+        role: 'assistant',
+        content: result.content,
+        toolCalls: normalized,
+        ...(result.providerContent ? { providerContent: result.providerContent } : {}),
+      });
       yield { type: 'assistant', content: result.content, toolCalls: normalized };
 
       let pending: ToolLoopResult['pending'];
@@ -302,6 +551,7 @@ export class AiGatewayService {
         return {
           content: result.content,
           model,
+          ...(modelId ? { modelId } : {}),
           tokensIn,
           tokensOut,
           appended,
@@ -317,6 +567,7 @@ export class AiGatewayService {
       content:
         'Batas langkah kerja tercapai sebelum tugas selesai. Persempit permintaan lalu coba lagi.',
       model,
+      ...(modelId ? { modelId } : {}),
       tokensIn,
       tokensOut,
       appended,

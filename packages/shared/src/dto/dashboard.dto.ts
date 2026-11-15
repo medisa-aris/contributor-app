@@ -36,7 +36,17 @@ export interface DashboardSummaryDto {
   highlights: DashboardHighlightDto[];
 }
 
-export type NotificationKind = 'approval' | 'taskAction' | 'taskDone' | 'taskFailed' | 'documentFailed';
+export type NotificationKind =
+  | 'approval'
+  | 'taskAction'
+  | 'taskDone'
+  | 'taskFailed'
+  | 'documentFailed'
+  | 'quotaWarning'
+  | 'quotaExhausted'
+  | 'runDone'
+  | 'runFailed'
+  | 'runAction';
 
 export interface NotificationDto {
   id: string;

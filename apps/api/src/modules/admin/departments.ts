@@ -29,6 +29,8 @@ interface DepartmentRow {
   name: string;
   code: string;
   parent_id: string | null;
+  head_user_id: string | null;
+  head_name: string | null;
   user_count: number;
 }
 
@@ -81,9 +83,10 @@ export class DepartmentsService {
   async tree(auth: AuthContext): Promise<DepartmentNode[]> {
     const usersByDepartment = await this.usersByDepartment(auth);
     const rows = (await this.dataSource.query(
-      `SELECT d.id, d.name, d.code, d.parent_id,
+      `SELECT d.id, d.name, d.code, d.parent_id, d.head_user_id, h.display_name AS head_name,
               (SELECT count(*)::int FROM users u WHERE u.department_id = d.id) AS user_count
          FROM departments d
+         LEFT JOIN users h ON h.id = d.head_user_id
         ORDER BY d.name`,
     )) as DepartmentRow[];
     const byId = new Map<string, DepartmentNode>();
@@ -134,7 +137,19 @@ export class DepartmentsService {
     return rows.map((r) => r.id);
   }
 
+  private async assertHead(headUserId: string | null | undefined): Promise<void> {
+    if (!headUserId) return;
+    const rows = (await this.dataSource.query(
+      `SELECT 1 FROM users WHERE id = $1 AND status = 'active'`,
+      [headUserId],
+    )) as unknown[];
+    if (rows.length === 0) {
+      throw new AppError(ERROR_CODES.notFound, 'Kepala departemen tidak ditemukan atau nonaktif.', 404);
+    }
+  }
+
   async create(auth: AuthContext, dto: CreateDepartmentDto) {
+    await this.assertHead(dto.headUserId);
     if (dto.parentId) {
       const parent = (await this.dataSource.query('SELECT id FROM departments WHERE id = $1', [
         dto.parentId,
@@ -145,8 +160,9 @@ export class DepartmentsService {
     let rows: { id: string }[];
     try {
       rows = (await this.dataSource.query(
-        `INSERT INTO departments (name, code, parent_id) VALUES ($1, $2, $3::uuid) RETURNING id`,
-        [dto.name, dto.code, dto.parentId ?? null],
+        `INSERT INTO departments (name, code, parent_id, head_user_id)
+         VALUES ($1, $2, $3::uuid, $4::uuid) RETURNING id`,
+        [dto.name, dto.code, dto.parentId ?? null, dto.headUserId ?? null],
       )) as { id: string }[];
     } catch (error) {
       if ((error as { code?: string }).code === '23505') {
@@ -165,6 +181,7 @@ export class DepartmentsService {
         name: dto.name,
         code: dto.code,
         parentId: dto.parentId ?? null,
+        headUserId: dto.headUserId ?? null,
       },
     );
     return this.tree(auth);
@@ -176,6 +193,7 @@ export class DepartmentsService {
     ])) as { id: string; name: string }[];
     if (exists.length === 0)
       throw new AppError(ERROR_CODES.notFound, 'Departemen tidak ditemukan.', 404);
+    await this.assertHead(dto.headUserId);
 
     if (dto.parentId !== undefined && dto.parentId !== null) {
       if (dto.parentId === departmentId) {
@@ -209,6 +227,10 @@ export class DepartmentsService {
       params.push(dto.parentId);
       sets.push(`parent_id = $${params.length}::uuid`);
     }
+    if (dto.headUserId !== undefined) {
+      params.push(dto.headUserId);
+      sets.push(`head_user_id = $${params.length}::uuid`);
+    }
     if (sets.length > 0) {
       sets.push('updated_at = now()');
       try {
@@ -232,6 +254,7 @@ export class DepartmentsService {
           name: dto.name,
           code: dto.code,
           parentId: dto.parentId,
+          headUserId: dto.headUserId,
         },
       );
     }

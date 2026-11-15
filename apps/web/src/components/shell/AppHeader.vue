@@ -7,6 +7,7 @@ import { useNavigationStore } from '@/stores/navigation.store';
 import { useThemeStore, type ThemeMode } from '@/stores/theme.store';
 import { CaAvatar, CaBreadcrumb, CaIcon, CaIconButton, CaMenu } from '@/components/ui';
 import CommandPalette from './CommandPalette.vue';
+import RunsIndicator from './RunsIndicator.vue';
 import NotificationsMenu from './NotificationsMenu.vue';
 
 const emit = defineEmits<{ 'toggle-mobile': [] }>();
@@ -37,12 +38,17 @@ const themeMenuItems = computed(() => [
 ]);
 
 const userMenuItems = computed(() => [
+  ...(auth.can('ai.workspace.access') ? [{ key: 'usage', label: t('models.usage.menu') }] : []),
   { key: 'showcase', label: t('shell.showcase') },
   { key: 'docs', label: t('shell.docs') },
   { key: 'logout', label: t('shell.logout'), danger: true, divider: true },
 ]);
 
 async function onUserMenuSelect(key: string): Promise<void> {
+  if (key === 'usage') {
+    await router.push('/workspace/usage');
+    return;
+  }
   if (key === 'showcase') {
     await router.push('/showcase');
     return;
@@ -98,6 +104,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown));
           </button>
         </template>
       </CaMenu>
+      <RunsIndicator />
       <NotificationsMenu />
       <CaMenu :items="userMenuItems" align="end" @select="onUserMenuSelect">
         <template #trigger>

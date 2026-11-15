@@ -86,6 +86,9 @@ export type AdminDepartmentNode = {
   name: string;
   code: string;
   parent_id: string | null;
+  /** Kepala departemen: atasan yang dapat membuka pintu memori anggota subtree. */
+  head_user_id: string | null;
+  head_name: string | null;
   user_count: number;
   users: AdminDepartmentUser[];
   children: AdminDepartmentNode[];

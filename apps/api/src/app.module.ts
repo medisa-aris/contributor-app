@@ -13,6 +13,7 @@ import { DocumentsModule } from './modules/documents/documents.module';
 import { OfficeModule } from './modules/office/office.module';
 import { OfficeStylesModule } from './modules/office-styles/office-styles.module';
 import { MindMapModule } from './modules/mind-map/mind-map.module';
+import { MemoryModule } from './modules/memory/memory.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ConnectorsModule } from './modules/connectors/connectors.module';
@@ -44,6 +45,7 @@ import { RbacModule } from './modules/rbac/rbac.module';
     AgentsModule,
     DashboardModule,
     MindMapModule,
+    MemoryModule,
     IntegrationsModule,
     ConnectorsModule,
     AuthModule,

@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { ApiError } from '@/api/http';
 import { createTask, runTask } from '@/api/ai';
 import { createAgentTask, type AgentGroup, type PersonalAgent } from '@/api/subordinate';
+import MemoryDoorsBar from '@/components/ai/MemoryDoorsBar.vue';
 import WebSearchToggle from '@/components/ai/WebSearchToggle.vue';
 import { useAuthStore } from '@/stores/auth.store';
 import { CaButton, CaDialog, CaField, CaInput, CaSelect, CaTextarea, type CaSelectOption } from '@/components/ui';
@@ -19,6 +20,7 @@ const target = ref('general');
 const title = ref('');
 const instruction = ref('');
 const webSearch = ref(false);
+const memoryDoors = ref<string[]>([]);
 const saving = ref(false);
 const error = ref('');
 
@@ -39,6 +41,7 @@ watch(open, (value) => {
   title.value = '';
   instruction.value = '';
   webSearch.value = false;
+  memoryDoors.value = [];
   error.value = '';
 });
 
@@ -53,7 +56,12 @@ async function submit(): Promise<void> {
   const web = auth.can('ai.websearch.use') && webSearch.value ? { webSearch: true } : {};
   try {
     if (target.value === 'general') {
-      const task = await createTask({ title: title.value.trim() || text.slice(0, 80), instruction: text, ...web });
+      const task = await createTask({
+        title: title.value.trim() || text.slice(0, 80),
+        instruction: text,
+        ...web,
+        ...(memoryDoors.value.length > 0 ? { memorySubjectIds: memoryDoors.value } : {}),
+      });
       open.value = false;
       emit('created', task.id, false);
       void runTask(task.id).catch(() => undefined);
@@ -65,6 +73,7 @@ async function submit(): Promise<void> {
       ...(title.value.trim() ? { title: title.value.trim() } : {}),
       ...(kind === 'agent' ? { agentId: id } : { groupId: id }),
       ...web,
+      ...(memoryDoors.value.length > 0 ? { memorySubjectIds: memoryDoors.value } : {}),
     });
     open.value = false;
     emit('created', task.id, true);
@@ -96,6 +105,7 @@ async function submit(): Promise<void> {
         </template>
       </CaField>
       <WebSearchToggle v-model="webSearch" :disabled="saving" />
+      <MemoryDoorsBar v-model="memoryDoors" class="task-doors" :disabled="saving" />
     </form>
     <template #footer>
       <CaButton variant="secondary" @click="open = false">{{ t('common.cancel') }}</CaButton>
@@ -103,3 +113,9 @@ async function submit(): Promise<void> {
     </template>
   </CaDialog>
 </template>
+
+<style scoped>
+.task-doors {
+  padding: 0;
+}
+</style>

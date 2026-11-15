@@ -15,7 +15,8 @@
     "test": "npm run test:unit && npm run test:integration",
     "test:unit": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --selectProjects unit",
     "test:integration": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --selectProjects integration",
-    "db:check": "tsx src/database/check-db.ts"
+    "db:check": "tsx src/database/check-db.ts",
+    "db:memory-vector": "tsx src/database/enable-memory-vector.ts"
   },
   "dependencies": {
     "@bara/shared": "0.1.0",

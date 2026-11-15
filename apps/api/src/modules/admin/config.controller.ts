@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiTags } from '@nestjs/swagger';
-import { AUDIT_EVENTS, isGuardrailConfigKey, PERMISSIONS } from '@bara/shared';
+import { AUDIT_EVENTS, isGuardrailConfigKey, isModelConfigKey, PERMISSIONS } from '@bara/shared';
 import type { PublicConfigDto } from '@bara/shared';
 import { DataSource } from 'typeorm';
 import { Audit } from '../../common/decorators/audit.decorator';
@@ -51,7 +51,7 @@ export class ConfigController {
   async list() {
     return (await this.dataSource.query(
       `SELECT key, value, description, is_public, updated_at, updated_by
-         FROM app_config WHERE key NOT LIKE 'ai.guardrails_%' ORDER BY key`,
+         FROM app_config WHERE key NOT LIKE 'ai.guardrails_%' AND key NOT LIKE 'ai.default\\_model.%' ORDER BY key`,
     )) as unknown[];
   }
 
@@ -65,6 +65,9 @@ export class ConfigController {
   ) {
     if (isGuardrailConfigKey(key)) {
       throw new AppError(ERROR_CODES.forbidden, 'Pengaturan Guardrails hanya dapat diubah di menu Guardrails.', 403);
+    }
+    if (isModelConfigKey(key)) {
+      throw new AppError(ERROR_CODES.forbidden, 'Batas model bawaan hanya dapat diubah di menu Model AI.', 403);
     }
     const rows = updatedRows<{ key: string }>(
       await this.dataSource.query(

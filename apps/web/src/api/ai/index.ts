@@ -111,6 +111,7 @@ export function createTask(input: {
   title: string;
   instruction: string;
   webSearch?: boolean;
+  memorySubjectIds?: string[];
 }): Promise<TaskRow> {
   return apiPost<TaskRow>('/ai/tasks', input);
 }

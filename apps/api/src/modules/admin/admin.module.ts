@@ -11,7 +11,6 @@ import { NavAdminController } from './nav-admin.controller';
 import { NavigationController } from './navigation.controller';
 import { PermissionsController } from './permissions.controller';
 import { PoliciesController, PoliciesService } from './policies';
-import { ProvidersController } from './providers.controller';
 import { RolesController } from './roles.controller';
 import { RolesService } from './roles.service';
 import { SessionsAdminController } from './sessions-admin.controller';
@@ -31,7 +30,6 @@ import { UsersService } from './users.service';
     SessionsAdminController,
     DiagnosticsAdminController,
     ConfigController,
-    ProvidersController,
     NavigationController,
     NavAdminController,
   ],

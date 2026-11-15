@@ -19,3 +19,5 @@ if (process.env.TEST_DATABASE_URL) {
 process.env.LOG_LEVEL = 'silent';
 process.env.LOGIN_RATE_LIMIT = '1000';
 process.env.SESSION_COOKIE_SECURE = 'false';
+// Pekerja kerja panjang hanya dinyalakan oleh tes yang membutuhkannya (ai-runs).
+process.env.AI_WORKER_ENABLED = 'false';

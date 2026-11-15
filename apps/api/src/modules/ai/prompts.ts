@@ -74,3 +74,12 @@ export function buildSystemPrompt(
   }
   return lines.join('\n');
 }
+
+/** Aturan tambahan untuk kerja panjang (§14.8), disarikan dari rekomendasi agent jangka panjang. */
+export const LONG_RUN_RULES = [
+  'KERJA PANJANG:',
+  '- Bila informasi sudah cukup untuk bertindak, bertindaklah. Jangan mengulang fakta yang sudah ditetapkan atau memperdebatkan ulang keputusan pengguna.',
+  '- Sebelum melaporkan kemajuan, cocokkan setiap klaim dengan hasil tool di sesi ini. Laporkan hanya pekerjaan yang ada buktinya; jika belum terverifikasi, katakan terus terang.',
+  '- Tetapkan cara memeriksa hasil kerja Anda sendiri dan jalankan secara berkala terhadap spesifikasi tugas.',
+  '- Bila tersedia alat kirim_pembaruan, gunakan untuk kemajuan penting atau hasil sementara yang perlu dilihat pengguna persis seperti ditulis.',
+].join('\n');

@@ -13,6 +13,15 @@ export const APP_CONFIG_KEYS = {
   timezone: 'app.timezone',
   showTokenUsage: 'ai.show_token_usage',
   webSearchPriority: 'ai.web_search_priority',
+  memoryEnabled: 'ai.memory_enabled',
+  memoryEmbeddingModel: 'ai.memory_embedding_model',
+  memoryExtractorModel: 'ai.memory_extractor_model',
+  memoryMaxContextTokens: 'ai.memory_max_context_tokens',
+  memoryMaxExtractionsPerDay: 'ai.memory_max_extractions_per_day',
+  memoryRetentionDays: 'ai.memory_retention_days',
+  defaultModelTokenLimit: 'ai.default_model.token_limit',
+  defaultModelPeriod: 'ai.default_model.period',
+  defaultModelRequestsPerMinute: 'ai.default_model.requests_per_minute',
   guardrailsEnabled: 'ai.guardrails_enabled',
   guardrailsBlockImages: 'ai.guardrails_block_images',
   guardrailsCategories: 'ai.guardrails_categories',
@@ -22,6 +31,11 @@ export const APP_CONFIG_KEYS = {
   sessionIdleMinutes: 'security.session_idle_minutes',
   sessionAbsoluteHours: 'security.session_absolute_hours',
 } as const;
+
+/** Batas model bawaan hanya boleh diubah lewat layar Model AI. */
+export function isModelConfigKey(key: string): boolean {
+  return key.startsWith('ai.default_model.');
+}
 
 /** Kunci Guardrails hanya boleh dibaca dan diubah lewat admin/guardrails. */
 export function isGuardrailConfigKey(key: string): boolean {
@@ -66,6 +80,60 @@ export const APP_CONFIG_DEFINITIONS: readonly AppConfigDefinition[] = [
     description: 'Urutan prioritas penyedia pencarian web',
     isPublic: false,
     defaultValue: ['tavily', 'firecrawl', 'brave'],
+  },
+  {
+    key: APP_CONFIG_KEYS.memoryEnabled,
+    description: 'Memori terpusat: catat memori dari percakapan/tugas dan gunakan saat menjawab (Ya/Tidak)',
+    isPublic: true,
+    defaultValue: true,
+  },
+  {
+    key: APP_CONFIG_KEYS.memoryEmbeddingModel,
+    description: 'Model embedding untuk pencarian semantik memori (dipakai bila pgvector tersedia)',
+    isPublic: false,
+    defaultValue: 'openai/text-embedding-3-small',
+  },
+  {
+    key: APP_CONFIG_KEYS.memoryExtractorModel,
+    description: 'Model untuk mengekstrak catatan memori; kosong = model chat aktif',
+    isPublic: false,
+    defaultValue: '',
+  },
+  {
+    key: APP_CONFIG_KEYS.memoryMaxContextTokens,
+    description: 'Batas token memori yang disisipkan ke prompt per jawaban',
+    isPublic: false,
+    defaultValue: 1500,
+  },
+  {
+    key: APP_CONFIG_KEYS.memoryMaxExtractionsPerDay,
+    description: 'Batas ekstraksi memori per pengguna per hari',
+    isPublic: false,
+    defaultValue: 50,
+  },
+  {
+    key: APP_CONFIG_KEYS.memoryRetentionDays,
+    description: 'Arsipkan catatan memori jenis peristiwa setelah N hari; 0 = tidak pernah',
+    isPublic: false,
+    defaultValue: 0,
+  },
+  {
+    key: APP_CONFIG_KEYS.defaultModelTokenLimit,
+    description: 'Batas token per pengguna untuk model bawaan (null = tanpa batas)',
+    isPublic: false,
+    defaultValue: null,
+  },
+  {
+    key: APP_CONFIG_KEYS.defaultModelPeriod,
+    description: 'Periode batas token model bawaan (day/week)',
+    isPublic: false,
+    defaultValue: 'day',
+  },
+  {
+    key: APP_CONFIG_KEYS.defaultModelRequestsPerMinute,
+    description: 'Batas permintaan per menit per pengguna untuk model bawaan (null = tanpa batas)',
+    isPublic: false,
+    defaultValue: null,
   },
   {
     key: APP_CONFIG_KEYS.lockoutThreshold,

@@ -39,6 +39,7 @@ type OrgDatum = {
   parentId: string | null;
   name: string;
   code: string;
+  head_name: string | null;
   user_count: number;
   sub_count: number;
   _expanded?: boolean;
@@ -51,6 +52,7 @@ function flatten(nodes: AdminDepartmentNode[], out: OrgDatum[] = []): OrgDatum[]
       parentId: node.parent_id,
       name: node.name,
       code: node.code,
+      head_name: node.head_name,
       user_count: node.user_count,
       sub_count: node.children.length,
     });
@@ -101,6 +103,7 @@ function nodeHtml(node: HierarchyNode<OrgDatum>): string {
   return `
     <div class="dep-org-node">
       <div class="dep-org-node__name">${escapeHtml(d.name)}</div>
+      ${d.head_name ? `<div class="dep-org-node__head">${escapeHtml(t('admin.departments.headShort', { name: d.head_name }))}</div>` : ''}
       <div class="dep-org-node__meta">
         <span class="dep-org-node__code">${escapeHtml(d.code)}</span>
         <span class="dep-org-node__count">${t('admin.departments.userCount', { count: d.user_count })}</span>
@@ -121,7 +124,7 @@ function renderChart(): void {
       .container(chartHost.value)
       .data(data)
       .nodeWidth(() => 236)
-      .nodeHeight(() => 88)
+      .nodeHeight(() => 104)
       .childrenMargin(() => 40)
       .initialExpandLevel(Number.MAX_SAFE_INTEGER)
       .compact(false)
@@ -192,8 +195,28 @@ const formError = ref('');
 const editing = ref<AdminDepartmentNode | null>(null);
 const deleting = ref<AdminDepartmentNode | null>(null);
 
-const form = ref({ name: '', code: '', parentId: '' });
-const codePattern = /^[A-Z][A-Z0-9_]{1,49}$/;
+const form = ref({ name: '', code: '', parentId: '', headUserId: '' });
+
+/** Kandidat kepala: pengguna aktif yang terlihat di pohon departemen. */
+const headOptions = computed<CaSelectOption[]>(() => {
+  const people = new Map<string, string>();
+  function walk(nodes: AdminDepartmentNode[]) {
+    for (const node of nodes) {
+      for (const user of node.users) {
+        if (user.status === 'active') people.set(user.id, user.display_name);
+      }
+      walk(node.children);
+    }
+  }
+  walk(tree.value);
+  return [
+    { value: '', label: t('admin.departments.noHead') },
+    ...[...people.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value, label })),
+  ];
+});
+const codePattern = /^[A-Za-z0-9._-]{2,50}$/;
 
 const parentOptions = computed<CaSelectOption[]>(() => {
   const options: CaSelectOption[] = [{ value: '', label: t('admin.departments.noParent') }];
@@ -211,7 +234,7 @@ const parentOptions = computed<CaSelectOption[]>(() => {
 
 function openCreate(parent?: AdminDepartmentNode): void {
   editing.value = null;
-  form.value = { name: '', code: '', parentId: parent?.id ?? '' };
+  form.value = { name: '', code: '', parentId: parent?.id ?? '', headUserId: '' };
   formError.value = '';
   showForm.value = true;
 }
@@ -227,7 +250,12 @@ const formTitle = computed(() => {
 
 function openEdit(node: AdminDepartmentNode): void {
   editing.value = node;
-  form.value = { name: node.name, code: node.code, parentId: node.parent_id ?? '' };
+  form.value = {
+    name: node.name,
+    code: node.code,
+    parentId: node.parent_id ?? '',
+    headUserId: node.head_user_id ?? '',
+  };
   formError.value = '';
   showForm.value = true;
 }
@@ -239,7 +267,7 @@ function openDelete(node: AdminDepartmentNode): void {
 
 async function submit(): Promise<void> {
   formError.value = '';
-  const { name, code, parentId } = form.value;
+  const { name, code, parentId, headUserId } = form.value;
   if (!name.trim() || !code.trim()) {
     formError.value = t('errors.requiredFields');
     return;
@@ -255,6 +283,7 @@ async function submit(): Promise<void> {
         name: name.trim(),
         code: code.trim(),
         parentId: parentId || null,
+        headUserId: headUserId || null,
       });
       toast.push({ variant: 'success', title: t('admin.departments.updated') });
     } else {
@@ -262,6 +291,7 @@ async function submit(): Promise<void> {
         name: name.trim(),
         code: code.trim(),
         parentId: parentId || null,
+        headUserId: headUserId || null,
       });
       toast.push({ variant: 'success', title: t('admin.departments.created') });
     }
@@ -392,6 +422,10 @@ onBeforeUnmount(() => {
             <dd>{{ selectedParentName ?? t('admin.departments.detailNoParent') }}</dd>
           </div>
           <div class="dep-org__panel-fact">
+            <dt>{{ t('admin.departments.formHead') }}</dt>
+            <dd>{{ selected.head_name ?? t('admin.departments.noHead') }}</dd>
+          </div>
+          <div class="dep-org__panel-fact">
             <dt>{{ t('admin.departments.columnUsers') }}</dt>
             <dd>{{ selected.user_count }}</dd>
           </div>
@@ -481,6 +515,9 @@ onBeforeUnmount(() => {
         </CaField>
         <CaField :label="t('admin.departments.formParent')">
           <CaSelect v-model="form.parentId" :options="parentOptions" />
+        </CaField>
+        <CaField :label="t('admin.departments.formHead')" :hint="t('admin.departments.formHeadHint')">
+          <CaSelect v-model="form.headUserId" :options="headOptions" />
         </CaField>
         <p v-if="formError" class="admin-error">{{ formError }}</p>
       </div>
@@ -785,6 +822,14 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: var(--ca-space-3);
   min-width: 0;
+}
+
+.dep-org-node__head {
+  font-size: var(--ca-text-100);
+  color: var(--ca-fg-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dep-org-node__code {

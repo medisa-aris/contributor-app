@@ -12,6 +12,11 @@ export interface ChatMessage {
   toolCallId?: string;
   toolName?: string;
   isError?: boolean;
+  /**
+   * Blok konten asli penyedia untuk pesan asisten (mis. thinking dan compaction Claude).
+   * Dikirim balik apa adanya ke penyedia yang sama; penyedia lain mengabaikannya.
+   */
+  providerContent?: unknown[];
 }
 
 export interface ChatImageAttachment {
@@ -53,6 +58,23 @@ export interface ChatRequestOptions {
   images?: ChatImageAttachment[];
   tools?: ChatTool[];
   guard?: GuardScope;
+  /** Fitur bawaan penyedia untuk kerja panjang (§14.6); diisi gateway dari kemampuan model. */
+  native?: NativeOptions;
+}
+
+export interface NativeOptions {
+  effort?: string;
+  /** Adaptive thinking (Claude). */
+  thinking?: boolean;
+  /** Ringkasan konteks di sisi server (Claude compaction). */
+  compaction?: boolean;
+  /** Pembersihan hasil tool lama di sisi server (Claude context editing). */
+  contextEditing?: boolean;
+  /** Anggaran token agar model mengatur langkahnya sendiri (Claude task budget). */
+  taskBudget?: number;
+  promptCache?: boolean;
+  /** Model pengganti bila model menolak (hanya model yang diizinkan untuk pengguna). */
+  fallbackModels?: string[];
 }
 
 export interface ChatResult {
@@ -64,6 +86,14 @@ export interface ChatResult {
   toolCalls?: ChatToolCall[];
   /** Jumlah data pribadi yang dimasking per kategori; tanpa nilainya. */
   guardrails?: Record<string, number>;
+  /** Model katalog (ai_models.id) yang menjalankan panggilan; diisi gateway. */
+  modelId?: string;
+  /** Blok konten asli jawaban (lihat ChatMessage.providerContent). */
+  providerContent?: unknown[];
+  /** Token input yang dibaca dari / ditulis ke cache prompt (sudah termasuk di tokensIn). */
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
+  stopReason?: string;
 }
 
 export interface AiProviderAdapter {

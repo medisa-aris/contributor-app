@@ -120,6 +120,10 @@ export class OpenAiCompatibleProvider implements AiProviderAdapter {
       ...(stream ? { stream_options: { include_usage: true } } : {}),
       max_tokens: options.maxTokens,
       ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
+      // Model penalaran OpenAI: low/medium/high (xhigh/max dipetakan ke high).
+      ...(options.native?.effort
+        ? { reasoning_effort: ['low', 'medium'].includes(options.native.effort) ? options.native.effort : 'high' }
+        : {}),
       messages: [{ role: 'system', content: options.systemPrompt }, ...messages],
       ...(options.tools && options.tools.length > 0
         ? {
@@ -150,6 +154,24 @@ export class OpenAiCompatibleProvider implements AiProviderAdapter {
       `Penyedia AI merespons ${response.status}. ${detail}`.trim(),
       502,
     );
+  }
+
+  /** Embedding lewat endpoint standar /embeddings (OpenAI, OpenRouter, Ollama). */
+  async embed(texts: string[], model: string, signal?: AbortSignal): Promise<number[][]> {
+    if (texts.length === 0) return [];
+    const response = await fetchProvider(this.fetchImpl, this.endpoint('/embeddings'), {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify({ model, input: texts }),
+      ...(signal ? { signal } : {}),
+    });
+    await this.ensureOk(response);
+    const payload = (await response.json()) as { data?: { index?: number; embedding?: number[] }[] };
+    const rows = [...(payload.data ?? [])].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+    if (rows.length !== texts.length || rows.some((r) => !Array.isArray(r.embedding))) {
+      throw new AppError(ERROR_CODES.aiUpstreamError, 'Respons embedding tidak lengkap.', 502);
+    }
+    return rows.map((r) => r.embedding!);
   }
 
   async chat(options: ChatRequestOptions): Promise<ChatResult> {

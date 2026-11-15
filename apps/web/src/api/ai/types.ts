@@ -1,4 +1,4 @@
-import type { AiTaskStatus, ConversationMode } from '@bara/shared';
+import type { AiTaskStatus, ConversationMode, MemoryRefDto } from '@bara/shared';
 import type { UserDocument } from '@/api/documents/types';
 
 export type ConversationSummary = {
@@ -7,6 +7,7 @@ export type ConversationSummary = {
   title: string;
   counterpart_style: string | null;
   web_search?: boolean;
+  model_id?: string | null;
   starred_at: string | null;
   updated_at: string;
   created_at: string;
@@ -26,6 +27,8 @@ export type ConversationMessage = {
   tool_trace?: ToolTrace | null;
   /** Jumlah data pribadi yang dimasking per kategori pada jawaban ini. */
   guardrails?: Record<string, number> | null;
+  /** Catatan memori yang dipakai untuk jawaban ini. */
+  memory_refs?: MemoryRefDto[] | null;
 };
 
 export type ToolTraceStatus = 'running' | 'ok' | 'error' | 'pending_approval' | 'approved' | 'rejected';
@@ -88,6 +91,8 @@ export type TaskRow = {
   started_at: string | null;
   finished_at: string | null;
   updated_at: string;
+  /** Catatan memori yang dipakai saat mengerjakan tugas. */
+  memory_refs?: MemoryRefDto[] | null;
 };
 
 export type TaskEventRow = {
@@ -108,6 +113,8 @@ export interface ChatRequestPayload {
   conversationId?: string;
   counterpartStyle?: string;
   webSearch?: boolean;
+  /** Model katalog pilihan pengguna; dikirim hanya bila dipilih eksplisit. */
+  modelId?: string;
 }
 
 export type StreamErrorInfo = {
@@ -117,6 +124,8 @@ export type StreamErrorInfo = {
 };
 
 export type StreamEvent =
+  /** Giliran dipindah ke kerja panjang; pantau lewat /ai/runs/:id/events. */
+  | { type: 'run_started'; conversationId: string; run: import('@/api/runs').RunDto }
   | { type: 'ready'; conversationId: string }
   | { type: 'delta'; text: string }
   | { type: 'tool'; step: ToolTraceStep }

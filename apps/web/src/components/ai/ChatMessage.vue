@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { GUARDRAIL_CATEGORIES } from '@bara/shared';
+import { GUARDRAIL_CATEGORIES, type MemoryRefDto } from '@bara/shared';
 import type { ToolTraceStep } from '@/api/ai';
 import ToolTraceList from './ToolTraceList.vue';
 import { computed, onBeforeUnmount, ref } from 'vue';
@@ -10,6 +10,7 @@ import { formatDateTime, formatNumber } from '@/utils/format';
 import type { UserDocument } from '@/api/documents';
 import DocumentCard from './DocumentCard.vue';
 import MarkdownContent from './MarkdownContent.vue';
+import MemoryCitations from './MemoryCitations.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -27,6 +28,7 @@ const props = withDefaults(
     toolSteps?: ToolTraceStep[];
     busyApprovalId?: string | null;
     guardrails?: Record<string, number> | null;
+    memoryRefs?: MemoryRefDto[];
   }>(),
   {
     model: null,
@@ -41,6 +43,7 @@ const props = withDefaults(
     toolSteps: () => [],
     busyApprovalId: null,
     guardrails: null,
+    memoryRefs: () => [],
   },
 );
 
@@ -151,6 +154,7 @@ onBeforeUnmount(() => {
       <CaIcon name="shield" :size="12" />
       <span>{{ guardInfo }}</span>
     </p>
+    <MemoryCitations v-if="role === 'assistant' && !pending" :refs="memoryRefs" />
     <footer class="msg__footer">
       <div v-if="role === 'assistant'" class="msg__meta">
         <span v-if="model" class="msg__model">{{ model }}</span>

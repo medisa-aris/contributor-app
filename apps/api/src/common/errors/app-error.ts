@@ -24,5 +24,11 @@ export const ERROR_CODES = {
   validation: 'VALIDATION_ERROR',
   aiProviderNotConfigured: 'AI_PROVIDER_NOT_CONFIGURED',
   aiUpstreamError: 'AI_UPSTREAM_ERROR',
+  aiModelNotAllowed: 'AI_MODEL_NOT_ALLOWED',
+  aiModelUnavailable: 'AI_MODEL_UNAVAILABLE',
+  aiModelCapabilityMissing: 'AI_MODEL_CAPABILITY_MISSING',
+  aiQuotaExceeded: 'AI_QUOTA_EXCEEDED',
+  aiRateLimited: 'AI_RATE_LIMITED',
+  aiRefused: 'AI_REFUSED',
   internal: 'INTERNAL_ERROR',
 } as const;

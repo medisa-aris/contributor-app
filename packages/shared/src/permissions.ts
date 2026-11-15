@@ -14,6 +14,9 @@ export const PERMISSIONS = {
   agentsManagePersonal: 'ai.agents.manage',
   connectorsUse: 'connectors.use',
   webSearchUse: 'ai.websearch.use',
+  memorySelfManage: 'ai.memory.self.manage',
+  memoryDoorsOpen: 'ai.memory.doors.open',
+  modelsGrantManage: 'ai.models.grant.manage',
 
   // Knowledge Center
   knowledgeDocumentsRead: 'knowledge.documents.read',
@@ -58,6 +61,7 @@ export const PERMISSIONS = {
   auditRead: 'audit.logs.read',
   providersHealthRead: 'providers.health.read',
   guardrailsManage: 'ai.guardrails.manage',
+  modelsManage: 'ai.models.manage',
 } as const;
 
 export type PermissionId = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -82,6 +86,8 @@ export const PERMISSION_CATALOG: readonly PermissionDefinition[] = [
   { id: PERMISSIONS.agentsManagePersonal, name: 'Mengelola Agent Pribadi', description: 'Membuat agent, skill, dan grup agent pribadi di mode Subordinate', application: 'ai-workspace', module: 'modes' },
   { id: PERMISSIONS.connectorsUse, name: 'Memakai Konektor Data', description: 'Memasang konektor data yang di-grant admin ke agent dan percakapan', application: 'ai-workspace', module: 'modes' },
   { id: PERMISSIONS.webSearchUse, name: 'Mencari di Internet', description: 'Mengaktifkan pencarian web pada percakapan dan tugas AI (pertanyaan dikirim ke penyedia pencarian pihak ketiga)', application: 'ai-workspace', module: 'modes' },
+  { id: PERMISSIONS.memorySelfManage, name: 'Mengelola Memori Saya', description: 'Melihat, mengubah, dan menghapus catatan memori milik sendiri serta mengatur pintu memori', application: 'ai-workspace', module: 'workspace' },
+  { id: PERMISSIONS.memoryDoorsOpen, name: 'Membuka Pintu Memori Tim', description: 'Membuka pintu memori bawahan (orang atau agent) yang sudah diizinkan pemiliknya, untuk memperluas memori AI', application: 'ai-workspace', module: 'workspace' },
   { id: PERMISSIONS.knowledgeDocumentsRead, name: 'Melihat Dokumen Pengetahuan', description: 'Daftar dan detail dokumen pengetahuan', application: 'knowledge-center', module: 'content' },
   { id: PERMISSIONS.knowledgeCollectionsRead, name: 'Melihat Koleksi Pengetahuan', description: 'Koleksi sumber pengetahuan', application: 'knowledge-center', module: 'content' },
   { id: PERMISSIONS.knowledgeCollectionsManage, name: 'Mengelola Koleksi Pengetahuan', description: 'Membuat dan mengubah koleksi sumber pengetahuan', application: 'knowledge-center', module: 'content' },
@@ -114,6 +120,8 @@ export const PERMISSION_CATALOG: readonly PermissionDefinition[] = [
   { id: PERMISSIONS.configManage, name: 'Mengelola Konfigurasi', description: 'Mengubah konfigurasi aplikasi', application: 'administration', module: 'platform' },
   { id: PERMISSIONS.sessionsManage, name: 'Mengelola Sesi Pengguna', description: 'Melihat dan mencabut sesi pengguna', application: 'administration', module: 'platform' },
   { id: PERMISSIONS.auditRead, name: 'Membaca Log Audit', description: 'Log audit keamanan dan perubahan', application: 'administration', module: 'diagnostics' },
+  { id: PERMISSIONS.modelsGrantManage, name: 'Memberi Izin Model AI', description: 'Memberi izin model AI dan kuota token kepada orang, departemen, atau agent dalam jangkauan; melihat pemakaian', application: 'ai-workspace', module: 'workspace' },
+  { id: PERMISSIONS.modelsManage, name: 'Mengelola Model AI', description: 'Menambah, menguji, mengaktifkan, dan menetapkan model bawaan dari penyedia yang dikonfigurasi di .env', application: 'administration', module: 'platform' },
   { id: PERMISSIONS.guardrailsManage, name: 'Mengelola Guardrails', description: 'Mengaktifkan masking data pribadi sebelum dikirim ke LLM dan mengatur kategorinya', application: 'administration', module: 'platform' },
   { id: PERMISSIONS.providersHealthRead, name: 'Melihat Status Provider AI', description: 'Status kesehatan provider AI terkonfigurasi', application: 'administration', module: 'platform' },
 ];

@@ -173,7 +173,8 @@ describe('Admin platform (e2e)', () => {
 
   it('status provider tidak pernah membocorkan kredensial', async () => {
     const res = await asClient(app, admin).get('/api/admin/providers').expect(200);
-    expect(res.body.data.defaultProvider).toBe('openrouter');
+    // Model bawaan diisi dari AI_PROVIDER saat katalog kosong.
+    expect(res.body.data.defaultProvider).toBe(process.env.AI_PROVIDER ?? 'openrouter');
     const names = (res.body.data.providers as { name: string }[]).map((p) => p.name);
     expect(names).toEqual(expect.arrayContaining(['openrouter', 'ollama', 'openai', 'anthropic']));
     const raw = JSON.stringify(res.body);

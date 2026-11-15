@@ -5,13 +5,17 @@ import {
   type OnApplicationBootstrap,
   type OnModuleDestroy,
 } from '@nestjs/common';
-import { AUDIT_EVENTS } from '@bara/shared';
+import { AUDIT_EVENTS, PERMISSIONS } from '@bara/shared';
+import { hostname } from 'node:os';
+import { randomBytes } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import { AppError, ERROR_CODES } from '../../../common/errors/app-error';
 import type { AuthContext } from '../../../common/types/auth-context';
 import { DATA_SOURCE } from '../../../database/database.module';
 import { updatedRows } from '../../../database/query-result';
 import { AuditService } from '../../audit/audit.service';
+import { MemoryExtractionService } from '../../memory/memory-extraction.service';
+import { MemoryService } from '../../memory/memory.service';
 import {
   ConnectorToolsService,
   type ConnectorAttachment,
@@ -26,6 +30,7 @@ import {
   type ToolLoopResult,
   type ToolOutcome,
 } from '../gateway.service';
+import { AI_LIMITS } from '../limits';
 import type { ChatMessage } from '../providers/types';
 import { ToolApprovalsService } from '../tool-approvals.service';
 import type { TaskRow } from '../tasks.service';
@@ -38,6 +43,9 @@ export const NEEDS_INPUT = 'needs_input';
 const CLARIFY_TOOL = 'minta_klarifikasi';
 const DELEGATE_TOOL = 'delegasikan';
 const CONCURRENCY = 3;
+/** Seberapa sering lease kedaluwarsa diperiksa dan tugas 'created' tanpa pemilik diambil. */
+const RECOVERY_MS = 30_000;
+const MAX_TASK_ATTEMPTS = 3;
 const MAX_DELEGATIONS = 6;
 const DISCUSSION_MAX_TURN_CHARS = 4000;
 
@@ -53,6 +61,7 @@ interface GroupRecord {
   mode: 'delegate' | 'discussion';
   leader_agent_id: string;
   max_rounds: number;
+  share_memory: boolean;
   members: { id: string; name: string; position: number }[];
 }
 
@@ -76,6 +85,9 @@ export class TaskRunnerService implements OnApplicationBootstrap, OnModuleDestro
   private readonly queue: string[] = [];
   private readonly active = new Map<string, AbortController>();
   private destroyed = false;
+  /** Identitas pemegang lease tugas (lihat ai_runs kind='task'). */
+  private readonly workerId = `${hostname()}-${process.pid}-${randomBytes(3).toString('hex')}`;
+  private recoveryTimer: NodeJS.Timeout | null = null;
 
   constructor(
     @Inject(DATA_SOURCE) private readonly dataSource: DataSource,
@@ -84,16 +96,59 @@ export class TaskRunnerService implements OnApplicationBootstrap, OnModuleDestro
     private readonly approvals: ToolApprovalsService,
     private readonly audit: AuditService,
     private readonly webSearch: WebSearchService,
+    private readonly memory: MemoryService,
+    private readonly memoryNotes: MemoryExtractionService,
   ) {}
 
+  /** Izin memori pemilik tugas; runner berjalan di luar konteks permintaan HTTP. */
+  private memoryPermissions(userId: string): Promise<Set<string>> {
+    return this.memory.permissionsOf(userId);
+  }
+
   async onApplicationBootstrap(): Promise<void> {
-    // Tugas yang sedang berjalan saat server mati tidak dapat dilanjutkan otomatis.
+    // Tugas lama tanpa lease (sebelum kerja panjang) yang tertinggal "running" saat server mati
+    // dilanjutkan dari state ai_task_messages, bukan digagalkan.
     await this.dataSource.query(
-      `UPDATE ai_tasks SET status = 'failed', finished_at = now(), updated_at = now(),
-              error_message = 'Server dimulai ulang saat tugas berjalan. Jalankan ulang tugas ini.'
-        WHERE status IN ('running', 'validating') AND (agent_id IS NOT NULL OR group_id IS NOT NULL)
+      `UPDATE ai_tasks SET status = 'created', updated_at = now()
+        WHERE status IN ('running', 'validating') AND current_run_id IS NULL
+          AND (agent_id IS NOT NULL OR group_id IS NOT NULL)
+          AND updated_at < now() - interval '2 minutes'
           AND EXISTS (SELECT 1 FROM ai_task_messages m WHERE m.task_id = ai_tasks.id)`,
     );
+    await this.recover();
+    if (process.env.AI_WORKER_ENABLED !== 'false') {
+      this.recoveryTimer = setInterval(() => void this.recover().catch(() => undefined), RECOVERY_MS);
+    }
+  }
+
+  /**
+   * Lease tugas kedaluwarsa (instance mati) → kembali ke antrean dan dilanjutkan dari checkpoint;
+   * setelah MAX_TASK_ATTEMPTS percobaan → gagal. Tugas 'created' yang belum diambil siapa pun ikut diantrekan.
+   */
+  async recover(): Promise<void> {
+    const failed = updatedRows<{ id: string }>(
+      await this.dataSource.query(
+        `UPDATE ai_tasks t SET status = 'failed', finished_at = now(), updated_at = now(),
+                error_message = 'Tugas terhenti berulang kali karena gangguan server.'
+           FROM ai_runs r
+          WHERE r.id = t.current_run_id AND t.status = 'running'
+            AND r.lease_expires_at < now() AND r.attempt >= $1
+          RETURNING t.id`,
+        [MAX_TASK_ATTEMPTS],
+      ),
+    );
+    for (const row of failed) await this.event(row.id, 'failed', 'Tugas terhenti berulang kali karena gangguan server.');
+    const requeued = updatedRows<{ id: string }>(
+      await this.dataSource.query(
+        `UPDATE ai_tasks t SET status = 'created', updated_at = now()
+           FROM ai_runs r
+          WHERE r.id = t.current_run_id AND t.status = 'running'
+            AND r.lease_expires_at < now() AND r.attempt < $1
+          RETURNING t.id`,
+        [MAX_TASK_ATTEMPTS],
+      ),
+    );
+    for (const row of requeued) await this.event(row.id, 'resumed', 'Dilanjutkan setelah gangguan server.');
     const queued = (await this.dataSource.query(
       `SELECT t.id FROM ai_tasks t
         WHERE t.status = 'created' AND t.parent_task_id IS NULL
@@ -105,6 +160,7 @@ export class TaskRunnerService implements OnApplicationBootstrap, OnModuleDestro
 
   onModuleDestroy(): void {
     this.destroyed = true;
+    if (this.recoveryTimer) clearInterval(this.recoveryTimer);
     for (const controller of this.active.values()) controller.abort();
   }
 
@@ -128,6 +184,7 @@ export class TaskRunnerService implements OnApplicationBootstrap, OnModuleDestro
       label = group.name;
     }
     this.webSearch.assertAllowed(auth, dto.webSearch);
+    const memoryDoors = await this.memory.assertOpenable(auth, dto.memorySubjectIds ?? []);
     const instruction = dto.instruction.trim();
     const title = dto.title?.trim() || makeTitle(instruction);
     const rows = (await this.dataSource.query(
@@ -143,6 +200,9 @@ export class TaskRunnerService implements OnApplicationBootstrap, OnModuleDestro
       ],
     )) as RunnerTask[];
     const task = rows[0]!;
+    if (memoryDoors.length > 0) {
+      await this.memory.setContextDoors(auth, { kind: 'task', id: task.id }, memoryDoors);
+    }
     await this.appendMessage(task.id, leaderId, { role: 'user', content: instruction });
     await this.event(
       task.id,
@@ -345,6 +405,16 @@ export class TaskRunnerService implements OnApplicationBootstrap, OnModuleDestro
     );
     const task = claimed[0];
     if (!task) return;
+    const runId = await this.acquireLease(task);
+    const heartbeat = setInterval(() => {
+      void this.dataSource
+        .query(
+          `UPDATE ai_runs SET lease_expires_at = now() + interval '60 seconds', heartbeat_at = now()
+            WHERE id = $1 AND lease_owner = $2`,
+          [runId, this.workerId],
+        )
+        .catch(() => undefined);
+    }, 20_000);
     await this.event(taskId, 'running', 'Agent mulai bekerja.');
     const startedAt = Date.now();
     try {
@@ -378,7 +448,61 @@ export class TaskRunnerService implements OnApplicationBootstrap, OnModuleDestro
         entityId: taskId,
         payload: {},
       });
+    } finally {
+      clearInterval(heartbeat);
+      await this.releaseLease(runId, taskId, signal.aborted && this.destroyed);
     }
+  }
+
+  /** Satu baris ai_runs per tugas: lease + jumlah percobaan untuk pemulihan antar-instance. */
+  private async acquireLease(task: RunnerTask): Promise<string> {
+    const rows = (await this.dataSource.query(
+      `WITH existing AS (SELECT current_run_id AS id FROM ai_tasks WHERE id = $1)
+       INSERT INTO ai_runs (id, kind, user_id, task_id, agent_id, status, max_iterations, deadline_at,
+                            lease_owner, lease_expires_at, heartbeat_at, started_at, attempt)
+       VALUES (COALESCE((SELECT id FROM existing), gen_random_uuid()), 'task', $2, $1, $3, 'running', $5,
+               now() + interval '1 day', $4, now() + interval '60 seconds', now(), now(), 1)
+       ON CONFLICT (id) DO UPDATE
+         SET status = 'running', lease_owner = $4, lease_expires_at = now() + interval '60 seconds',
+             heartbeat_at = now(), attempt = ai_runs.attempt + 1, finished_at = NULL
+       RETURNING id`,
+      [task.id, task.user_id, task.agent_id, this.workerId, AI_LIMITS.maxToolIterations],
+    )) as { id: string }[];
+    const runId = rows[0]!.id;
+    await this.dataSource.query(`UPDATE ai_tasks SET current_run_id = $2 WHERE id = $1`, [task.id, runId]);
+    return runId;
+  }
+
+  /** Lepas lease; saat shutdown tugas dikembalikan ke antrean agar instance lain melanjutkan. */
+  private async releaseLease(runId: string, taskId: string, shuttingDown: boolean): Promise<void> {
+    if (shuttingDown) {
+      await this.dataSource.query(
+        `UPDATE ai_tasks SET status = 'created', updated_at = now() WHERE id = $1 AND status = 'running'`,
+        [taskId],
+      );
+      await this.dataSource.query(
+        `UPDATE ai_runs SET status = 'queued', lease_owner = NULL, lease_expires_at = NULL,
+                attempt = GREATEST(attempt - 1, 0) WHERE id = $1`,
+        [runId],
+      );
+      return;
+    }
+    await this.dataSource.query(
+      `UPDATE ai_runs r
+          SET lease_owner = NULL, lease_expires_at = NULL,
+              status = CASE t.status
+                WHEN 'completed' THEN 'completed'::ai_run_status
+                WHEN 'failed' THEN 'failed'::ai_run_status
+                WHEN 'cancelled' THEN 'cancelled'::ai_run_status
+                WHEN 'needs_input' THEN 'waiting_input'::ai_run_status
+                WHEN 'awaiting_approval' THEN 'waiting_approval'::ai_run_status
+                ELSE 'queued'::ai_run_status END,
+              finished_at = CASE WHEN t.status IN ('completed', 'failed', 'cancelled') THEN now() ELSE NULL END,
+              iterations = 0
+         FROM ai_tasks t
+        WHERE r.id = $1 AND t.id = $2`,
+      [runId, taskId],
+    );
   }
 
   // ───────────────────────── Satu agent / Leader delegasi ─────────────────────────
@@ -391,15 +515,18 @@ export class TaskRunnerService implements OnApplicationBootstrap, OnModuleDestro
     group?: GroupRecord,
   ): Promise<void> {
     const agent = await this.loadAgent(agentId, task.user_id);
-    const messages = await this.loadMessages(task.id);
+    const messages = await this.repairInterrupted(task.id, agent.id, await this.loadMessages(task.id));
     const delegation = group ? this.delegationHandler(task, group, signal) : null;
+    const checkpoint = { count: 0 };
     const result = await this.runLoop(task, agent, messages, signal, {
       extraHandlers: delegation ? [delegation] : [],
       groupNote: group ? this.leaderNote(group) : undefined,
       allowApproval: true,
       allowClarify: true,
+      checkpoint,
     });
-    await this.persistAppended(task.id, agent.id, result.appended);
+    // Langkah sudah disimpan satu per satu; sisanya hanya pesan "tidak dijalankan" setelah persetujuan.
+    await this.persistAppended(task.id, agent.id, result.appended.slice(checkpoint.count));
     await this.finish(task, result, startedAt);
   }
 
@@ -481,6 +608,10 @@ export class TaskRunnerService implements OnApplicationBootstrap, OnModuleDestro
       entityId: task.id,
       payload: { durationMs, tokensIn: result.tokensIn, tokensOut: result.tokensOut },
     });
+    if (!task.parent_task_id) {
+      const permissions = await this.memoryPermissions(task.user_id);
+      if (permissions.has(PERMISSIONS.memorySelfManage)) this.memoryNotes.scheduleTask(task.id);
+    }
   }
 
   /** Loop tool untuk satu agent; event dicatat ke tugas `eventTaskId`. */
@@ -496,6 +627,8 @@ export class TaskRunnerService implements OnApplicationBootstrap, OnModuleDestro
       allowClarify: boolean;
       eventTaskId?: string;
       maxIterations?: number;
+      /** Simpan setiap langkah ke ai_task_messages saat terjadi (dapat dilanjutkan setelah crash). */
+      checkpoint?: { count: number };
     },
   ): Promise<ToolLoopResult> {
     const eventTaskId = options.eventTaskId ?? task.id;
@@ -533,13 +666,26 @@ export class TaskRunnerService implements OnApplicationBootstrap, OnModuleDestro
       }),
       ...(options.groupNote ? { groupNote: options.groupNote } : {}),
     });
+    // Sub-tugas delegasi memakai pintu memori yang dibuka pada tugas induknya. Grup dengan memori
+    // bersama (P2): agent anggota lain ikut dibaca lewat pintu masing-masing.
+    const peerAgentIds = await this.groupPeers(task, agent.id);
+    const memory = await this.memory.retrieve(
+      task.user_id,
+      await this.memoryPermissions(task.user_id),
+      { kind: 'task', id: task.parent_task_id ?? task.id },
+      task.instruction,
+      { agentId: agent.id, ...(peerAgentIds.length > 0 ? { peerAgentIds } : {}) },
+    );
+    await this.memory.attachTaskRefs(task.parent_task_id ?? task.id, memory.refs);
     const handlerMap = new Map(handlers.map((h) => [h.tool.name, h]));
     const steps: ToolTraceStep[] = [];
     return this.gateway.drainToolLoop(
       {
         guard: { userId: task.user_id, taskId: task.id },
+        agentId: agent.id,
         mode: 'subordinate',
         systemPrompt,
+        memoryContext: memory.block || undefined,
         toolRules:
           [
             this.connectorTools.toolRules(connectorHandlers),
@@ -553,6 +699,21 @@ export class TaskRunnerService implements OnApplicationBootstrap, OnModuleDestro
         ...(options.maxIterations ? { maxIterations: options.maxIterations } : {}),
       },
       async (event: ToolLoopEvent) => {
+        if (options.checkpoint) {
+          if (event.type === 'assistant') {
+            await this.appendMessage(task.id, agent.id, { role: 'assistant', content: event.content, toolCalls: event.toolCalls });
+            options.checkpoint.count += 1;
+          } else if (event.type === 'tool_result' && event.outcome.status !== 'pending_approval') {
+            await this.appendMessage(task.id, agent.id, {
+              role: 'tool',
+              toolCallId: event.call.id,
+              toolName: event.call.name,
+              content: clampToolResult(event.outcome.content || '(kosong)'),
+              ...(event.outcome.status === 'error' ? { isError: true } : {}),
+            });
+            options.checkpoint.count += 1;
+          }
+        }
         if (event.type === 'assistant') {
           if (event.content.trim()) {
             await this.event(eventTaskId, 'message', event.content.slice(0, 4000), {
@@ -563,7 +724,7 @@ export class TaskRunnerService implements OnApplicationBootstrap, OnModuleDestro
           }
           return;
         }
-        if (event.type === 'delta') return;
+        if (event.type === 'delta' || event.type === 'usage') return;
         if (
           event.type === 'tool_call' &&
           (event.call.name === CLARIFY_TOOL || event.call.name === DELEGATE_TOOL)
@@ -886,9 +1047,17 @@ export class TaskRunnerService implements OnApplicationBootstrap, OnModuleDestro
     return rows[0];
   }
 
+  /** Anggota lain dari grup tugas ini bila grup memakai memori bersama. */
+  private async groupPeers(task: RunnerTask, agentId: string): Promise<string[]> {
+    if (!task.group_id) return [];
+    const group = await this.loadGroup(task.group_id, task.user_id).catch(() => null);
+    if (!group?.share_memory) return [];
+    return group.members.map((m) => m.id).filter((id) => id !== agentId);
+  }
+
   private async loadGroup(groupId: string, userId: string): Promise<GroupRecord> {
     const rows = (await this.dataSource.query(
-      `SELECT g.id, g.name, g.mode, g.leader_agent_id, g.max_rounds,
+      `SELECT g.id, g.name, g.mode, g.leader_agent_id, g.max_rounds, g.share_memory,
               COALESCE((SELECT json_agg(json_build_object('id', a.id, 'name', a.name, 'position', m.position)
                                         ORDER BY m.position)
                           FROM agent_group_members m JOIN agents a ON a.id = m.agent_id
@@ -923,6 +1092,31 @@ export class TaskRunnerService implements OnApplicationBootstrap, OnModuleDestro
       display_name: string;
     }[];
     return rows[0]?.display_name ?? 'pengguna';
+  }
+
+  /**
+   * Setelah crash, transkrip bisa berakhir dengan permintaan tool tanpa hasil. Tool itu tidak
+   * dijalankan ulang (bisa jadi sudah berefek); model diberi tahu statusnya tidak diketahui.
+   */
+  private async repairInterrupted(taskId: string, agentId: string, messages: ChatMessage[]): Promise<ChatMessage[]> {
+    const lastAssistant = messages.map((m) => m.role).lastIndexOf('assistant');
+    const assistant = lastAssistant >= 0 ? messages[lastAssistant] : undefined;
+    if (!assistant?.toolCalls?.length) return messages;
+    const answered = new Set(messages.slice(lastAssistant + 1).filter((m) => m.role === 'tool').map((m) => m.toolCallId));
+    const repaired = [...messages];
+    for (const call of assistant.toolCalls) {
+      if (answered.has(call.id)) continue;
+      const message: ChatMessage = {
+        role: 'tool',
+        toolCallId: call.id,
+        toolName: call.name,
+        content: 'Status tidak diketahui setelah gangguan server — periksa sistem tujuan sebelum mengulang operasi ini.',
+        isError: true,
+      };
+      await this.appendMessage(taskId, agentId, message);
+      repaired.push(message);
+    }
+    return repaired;
   }
 
   private async loadMessages(taskId: string): Promise<ChatMessage[]> {

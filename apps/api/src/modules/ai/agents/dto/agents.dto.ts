@@ -14,8 +14,10 @@ import {
   Min,
   MinLength,
   ValidateNested,
+  ValidateIf,
 } from 'class-validator';
 import { ConnectorAttachmentDto } from '../../../connectors/dto/connectors.dto';
+import { MEMORY_LIMITS } from '@bara/shared';
 import { AI_LIMITS } from '../../limits';
 
 export class PersonalAgentDto {
@@ -66,6 +68,12 @@ export class PersonalAgentDto {
   @ValidateNested({ each: true })
   @Type(() => ConnectorAttachmentDto)
   connectors?: ConnectorAttachmentDto[];
+
+  /** Model katalog untuk agent ini; null = model bawaan/preferensi pemilik. */
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsUUID()
+  modelId?: string | null;
 }
 
 export class UpdatePersonalAgentDto {
@@ -122,6 +130,12 @@ export class UpdatePersonalAgentDto {
   @ValidateNested({ each: true })
   @Type(() => ConnectorAttachmentDto)
   connectors?: ConnectorAttachmentDto[];
+
+  /** Model katalog untuk agent ini; null = model bawaan/preferensi pemilik. */
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsUUID()
+  modelId?: string | null;
 }
 
 export class FromTemplateDto {
@@ -202,6 +216,11 @@ export class AgentGroupDto {
   @Min(1)
   @Max(6)
   maxRounds?: number;
+
+  /** Anggota saling membaca buku memori agent lain dalam grup (P2). */
+  @IsOptional()
+  @IsBoolean()
+  shareMemory?: boolean;
 }
 
 export class AgentTaskDto {
@@ -227,6 +246,13 @@ export class AgentTaskDto {
   @IsOptional()
   @IsBoolean()
   webSearch?: boolean;
+
+  /** Pintu memori (subjek bawahan) yang dibuka untuk tugas ini. */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MEMORY_LIMITS.maxOpenDoors)
+  @IsUUID('4', { each: true })
+  memorySubjectIds?: string[];
 }
 
 export class TaskReplyDto {

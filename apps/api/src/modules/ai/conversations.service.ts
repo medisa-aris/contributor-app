@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { AUDIT_EVENTS, type ConversationMode } from '@bara/shared';
+import { AUDIT_EVENTS, type ConversationMode, type MemoryRefDto } from '@bara/shared';
 import { DataSource } from 'typeorm';
 import type { AuthContext } from '../../common/types/auth-context';
 import { AppError, ERROR_CODES } from '../../common/errors/app-error';
@@ -16,6 +16,8 @@ export interface ConversationSummary {
   title: string;
   counterpart_style: string | null;
   web_search: boolean;
+  /** Model katalog terakhir yang dipilih/dipakai percakapan ini. */
+  model_id: string | null;
   starred_at: string | null;
   updated_at: string;
   created_at: string;
@@ -26,6 +28,9 @@ export interface ConversationMessageRow {
   role: 'system' | 'user' | 'assistant';
   content: string;
   model: string | null;
+  /** Model katalog (ai_models.id) yang menghasilkan pesan ini. */
+  model_id?: string | null;
+  provider_content?: unknown[] | null;
   tokens_in: number | null;
   tokens_out: number | null;
   created_at: string;
@@ -35,6 +40,20 @@ export interface ConversationMessageRow {
   guardrails?: Record<string, number> | null;
   /** Dokumen yang dibuat AI pada pesan ini (hanya terisi di detail / respons chat). */
   documents?: UserDocument[];
+  /** Catatan memori yang disisipkan ke prompt saat jawaban ini dibuat (sitasi). */
+  memory_refs?: MemoryRefDto[] | null;
+}
+
+interface AssistantReply {
+  content: string;
+  model: string | null;
+  modelId?: string | null;
+  /** Blok asli penyedia (thinking/compaction) untuk diputar ulang pada giliran berikutnya. */
+  providerContent?: unknown[];
+  tokensIn: number | null;
+  tokensOut: number | null;
+  guardrails?: Record<string, number>;
+  memoryRefs?: MemoryRefDto[];
 }
 
 export interface ConversationDetail extends ConversationSummary {
@@ -60,7 +79,7 @@ export class ConversationsService {
     const created = (await this.dataSource.query(
       `INSERT INTO conversations (user_id, mode, title)
        VALUES ($1, $2, 'Percakapan baru')
-       RETURNING id, mode, title, counterpart_style, web_search, starred_at, updated_at, created_at`,
+       RETURNING id, mode, title, counterpart_style, web_search, model_id, starred_at, updated_at, created_at`,
       [auth.user.id, mode],
     )) as ConversationSummary[];
     const conversation = created[0]!;
@@ -110,7 +129,7 @@ export class ConversationsService {
     )) as { total: number }[];
     params.push(options.take, options.skip);
     const items = (await this.dataSource.query(
-      `SELECT id, mode, title, counterpart_style, web_search, starred_at, updated_at, created_at
+      `SELECT id, mode, title, counterpart_style, web_search, model_id, starred_at, updated_at, created_at
          FROM conversations WHERE ${where}
         ORDER BY (starred_at IS NOT NULL) DESC, updated_at DESC
         LIMIT $${params.length - 1} OFFSET $${params.length}`,
@@ -121,7 +140,7 @@ export class ConversationsService {
 
   async detail(auth: AuthContext, conversationId: string): Promise<ConversationDetail> {
     const rows = (await this.dataSource.query(
-      `SELECT id, mode, title, counterpart_style, web_search, starred_at, updated_at, created_at
+      `SELECT id, mode, title, counterpart_style, web_search, model_id, starred_at, updated_at, created_at
          FROM conversations WHERE id = $1 AND user_id = $2`,
       [conversationId, auth.user.id],
     )) as ConversationSummary[];
@@ -129,7 +148,7 @@ export class ConversationsService {
       throw new AppError(ERROR_CODES.notFound, 'Percakapan tidak ditemukan.', 404);
     }
     const messages = (await this.dataSource.query(
-      `SELECT id, role, content, model, tokens_in, tokens_out, created_at, guardrails,
+      `SELECT id, role, content, model, model_id, tokens_in, tokens_out, created_at, guardrails, memory_refs,
               CASE WHEN tool_trace IS NULL THEN NULL ELSE tool_trace - 'transcript' END AS tool_trace
          FROM conversation_messages WHERE conversation_id = $1
         ORDER BY id`,
@@ -221,7 +240,7 @@ export class ConversationsService {
     ]);
 
     const history = (await this.dataSource.query(
-      `SELECT id, role, content, model, tokens_in, tokens_out, created_at
+      `SELECT id, role, content, model, model_id, tokens_in, tokens_out, created_at, provider_content
          FROM conversation_messages WHERE conversation_id = $1
         ORDER BY id`,
       [conversationId],
@@ -230,20 +249,12 @@ export class ConversationsService {
   }
 
   /** Simpan jawaban asisten di akhir giliran, lalu kembalikan percakapan lengkap. */
-  async completeTurn(
-    conversationId: string,
-    reply: {
-      content: string;
-      model: string | null;
-      tokensIn: number | null;
-      tokensOut: number | null;
-      guardrails?: Record<string, number>;
-    },
-  ): Promise<ConversationMessageRow> {
+  async completeTurn(conversationId: string, reply: AssistantReply): Promise<ConversationMessageRow> {
     const inserted = (await this.dataSource.query(
-      `INSERT INTO conversation_messages (conversation_id, role, content, model, tokens_in, tokens_out, guardrails)
-       VALUES ($1, 'assistant', $2, $3, $4, $5, $6)
-       RETURNING id, role, content, model, tokens_in, tokens_out, created_at, guardrails`,
+      `INSERT INTO conversation_messages
+         (conversation_id, role, content, model, tokens_in, tokens_out, guardrails, memory_refs, model_id, provider_content)
+       VALUES ($1, 'assistant', $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING id, role, content, model, model_id, tokens_in, tokens_out, created_at, guardrails, memory_refs`,
       [
         conversationId,
         reply.content,
@@ -251,11 +262,15 @@ export class ConversationsService {
         reply.tokensIn,
         reply.tokensOut,
         reply.guardrails ? JSON.stringify(reply.guardrails) : null,
+        reply.memoryRefs?.length ? JSON.stringify(reply.memoryRefs) : null,
+        reply.modelId ?? null,
+        reply.providerContent ? JSON.stringify(reply.providerContent) : null,
       ],
     )) as ConversationMessageRow[];
-    await this.dataSource.query(`UPDATE conversations SET updated_at = now() WHERE id = $1`, [
-      conversationId,
-    ]);
+    await this.dataSource.query(
+      `UPDATE conversations SET updated_at = now(), model_id = COALESCE($2, model_id) WHERE id = $1`,
+      [conversationId, reply.modelId ?? null],
+    );
     return inserted[0]!;
   }
 
@@ -263,7 +278,11 @@ export class ConversationsService {
   toChatMessages(history: ConversationMessageRow[]): ChatMessage[] {
     return history
       .filter((m) => m.role === 'user' || m.role === 'assistant')
-      .map((m) => ({ role: m.role, content: m.content }));
+      .map((m) => ({
+        role: m.role,
+        content: m.content,
+        ...(m.role === 'assistant' && Array.isArray(m.provider_content) ? { providerContent: m.provider_content } : {}),
+      }));
   }
 
   async remove(auth: AuthContext, conversationId: string): Promise<void> {
@@ -299,8 +318,8 @@ export class ConversationsService {
         sets.length > 0
           ? `UPDATE conversations SET ${sets.join(', ')}
               WHERE id = $1 AND user_id = $2
-          RETURNING id, mode, title, counterpart_style, web_search, starred_at, updated_at, created_at`
-          : `SELECT id, mode, title, counterpart_style, web_search, starred_at, updated_at, created_at
+          RETURNING id, mode, title, counterpart_style, web_search, model_id, starred_at, updated_at, created_at`
+          : `SELECT id, mode, title, counterpart_style, web_search, model_id, starred_at, updated_at, created_at
                FROM conversations WHERE id = $1 AND user_id = $2`,
         params,
       ),
@@ -331,7 +350,7 @@ export class ConversationsService {
     }
 
     const messages = (await this.dataSource.query(
-      `SELECT id, role, content, model, tokens_in, tokens_out, created_at
+      `SELECT id, role, content, model, model_id, tokens_in, tokens_out, created_at, provider_content
          FROM conversation_messages WHERE conversation_id = $1
         ORDER BY id`,
       [conversationId],
@@ -359,34 +378,33 @@ export class ConversationsService {
   async replaceAssistant(
     conversationId: string,
     previousAssistantId: string,
-    reply: {
-      content: string;
-      model: string | null;
-      tokensIn: number | null;
-      tokensOut: number | null;
-      guardrails?: Record<string, number>;
-    },
+    reply: AssistantReply,
   ): Promise<ConversationMessageRow> {
     return this.dataSource.transaction(async (manager) => {
       await manager.query(`DELETE FROM conversation_messages WHERE id = $1`, [previousAssistantId]);
       const inserted = updatedRows<ConversationMessageRow>(
         await manager.query(
-          `INSERT INTO conversation_messages (conversation_id, role, content, model, tokens_in, tokens_out, guardrails)
-           VALUES ($1, 'assistant', $2, $3, $4, $5, $6)
-           RETURNING id, role, content, model, tokens_in, tokens_out, created_at, guardrails`,
+          `INSERT INTO conversation_messages
+             (conversation_id, role, content, model, tokens_in, tokens_out, guardrails, memory_refs, model_id, provider_content)
+           VALUES ($1, 'assistant', $2, $3, $4, $5, $6, $7, $8, $9)
+           RETURNING id, role, content, model, model_id, tokens_in, tokens_out, created_at, guardrails, memory_refs`,
           [
-        conversationId,
-        reply.content,
-        reply.model,
-        reply.tokensIn,
-        reply.tokensOut,
-        reply.guardrails ? JSON.stringify(reply.guardrails) : null,
-      ],
+            conversationId,
+            reply.content,
+            reply.model,
+            reply.tokensIn,
+            reply.tokensOut,
+            reply.guardrails ? JSON.stringify(reply.guardrails) : null,
+            reply.memoryRefs?.length ? JSON.stringify(reply.memoryRefs) : null,
+            reply.modelId ?? null,
+            reply.providerContent ? JSON.stringify(reply.providerContent) : null,
+          ],
         ),
       );
-      await manager.query(`UPDATE conversations SET updated_at = now() WHERE id = $1`, [
-        conversationId,
-      ]);
+      await manager.query(
+        `UPDATE conversations SET updated_at = now(), model_id = COALESCE($2, model_id) WHERE id = $1`,
+        [conversationId, reply.modelId ?? null],
+      );
       return inserted[0]!;
     });
   }

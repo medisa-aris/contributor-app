@@ -20,6 +20,7 @@ export interface MockAiGateway {
   chat: jest.Mock;
   stream: jest.Mock;
   activeModel: jest.Mock;
+  embed: jest.Mock;
 }
 
 export interface MockWebSource {
@@ -31,6 +32,7 @@ export function createMockAiGateway(): MockAiGateway {
     chat: jest.fn(),
     stream: jest.fn(),
     activeModel: jest.fn().mockReturnValue('model-uji'),
+    embed: jest.fn().mockResolvedValue(null),
   };
 }
 

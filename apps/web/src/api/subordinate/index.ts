@@ -17,6 +17,8 @@ export interface PersonalAgent {
   status: 'active' | 'inactive';
   template_id: string | null;
   template_name: string | null;
+  /** Model katalog agent; null = model bawaan/pilihan pemilik. */
+  model_id: string | null;
   task_count: number;
   created_at: string;
   updated_at: string;
@@ -35,6 +37,7 @@ export interface PersonalAgentInput {
   status?: 'active' | 'inactive';
   skillIds?: string[];
   connectors?: { connectorType: ConnectorType; connectorId: string; access: ConnectorAccess }[];
+  modelId?: string | null;
 }
 
 export interface AgentTemplate {
@@ -65,6 +68,8 @@ export interface AgentGroup {
   mode: GroupMode;
   leader_agent_id: string;
   max_rounds: number;
+  /** Anggota saling membaca memori agent lain dalam grup. */
+  share_memory: boolean;
   members: { id: string; name: string; avatar_color: string | null; position: number }[];
   task_count: number;
   created_at: string;
@@ -78,6 +83,7 @@ export interface AgentGroupInput {
   leaderAgentId: string;
   memberAgentIds: string[];
   maxRounds?: number;
+  shareMemory?: boolean;
 }
 
 export type AgentTaskRow = TaskRow & {
@@ -162,6 +168,7 @@ export function createAgentTask(input: {
   agentId?: string;
   groupId?: string;
   webSearch?: boolean;
+  memorySubjectIds?: string[];
 }): Promise<AgentTaskRow> {
   return apiPost<AgentTaskRow>('/ai/agent-tasks', input);
 }

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { PERMISSIONS } from '@bara/shared';
+import { PERMISSIONS, type MemoryRefDto } from '@bara/shared';
 import { DataSource } from 'typeorm';
 import { AppError, ERROR_CODES } from '../../common/errors/app-error';
 import type { AuthContext } from '../../common/types/auth-context';
@@ -312,12 +312,15 @@ export class ChatToolsService {
       tokensOut: number | null;
       trace: ToolTrace;
       guardrails?: Record<string, number>;
+      /** Catatan memori yang dipakai giliran lanjutan; kosong = rujukan lama dipertahankan. */
+      memoryRefs?: MemoryRefDto[];
     },
   ): Promise<void> {
     await this.dataSource.query(
       `UPDATE conversation_messages
           SET content = $2, tokens_in = $3, tokens_out = $4, tool_trace = $5,
-              guardrails = COALESCE($6::jsonb, guardrails)
+              guardrails = COALESCE($6::jsonb, guardrails),
+              memory_refs = COALESCE($7::jsonb, memory_refs)
         WHERE id = $1`,
       [
         messageId,
@@ -326,6 +329,7 @@ export class ChatToolsService {
         patch.tokensOut,
         JSON.stringify(patch.trace),
         patch.guardrails ? JSON.stringify(patch.guardrails) : null,
+        patch.memoryRefs?.length ? JSON.stringify(patch.memoryRefs) : null,
       ],
     );
   }

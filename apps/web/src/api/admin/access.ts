@@ -137,13 +137,14 @@ export function createDepartment(payload: {
   name: string;
   code: string;
   parentId?: string | null;
+  headUserId?: string | null;
 }): Promise<AdminDepartmentNode> {
   return apiPost<AdminDepartmentNode>('/admin/departments', payload);
 }
 
 export function updateDepartment(
   id: string,
-  payload: { name?: string; code?: string; parentId?: string | null },
+  payload: { name?: string; code?: string; parentId?: string | null; headUserId?: string | null },
 ): Promise<AdminDepartmentNode> {
   return apiPatch<AdminDepartmentNode>(`/admin/departments/${id}`, payload);
 }

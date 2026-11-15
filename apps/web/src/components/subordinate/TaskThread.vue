@@ -17,6 +17,7 @@ import { useToastStore } from '@/stores/toast.store';
 import { formatDateTime, formatNumber } from '@/utils/format';
 import { CaBadge, CaButton, CaDialog, CaIcon, CaSpinner, CaTextarea } from '@/components/ui';
 import MarkdownContent from '@/components/ai/MarkdownContent.vue';
+import MemoryCitations from '@/components/ai/MemoryCitations.vue';
 import AgentAvatar from './AgentAvatar.vue';
 
 /**
@@ -272,6 +273,7 @@ function statement(payload: Record<string, unknown>): string {
       <section v-if="task.status === 'completed' && task.result" class="tt__result">
         <h3>{{ t('workspace.subordinate.resultTitle') }}</h3>
         <MarkdownContent :content="task.result" />
+        <MemoryCitations :refs="task.memory_refs ?? []" />
       </section>
       <p v-if="task.status === 'failed' && task.error_message" class="admin-error" role="alert">{{ task.error_message }}</p>
 
