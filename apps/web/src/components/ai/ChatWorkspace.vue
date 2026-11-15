@@ -110,6 +110,7 @@ const activeRun = ref<RunDto | null>(null);
 const runText = ref('');
 const runSteps = ref<ToolTraceStep[]>([]);
 const runCompactions = ref(0);
+const runProgress = ref<string[]>([]);
 const runReconnecting = ref(false);
 let runFollow: AbortController | null = null;
 let runLastEventId = 0;
@@ -127,6 +128,7 @@ function detachRun(): void {
   runText.value = '';
   runSteps.value = [];
   runCompactions.value = 0;
+  runProgress.value = [];
   runLastEventId = 0;
 }
 
@@ -141,6 +143,7 @@ function attachRun(run: RunDto, fromEventId = 0): void {
     runText.value = '';
     runSteps.value = [];
     runCompactions.value = 0;
+    runProgress.value = [];
   }
   void followRun(
     run.id,
@@ -159,6 +162,8 @@ function attachRun(run: RunDto, fromEventId = 0): void {
         runSteps.value = index >= 0 ? runSteps.value.map((s, i) => (i === index ? step : s)) : [...runSteps.value, step];
       } else if (event.type === 'compaction') {
         runCompactions.value += 1;
+      } else if (event.type === 'progress' && typeof payload.message === 'string') {
+        runProgress.value = [...runProgress.value, payload.message];
       } else if (event.type === 'usage') {
         activeRun.value = {
           ...current,
@@ -1495,6 +1500,7 @@ onBeforeUnmount(() => {
         :text="runText"
         :steps="runSteps"
         :compactions="runCompactions"
+        :progress="runProgress"
         :reconnecting="runReconnecting"
         @cancel="stopActiveRun"
         @continue="continueActiveRun"

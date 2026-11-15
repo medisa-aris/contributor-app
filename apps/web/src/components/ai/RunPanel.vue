@@ -14,6 +14,8 @@ const props = defineProps<{
   text: string;
   steps: ToolTraceStep[];
   compactions: number;
+  /** Pesan dari tool kirim_pembaruan, ditampilkan apa adanya. */
+  progress?: string[];
   reconnecting?: boolean;
 }>();
 const emit = defineEmits<{ cancel: []; continue: [] }>();
@@ -84,6 +86,10 @@ const tokens = computed(() => props.run.tokensIn + props.run.tokensOut);
     </header>
     <p v-if="run.error && !active" class="run__error">{{ run.error }}</p>
     <p v-if="compactions > 0" class="run__note">{{ t('runs.compacted', { n: compactions }) }}</p>
+    <div v-if="progress && progress.length > 0" class="run__progress">
+      <p class="run__note">{{ t('runs.progressTitle') }}</p>
+      <div v-for="(item, index) in progress" :key="index" class="run__progress-item"><MarkdownContent :content="item" /></div>
+    </div>
     <ToolTraceList v-if="steps.length > 0" :steps="steps" readonly />
     <div v-if="text" class="run__text"><MarkdownContent :content="text" /></div>
     <p class="run__hint">{{ t('runs.hint') }}</p>
@@ -130,6 +136,15 @@ const tokens = computed(() => props.run.tokensIn + props.run.tokensOut);
   margin: 0;
   font-size: var(--ca-text-100);
   color: var(--ca-fg-3);
+}
+.run__progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ca-space-2);
+}
+.run__progress-item {
+  border-left: 3px solid var(--ca-color-brand, #16a34a);
+  padding-left: var(--ca-space-3);
 }
 .run__text {
   max-height: 320px;

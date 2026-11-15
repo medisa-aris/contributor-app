@@ -252,7 +252,18 @@ const editForm = ref({
   supportsStream: true,
   longRunAllowed: false,
   acceptsSamplingParams: true,
+  supportsEffort: false,
+  defaultEffort: '',
+  supportsThinking: false,
+  supportsCompaction: false,
+  supportsContextEditing: false,
+  supportsTaskBudget: false,
+  supportsPromptCache: false,
 });
+const effortOptions = computed(() => [
+  { value: '', label: '—' },
+  ...['low', 'medium', 'high', 'xhigh', 'max'].map((value) => ({ value, label: value })),
+]);
 const tierOptions = computed(() => [
   { value: '', label: '—' },
   { value: '1', label: t('models.admin.costTier.1') },
@@ -274,6 +285,13 @@ function openEdit(model: AiModelDto): void {
     supportsStream: model.supportsStream,
     longRunAllowed: model.longRunAllowed,
     acceptsSamplingParams: model.acceptsSamplingParams,
+    supportsEffort: model.supportsEffort,
+    defaultEffort: model.defaultEffort ?? '',
+    supportsThinking: model.supportsThinking,
+    supportsCompaction: model.supportsCompaction,
+    supportsContextEditing: model.supportsContextEditing,
+    supportsTaskBudget: model.supportsTaskBudget,
+    supportsPromptCache: model.supportsPromptCache,
   };
   editOpen.value = true;
 }
@@ -300,6 +318,13 @@ async function submitEdit(): Promise<void> {
         supportsStream: editForm.value.supportsStream,
         longRunAllowed: editForm.value.longRunAllowed,
         acceptsSamplingParams: editForm.value.acceptsSamplingParams,
+        supportsEffort: editForm.value.supportsEffort,
+        defaultEffort: editForm.value.defaultEffort || null,
+        supportsThinking: editForm.value.supportsThinking,
+        supportsCompaction: editForm.value.supportsCompaction,
+        supportsContextEditing: editForm.value.supportsContextEditing,
+        supportsTaskBudget: editForm.value.supportsTaskBudget,
+        supportsPromptCache: editForm.value.supportsPromptCache,
       }),
     );
     editOpen.value = false;
@@ -697,6 +722,19 @@ onMounted(() => {
         <CaCheckbox v-model="editForm.supportsStream" :label="t('models.admin.editDialog.supportsStream')" />
         <CaCheckbox v-model="editForm.longRunAllowed" :label="t('runs.admin.longRunAllowed')" />
         <CaCheckbox v-model="editForm.acceptsSamplingParams" :label="t('runs.admin.acceptsSampling')" />
+        <fieldset class="mdl-native">
+          <legend>{{ t('runs.admin.nativeTitle') }}</legend>
+          <p class="mdl-muted">{{ t('runs.admin.nativeHint') }}</p>
+          <CaCheckbox v-model="editForm.supportsEffort" :label="t('runs.admin.supportsEffort')" />
+          <CaField v-if="editForm.supportsEffort" :label="t('runs.admin.defaultEffort')">
+            <template #default="{ id }"><CaSelect :id="id" v-model="editForm.defaultEffort" :options="effortOptions" /></template>
+          </CaField>
+          <CaCheckbox v-model="editForm.supportsThinking" :label="t('runs.admin.supportsThinking')" />
+          <CaCheckbox v-model="editForm.supportsCompaction" :label="t('runs.admin.supportsCompaction')" />
+          <CaCheckbox v-model="editForm.supportsContextEditing" :label="t('runs.admin.supportsContextEditing')" />
+          <CaCheckbox v-model="editForm.supportsTaskBudget" :label="t('runs.admin.supportsTaskBudget')" />
+          <CaCheckbox v-model="editForm.supportsPromptCache" :label="t('runs.admin.supportsPromptCache')" />
+        </fieldset>
         <div class="mdl-form__actions">
           <CaButton type="submit" variant="primary" :loading="editSaving">{{ t('models.admin.editDialog.save') }}</CaButton>
         </div>
@@ -825,6 +863,18 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: var(--ca-space-2);
+}
+.mdl-native {
+  border: 1px solid var(--ca-stroke-2);
+  border-radius: var(--ca-radius-md);
+  padding: var(--ca-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ca-space-2);
+}
+.mdl-native legend {
+  font-weight: 600;
+  padding: 0 var(--ca-space-1);
 }
 .mdl-subtitle {
   margin: var(--ca-space-3) 0 0;

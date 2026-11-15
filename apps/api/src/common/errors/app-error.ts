@@ -29,5 +29,6 @@ export const ERROR_CODES = {
   aiModelCapabilityMissing: 'AI_MODEL_CAPABILITY_MISSING',
   aiQuotaExceeded: 'AI_QUOTA_EXCEEDED',
   aiRateLimited: 'AI_RATE_LIMITED',
+  aiRefused: 'AI_REFUSED',
   internal: 'INTERNAL_ERROR',
 } as const;

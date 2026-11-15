@@ -11,13 +11,14 @@ import {
   type ContextCache,
 } from './context-budget';
 import { AI_LIMITS, validateChatMessages } from './limits';
-import { buildSystemPrompt, type PromptMode } from './prompts';
+import { buildSystemPrompt, LONG_RUN_RULES, type PromptMode } from './prompts';
 import { ModelAccessService, type AuthorizedCall } from './models/model-access.service';
 import { ModelCatalogService } from './models/model-catalog.service';
 import { ProviderRegistryService } from './models/provider-registry.service';
 import { UsageLedgerService, type AiUsageSource } from './models/usage-ledger.service';
 import { OpenAiCompatibleProvider } from './providers/openai-compatible.provider';
 import type {
+  NativeOptions,
   ChatImageAttachment,
   ChatMessage,
   ChatRequestOptions,
@@ -69,6 +70,12 @@ export interface GatewayChatOptions {
   contextCache?: ContextCache;
   /** Dipanggil saat konteks diringkas (untuk event "Konteks diringkas"). */
   onCompaction?: (info: { cut: number; tokensBefore: number }) => void;
+  /** Tingkat ketelitian (dikirim hanya bila model mendukung effort). */
+  effort?: string;
+  /** Sisa anggaran token run; dipakai sebagai task budget bila model mendukung. */
+  taskBudget?: number;
+  /** Run yang melakukan panggilan (untuk buku besar). */
+  runId?: string;
 }
 
 /** Hasil eksekusi satu tool di dalam loop. */
@@ -101,6 +108,8 @@ export interface ToolLoopResult {
   model: string;
   /** Model katalog yang menjalankan loop. */
   modelId?: string;
+  /** Blok asli jawaban terakhir (disimpan bila tidak berisi permintaan tool). */
+  providerContent?: unknown[];
   tokensIn: number;
   tokensOut: number;
   /** Pesan baru yang ditambahkan loop (asisten + hasil tool), untuk disimpan/dilanjutkan. */
@@ -123,6 +132,19 @@ export interface ToolLoopOptions extends GatewayChatOptions {
 
 const NOT_RUN_AFTER_PENDING =
   'Tidak dijalankan karena panggilan tool sebelumnya menunggu persetujuan manusia. Panggil ulang bila masih diperlukan setelah persetujuan.';
+
+function runIdOf(request: ChatRequestOptions): string | null {
+  return (request as ChatRequestOptions & { runId?: string }).runId ?? null;
+}
+
+/**
+ * Blok asli yang aman disimpan di percakapan untuk diputar ulang: tanpa tool_use (permintaan
+ * tool tanpa hasil akan ditolak penyedia pada giliran berikutnya).
+ */
+export function storableProviderContent(blocks: unknown[] | undefined): unknown[] | undefined {
+  if (!blocks?.length) return undefined;
+  return blocks.some((b) => (b as { type?: string }).type?.endsWith('tool_use')) ? undefined : blocks;
+}
 
 /** Potong hasil tool agar tidak membanjiri konteks model. */
 export function clampToolResult(
@@ -219,15 +241,19 @@ export class AiGatewayService {
       images && call.dropImages
         ? `Catatan sistem: ${images.length} gambar terlampir tidak dikirim karena model ${call.model.displayName} tidak mendukung gambar.`
         : undefined;
-    const systemPrompt = [basePrompt, options.memoryContext, options.toolRules, imageNote]
+    const systemPrompt = [basePrompt, options.memoryContext, options.toolRules, options.longRun ? LONG_RUN_RULES : undefined, imageNote]
       .filter((part): part is string => Boolean(part?.trim()))
       .join('\n\n');
     const baseMax =
       options.documents || (options.tools?.length ?? 0) > 0
         ? AI_LIMITS.maxOutputTokensWithDocuments
         : AI_LIMITS.maxOutputTokens;
+    const native = await this.nativeOptions(call, options);
+    // Penyedia yang meringkas/membersihkan konteks sendiri butuh riwayat append-only:
+    // lapisan netral dimatikan agar blok thinking tetap sah.
+    const serverManaged = native.compaction || native.contextEditing;
     const messages =
-      options.longRun || options.contextCache
+      (options.longRun || options.contextCache) && !serverManaged
         ? await this.fitContext(call, systemPrompt, options.messages, options, signal)
         : options.messages;
     return {
@@ -244,8 +270,30 @@ export class AiGatewayService {
         ...(images && !call.dropImages ? { images } : {}),
         ...(tools.length > 0 ? { tools } : {}),
         ...(options.guard ? { guard: options.guard } : {}),
-      },
+        ...(Object.keys(native).length > 0 ? { native } : {}),
+        ...(options.runId ? { runId: options.runId } : {}),
+      } as ChatRequestOptions,
     };
+  }
+
+  /** Fitur bawaan penyedia dari flag kemampuan model (§14.6). */
+  private async nativeOptions(call: AuthorizedCall, options: GatewayChatOptions): Promise<NativeOptions> {
+    const model = call.model;
+    const native: NativeOptions = {};
+    const effort = options.effort ?? (options.longRun ? 'high' : model.defaultEffort ?? undefined);
+    if (model.supportsEffort && effort) native.effort = effort;
+    if (model.supportsThinking) native.thinking = true;
+    if (options.longRun && model.supportsCompaction) native.compaction = true;
+    else if (options.longRun && model.supportsContextEditing) native.contextEditing = true;
+    if (options.longRun && model.supportsTaskBudget && options.taskBudget && options.taskBudget >= 20_000) {
+      native.taskBudget = options.taskBudget;
+    }
+    if (model.supportsPromptCache) native.promptCache = true;
+    if (model.provider === 'anthropic' && call.userId) {
+      const fallbacks = await this.access.fallbackModelKeys(call.userId, model);
+      if (fallbacks.length > 0) native.fallbackModels = fallbacks;
+    }
+    return native;
   }
 
   /**
@@ -293,21 +341,29 @@ export class AiGatewayService {
   }
 
   /** Satu baris buku besar per panggilan; token diestimasi bila penyedia tidak melaporkannya. */
-  private async record(call: AuthorizedCall, request: ChatRequestOptions, result: ChatResult): Promise<void> {
+  private async record(call: AuthorizedCall, request: ChatRequestOptions & { runId?: string }, result: ChatResult): Promise<void> {
     const estimated = result.tokensIn === null || result.tokensOut === null;
+    // Model pengganti (fallback) yang menjawab: kuota dibebankan ke model itu.
+    const served =
+      call.model.provider === 'anthropic' && result.model && result.model !== call.model.modelKey
+        ? ((await this.catalog.list()).find((m) => m.provider === call.model.provider && m.modelKey === result.model) ?? call.model)
+        : call.model;
     const inputChars =
       request.systemPrompt.length + request.messages.reduce((sum, m) => sum + (m.content?.length ?? 0), 0);
     await this.ledger.record({
       userId: call.userId,
-      modelId: call.model.id,
-      provider: call.model.provider,
-      modelKey: call.model.modelKey,
+      modelId: served.id,
+      provider: served.provider,
+      modelKey: result.model || served.modelKey,
       source: call.source,
       sourceId: call.sourceId,
       agentId: call.agentId,
       tokensIn: result.tokensIn ?? Math.ceil(inputChars / 4),
       tokensOut: result.tokensOut ?? Math.ceil(result.content.length / 4),
       estimated,
+      cacheReadTokens: result.cacheReadTokens ?? 0,
+      cacheWriteTokens: result.cacheWriteTokens ?? 0,
+      runId: runIdOf(request),
     });
   }
 
@@ -401,6 +457,7 @@ export class AiGatewayService {
           content: result.content,
           model,
           ...(modelId ? { modelId } : {}),
+          ...(result.providerContent ? { providerContent: result.providerContent } : {}),
           tokensIn,
           tokensOut,
           appended,
@@ -415,7 +472,12 @@ export class AiGatewayService {
       const normalized = calls.map((call, index) =>
         call.id ? call : { ...call, id: `call_${iteration}_${index}` },
       );
-      appended.push({ role: 'assistant', content: result.content, toolCalls: normalized });
+      appended.push({
+        role: 'assistant',
+        content: result.content,
+        toolCalls: normalized,
+        ...(result.providerContent ? { providerContent: result.providerContent } : {}),
+      });
       yield { type: 'assistant', content: result.content, toolCalls: normalized };
 
       let pending: ToolLoopResult['pending'];

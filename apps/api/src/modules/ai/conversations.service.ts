@@ -30,6 +30,7 @@ export interface ConversationMessageRow {
   model: string | null;
   /** Model katalog (ai_models.id) yang menghasilkan pesan ini. */
   model_id?: string | null;
+  provider_content?: unknown[] | null;
   tokens_in: number | null;
   tokens_out: number | null;
   created_at: string;
@@ -47,6 +48,8 @@ interface AssistantReply {
   content: string;
   model: string | null;
   modelId?: string | null;
+  /** Blok asli penyedia (thinking/compaction) untuk diputar ulang pada giliran berikutnya. */
+  providerContent?: unknown[];
   tokensIn: number | null;
   tokensOut: number | null;
   guardrails?: Record<string, number>;
@@ -237,7 +240,7 @@ export class ConversationsService {
     ]);
 
     const history = (await this.dataSource.query(
-      `SELECT id, role, content, model, model_id, tokens_in, tokens_out, created_at
+      `SELECT id, role, content, model, model_id, tokens_in, tokens_out, created_at, provider_content
          FROM conversation_messages WHERE conversation_id = $1
         ORDER BY id`,
       [conversationId],
@@ -249,8 +252,8 @@ export class ConversationsService {
   async completeTurn(conversationId: string, reply: AssistantReply): Promise<ConversationMessageRow> {
     const inserted = (await this.dataSource.query(
       `INSERT INTO conversation_messages
-         (conversation_id, role, content, model, tokens_in, tokens_out, guardrails, memory_refs, model_id)
-       VALUES ($1, 'assistant', $2, $3, $4, $5, $6, $7, $8)
+         (conversation_id, role, content, model, tokens_in, tokens_out, guardrails, memory_refs, model_id, provider_content)
+       VALUES ($1, 'assistant', $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING id, role, content, model, model_id, tokens_in, tokens_out, created_at, guardrails, memory_refs`,
       [
         conversationId,
@@ -261,6 +264,7 @@ export class ConversationsService {
         reply.guardrails ? JSON.stringify(reply.guardrails) : null,
         reply.memoryRefs?.length ? JSON.stringify(reply.memoryRefs) : null,
         reply.modelId ?? null,
+        reply.providerContent ? JSON.stringify(reply.providerContent) : null,
       ],
     )) as ConversationMessageRow[];
     await this.dataSource.query(
@@ -274,7 +278,11 @@ export class ConversationsService {
   toChatMessages(history: ConversationMessageRow[]): ChatMessage[] {
     return history
       .filter((m) => m.role === 'user' || m.role === 'assistant')
-      .map((m) => ({ role: m.role, content: m.content }));
+      .map((m) => ({
+        role: m.role,
+        content: m.content,
+        ...(m.role === 'assistant' && Array.isArray(m.provider_content) ? { providerContent: m.provider_content } : {}),
+      }));
   }
 
   async remove(auth: AuthContext, conversationId: string): Promise<void> {
@@ -342,7 +350,7 @@ export class ConversationsService {
     }
 
     const messages = (await this.dataSource.query(
-      `SELECT id, role, content, model, model_id, tokens_in, tokens_out, created_at
+      `SELECT id, role, content, model, model_id, tokens_in, tokens_out, created_at, provider_content
          FROM conversation_messages WHERE conversation_id = $1
         ORDER BY id`,
       [conversationId],
@@ -377,8 +385,8 @@ export class ConversationsService {
       const inserted = updatedRows<ConversationMessageRow>(
         await manager.query(
           `INSERT INTO conversation_messages
-             (conversation_id, role, content, model, tokens_in, tokens_out, guardrails, memory_refs, model_id)
-           VALUES ($1, 'assistant', $2, $3, $4, $5, $6, $7, $8)
+             (conversation_id, role, content, model, tokens_in, tokens_out, guardrails, memory_refs, model_id, provider_content)
+           VALUES ($1, 'assistant', $2, $3, $4, $5, $6, $7, $8, $9)
            RETURNING id, role, content, model, model_id, tokens_in, tokens_out, created_at, guardrails, memory_refs`,
           [
             conversationId,
@@ -389,6 +397,7 @@ export class ConversationsService {
             reply.guardrails ? JSON.stringify(reply.guardrails) : null,
             reply.memoryRefs?.length ? JSON.stringify(reply.memoryRefs) : null,
             reply.modelId ?? null,
+            reply.providerContent ? JSON.stringify(reply.providerContent) : null,
           ],
         ),
       );

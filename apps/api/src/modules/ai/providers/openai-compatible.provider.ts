@@ -120,6 +120,10 @@ export class OpenAiCompatibleProvider implements AiProviderAdapter {
       ...(stream ? { stream_options: { include_usage: true } } : {}),
       max_tokens: options.maxTokens,
       ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
+      // Model penalaran OpenAI: low/medium/high (xhigh/max dipetakan ke high).
+      ...(options.native?.effort
+        ? { reasoning_effort: ['low', 'medium'].includes(options.native.effort) ? options.native.effort : 'high' }
+        : {}),
       messages: [{ role: 'system', content: options.systemPrompt }, ...messages],
       ...(options.tools && options.tools.length > 0
         ? {

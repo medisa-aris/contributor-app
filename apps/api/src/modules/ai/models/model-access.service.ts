@@ -560,6 +560,18 @@ export class ModelAccessService {
     });
   }
 
+  /**
+   * Model pengganti saat model Claude menolak (§14.7): hanya model Anthropic lain yang aktif
+   * dan diizinkan untuk pengguna — tidak pernah fallbacks "default" yang bisa ke model tanpa izin.
+   */
+  async fallbackModelKeys(userId: string, model: CatalogModel): Promise<string[]> {
+    const allowed = await this.allowedModelIds(userId);
+    const candidates = (await this.catalog.list()).filter(
+      (m) => m.id !== model.id && m.provider === 'anthropic' && allowed.has(m.id) && this.catalog.usable(m),
+    );
+    return candidates.slice(0, 1).map((m) => m.modelKey);
+  }
+
   /** Ringkasan efektif untuk satu orang ("Lihat efektif"). */
   async effective(userId: string): Promise<UserModelDto[]> {
     return (await this.userModels(userId)).models;

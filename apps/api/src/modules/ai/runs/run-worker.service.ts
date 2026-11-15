@@ -186,6 +186,29 @@ export class RunWorkerService implements OnApplicationBootstrap, OnModuleDestroy
     };
   }
 
+  /** Tool kirim_pembaruan (§14.8): isi ditampilkan apa adanya di panel run. */
+  private progressHandler(runId: string): ToolHandler {
+    return {
+      tool: {
+        name: 'kirim_pembaruan',
+        description:
+          'Tampilkan pembaruan kemajuan atau hasil sementara kepada pengguna persis seperti ditulis. ' +
+          'Pakai hanya untuk kemajuan penting dalam kerja panjang.',
+        inputSchema: {
+          type: 'object',
+          properties: { pesan: { type: 'string', description: 'Isi yang ditampilkan ke pengguna.' } },
+          required: ['pesan'],
+        },
+      },
+      label: 'Pembaruan kemajuan',
+      execute: async (input) => {
+        const message = String(input.pesan ?? '').slice(0, 4000);
+        if (message.trim()) await this.runs.event(runId, 'progress', { message });
+        return { status: 'ok', content: 'Pembaruan ditampilkan ke pengguna.' };
+      },
+    };
+  }
+
   private async checkpoint(run: RunRow, seq: number, message: ChatMessage): Promise<void> {
     await this.dataSource.query(
       `INSERT INTO ai_run_messages (run_id, seq, message) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
@@ -267,7 +290,7 @@ export class RunWorkerService implements OnApplicationBootstrap, OnModuleDestroy
         await this.dataSource.query(`UPDATE ai_runs SET result_message_id = NULL WHERE id = $1`, [run.id]);
       }
       const historyRows = (await this.dataSource.query(
-        `SELECT id, role, content, model, tokens_in, tokens_out, created_at FROM conversation_messages
+        `SELECT id, role, content, model, tokens_in, tokens_out, created_at, provider_content FROM conversation_messages
           WHERE conversation_id = $1 AND id <= $2 ORDER BY id`,
         [conversationId, run.options.promptMessageId],
       )) as ConversationMessageRow[];
@@ -278,9 +301,10 @@ export class RunWorkerService implements OnApplicationBootstrap, OnModuleDestroy
       const transcript = checkpointRows.map((r) => r.message);
 
       const pendingApprovals: string[] = [];
-      const handlers = (
-        await this.chatTools.handlersFor(auth, conversationId, pendingApprovals, controller.signal)
-      ).map((h) => this.idempotent(run.id, h));
+      const handlers = [
+        ...(await this.chatTools.handlersFor(auth, conversationId, pendingApprovals, controller.signal)),
+        this.progressHandler(run.id),
+      ].map((h) => this.idempotent(run.id, h));
 
       // Langkah yang terpotong: asisten meminta tool tetapi hasilnya belum tersimpan.
       const last = transcript.at(-1);
@@ -331,8 +355,11 @@ export class RunWorkerService implements OnApplicationBootstrap, OnModuleDestroy
         {
           extras: {
             longRun: true,
+            runId: run.id,
             maxIterations: Math.max(1, run.max_iterations - run.iterations),
             ...(run.model_id ? { modelId: run.model_id } : {}),
+            ...(run.effort ? { effort: run.effort } : {}),
+            ...(budget !== null ? { taskBudget: Math.max(0, budget - tokensIn - tokensOut) } : {}),
             onCompaction: (info) => void this.runs.event(run.id, 'compaction', info),
           },
           onResult: (result) => {

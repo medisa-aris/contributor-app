@@ -27,6 +27,9 @@ export interface UsageEntry {
   tokensIn: number;
   tokensOut: number;
   estimated: boolean;
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
+  runId?: string | null;
 }
 
 /** Buku besar pemakaian token: satu baris per panggilan penyedia; sumber tunggal kuota. */
@@ -50,11 +53,14 @@ export class UsageLedgerService {
       Math.max(0, Math.round(entry.tokensOut)),
       entry.estimated,
       !NON_QUOTA_SOURCES.includes(entry.source),
+      entry.cacheReadTokens ?? 0,
+      entry.cacheWriteTokens ?? 0,
+      entry.runId ?? null,
     ];
     const sql = `INSERT INTO ai_usage_ledger
         (user_id, model_id, provider, model_key, source, source_id, agent_id,
-         tokens_in, tokens_out, estimated, counts_toward_quota)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`;
+         tokens_in, tokens_out, estimated, counts_toward_quota, cache_read_tokens, cache_write_tokens, run_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`;
     for (let attempt = 1; attempt <= 2; attempt += 1) {
       try {
         await this.dataSource.query(sql, params);

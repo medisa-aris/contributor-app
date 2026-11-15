@@ -37,7 +37,7 @@ import {
   UpdateAttachmentDto,
   UpdateConversationDto,
 } from './dto/ai.dto';
-import { AiGatewayService, clampToolResult } from './gateway.service';
+import { AiGatewayService, clampToolResult, storableProviderContent } from './gateway.service';
 import { TasksService } from './tasks.service';
 import type { ChatMessage, ChatResult } from './providers/types';
 import {
@@ -140,6 +140,7 @@ export class AiController {
       content: created.content,
       model: result.model,
       modelId: result.modelId ?? null,
+      ...(created.content === result.content ? { providerContent: storableProviderContent(result.providerContent) } : {}),
       tokensIn: result.tokensIn,
       tokensOut: result.tokensOut,
       ...(result.guardrails ? { guardrails: result.guardrails } : {}),
@@ -292,6 +293,7 @@ export class AiController {
         content: created.content,
         model: final.model,
         modelId: final.modelId ?? null,
+        ...(created.content === final.content ? { providerContent: storableProviderContent(final.providerContent) } : {}),
         tokensIn: final.tokensIn,
         tokensOut: final.tokensOut,
         ...(final.guardrails ? { guardrails: final.guardrails } : {}),

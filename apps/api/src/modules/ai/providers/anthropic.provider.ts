@@ -21,21 +21,98 @@ interface AnthropicContentBlock {
   id?: string;
   name?: string;
   input?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+interface AnthropicUsage {
+  input_tokens?: number;
+  output_tokens?: number;
+  cache_read_input_tokens?: number;
+  cache_creation_input_tokens?: number;
 }
 
 interface AnthropicResponse {
   model?: string;
   content?: AnthropicContentBlock[];
-  usage?: { input_tokens?: number; output_tokens?: number };
+  usage?: AnthropicUsage;
+  stop_reason?: string;
+  stop_details?: { category?: string | null; explanation?: string | null } | null;
 }
 
 interface AnthropicStreamEvent {
   type?: string;
   index?: number;
   content_block?: AnthropicContentBlock;
-  delta?: { type?: string; text?: string; partial_json?: string };
+  delta?: { type?: string; text?: string; partial_json?: string; stop_reason?: string; [key: string]: unknown };
   message?: AnthropicResponse;
-  usage?: { input_tokens?: number; output_tokens?: number };
+  usage?: AnthropicUsage;
+}
+
+/** Header beta per fitur (§14.6). Nama beta wajib dicek ulang ke dokumentasi Anthropic saat berubah. */
+export const ANTHROPIC_BETAS = {
+  compaction: 'compact-2026-01-12',
+  contextEditing: 'context-management-2025-06-27',
+  taskBudget: 'task-budgets-2026-03-13',
+  fallback: 'server-side-fallback-2026-07-01',
+} as const;
+
+/** Input token total = tanpa cache + baca cache + tulis cache (kuota menghitung semuanya, D12). */
+function usageTotals(usage: AnthropicUsage | undefined) {
+  if (!usage) return null;
+  const read = usage.cache_read_input_tokens ?? 0;
+  const write = usage.cache_creation_input_tokens ?? 0;
+  return {
+    tokensIn: usage.input_tokens === undefined ? null : usage.input_tokens + read + write,
+    tokensOut: usage.output_tokens ?? null,
+    cacheRead: read,
+    cacheWrite: write,
+  };
+}
+
+function refusalError(details: AnthropicResponse['stop_details']): AppError {
+  return new AppError(
+    ERROR_CODES.aiRefused,
+    'Model menolak melanjutkan permintaan ini.',
+    422,
+    { category: details?.category ?? null },
+  );
+}
+
+/**
+ * Susun ulang blok konten dari event stream: content_block_start membawa bentuk awal blok,
+ * content_block_delta menambahkan isinya (text, thinking, signature, input JSON, dsb.).
+ * Delta bertipe baru ditangani generik: field string disambung, lainnya ditimpa.
+ */
+export class BlockAssembler {
+  private readonly blocks = new Map<number, AnthropicContentBlock>();
+  private readonly json = new Map<number, string>();
+
+  start(index: number, block: AnthropicContentBlock): void {
+    this.blocks.set(index, { ...block });
+  }
+
+  delta(index: number, delta: Record<string, unknown>): void {
+    const block = this.blocks.get(index);
+    if (!block) return;
+    for (const [key, value] of Object.entries(delta)) {
+      if (key === 'type') continue;
+      if (key === 'partial_json') {
+        this.json.set(index, (this.json.get(index) ?? '') + String(value));
+      } else if (typeof value === 'string' && typeof block[key] === 'string') {
+        block[key] = (block[key] as string) + value;
+      } else {
+        block[key] = value;
+      }
+    }
+  }
+
+  result(): AnthropicContentBlock[] {
+    return [...this.blocks.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([index, block]) =>
+        block.type === 'tool_use' ? { ...block, input: parseToolInput(this.json.get(index) ?? '') } : block,
+      );
+  }
 }
 
 type AnthropicMessage = { role: 'user' | 'assistant'; content: unknown };
@@ -63,6 +140,11 @@ export function toAnthropicMessages(messages: ChatMessage[]): AnthropicMessage[]
       } else {
         out.push({ role: 'user', content: [block] });
       }
+      continue;
+    }
+    // Blok asli (thinking, compaction) dikirim balik apa adanya; riwayat bersifat append-only.
+    if (message.role === 'assistant' && Array.isArray(message.providerContent) && message.providerContent.length > 0) {
+      out.push({ role: 'assistant', content: message.providerContent });
       continue;
     }
     if (message.role === 'assistant' && message.toolCalls && message.toolCalls.length > 0) {
@@ -98,12 +180,24 @@ export class AnthropicProvider implements AiProviderAdapter {
     return `${this.config.baseUrl.replace(/\/+$/, '')}/messages`;
   }
 
-  private headers(): Record<string, string> {
+  private headers(options: ChatRequestOptions): Record<string, string> {
+    const betas = this.betas(options);
     return {
       'Content-Type': 'application/json',
       'x-api-key': this.config.apiKey,
       'anthropic-version': '2023-06-01',
+      ...(betas.length > 0 ? { 'anthropic-beta': betas.join(',') } : {}),
     };
+  }
+
+  private betas(options: ChatRequestOptions): string[] {
+    const native = options.native ?? {};
+    const betas: string[] = [];
+    if (native.compaction) betas.push(ANTHROPIC_BETAS.compaction);
+    else if (native.contextEditing) betas.push(ANTHROPIC_BETAS.contextEditing);
+    if (native.taskBudget && native.taskBudget >= 20_000) betas.push(ANTHROPIC_BETAS.taskBudget);
+    if (native.fallbackModels?.length) betas.push(ANTHROPIC_BETAS.fallback);
+    return betas;
   }
 
   private body(options: ChatRequestOptions, stream: boolean): Record<string, unknown> {
@@ -130,12 +224,31 @@ export class AnthropicProvider implements AiProviderAdapter {
         break;
       }
     }
+    const native = options.native ?? {};
+    const outputConfig = {
+      ...(native.effort ? { effort: native.effort } : {}),
+      ...(native.taskBudget && native.taskBudget >= 20_000
+        ? { task_budget: { type: 'tokens', total: Math.floor(native.taskBudget) } }
+        : {}),
+    };
     return {
       model: options.model,
       stream,
       max_tokens: options.maxTokens,
       ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
-      system: options.systemPrompt,
+      // Prompt caching: system prompt stabil di-cache eksplisit, ekor percakapan otomatis.
+      system: native.promptCache
+        ? [{ type: 'text', text: options.systemPrompt, cache_control: { type: 'ephemeral' } }]
+        : options.systemPrompt,
+      ...(native.promptCache ? { cache_control: { type: 'ephemeral' } } : {}),
+      ...(native.thinking ? { thinking: { type: 'adaptive' } } : {}),
+      ...(Object.keys(outputConfig).length > 0 ? { output_config: outputConfig } : {}),
+      ...(native.compaction
+        ? { context_management: { edits: [{ type: 'compact_20260112' }] } }
+        : native.contextEditing
+          ? { context_management: { edits: [{ type: 'clear_tool_uses_20250919' }] } }
+          : {}),
+      ...(native.fallbackModels?.length ? { fallbacks: native.fallbackModels.map((model) => ({ model })) } : {}),
       messages,
       ...(options.tools && options.tools.length > 0
         ? {
@@ -165,6 +278,7 @@ export class AnthropicProvider implements AiProviderAdapter {
   }
 
   private toResult(json: AnthropicResponse, fallbackModel: string): ChatResult {
+    if (json.stop_reason === 'refusal') throw refusalError(json.stop_details);
     const content = (json.content ?? [])
       .map((block) => (block.type === 'text' ? (block.text ?? '') : ''))
       .join('')
@@ -183,19 +297,23 @@ export class AnthropicProvider implements AiProviderAdapter {
         502,
       );
     }
+    const usage = usageTotals(json.usage);
     return {
       content,
       model: json.model ?? fallbackModel,
-      tokensIn: json.usage?.input_tokens ?? null,
-      tokensOut: json.usage?.output_tokens ?? null,
+      tokensIn: usage?.tokensIn ?? null,
+      tokensOut: usage?.tokensOut ?? null,
+      ...(usage ? { cacheReadTokens: usage.cacheRead, cacheWriteTokens: usage.cacheWrite } : {}),
       ...(toolCalls.length > 0 ? { toolCalls } : {}),
+      ...(json.content ? { providerContent: json.content } : {}),
+      ...(json.stop_reason ? { stopReason: json.stop_reason } : {}),
     };
   }
 
   async chat(options: ChatRequestOptions): Promise<ChatResult> {
     const response = await fetchProvider(this.fetchImpl, this.endpoint(), {
       method: 'POST',
-      headers: this.headers(),
+      headers: this.headers(options),
       body: JSON.stringify(this.body(options, false)),
       signal: options.signal,
     });
@@ -206,7 +324,7 @@ export class AnthropicProvider implements AiProviderAdapter {
   async *stream(options: ChatRequestOptions): AsyncGenerator<string, ChatResult> {
     const response = await fetchProvider(this.fetchImpl, this.endpoint(), {
       method: 'POST',
-      headers: this.headers(),
+      headers: this.headers(options),
       body: JSON.stringify(this.body(options, true)),
       signal: options.signal,
     });
@@ -214,50 +332,35 @@ export class AnthropicProvider implements AiProviderAdapter {
 
     let text = '';
     let model = options.model;
-    let tokensIn: number | null = null;
-    let tokensOut: number | null = null;
-    const pendingTools = new Map<number, { id: string; name: string; json: string }>();
+    let usage: AnthropicUsage = {};
+    let stopReason: string | undefined;
+    const blocks = new BlockAssembler();
     for await (const raw of iterateSse(response)) {
       const event = raw as AnthropicStreamEvent;
-      if (
-        event.type === 'content_block_start' &&
-        event.content_block?.type === 'tool_use' &&
-        typeof event.index === 'number'
-      ) {
-        pendingTools.set(event.index, {
-          id: event.content_block.id ?? '',
-          name: event.content_block.name ?? '',
-          json: '',
-        });
-      } else if (
-        event.type === 'content_block_delta' &&
-        event.delta?.type === 'input_json_delta' &&
-        typeof event.index === 'number'
-      ) {
-        const pending = pendingTools.get(event.index);
-        if (pending) pending.json += event.delta.partial_json ?? '';
-      } else if (
-        event.type === 'content_block_delta' &&
-        (event.delta?.type === 'text_delta' || event.delta?.type === 'text') &&
-        event.delta.text
-      ) {
-        text += event.delta.text;
-        yield event.delta.text;
+      if (event.type === 'content_block_start' && event.content_block && typeof event.index === 'number') {
+        blocks.start(event.index, event.content_block);
+      } else if (event.type === 'content_block_delta' && event.delta) {
+        if (typeof event.index === 'number') blocks.delta(event.index, event.delta);
+        if ((event.delta.type === 'text_delta' || event.delta.type === 'text') && event.delta.text) {
+          text += event.delta.text;
+          yield event.delta.text;
+        }
       } else if (event.type === 'message_start' && event.message) {
         model = event.message.model ?? model;
-        tokensIn = event.message.usage?.input_tokens ?? tokensIn;
-        tokensOut = event.message.usage?.output_tokens ?? tokensOut;
+        usage = { ...usage, ...event.message.usage };
+      } else if (event.type === 'message_delta' && event.delta?.stop_reason) {
+        stopReason = event.delta.stop_reason;
       }
-      const usage = event.usage;
-      if (usage) {
-        tokensIn = usage.input_tokens ?? tokensIn;
-        tokensOut = usage.output_tokens ?? tokensOut;
-      }
+      if (event.usage) usage = { ...usage, ...event.usage };
     }
+    if (stopReason === 'refusal') throw refusalError(null);
+    // Blok hanya dipakai untuk diputar ulang bila lengkap (stream tanpa index tidak bisa dirakit).
+    const assembled = blocks.result();
+    const providerContent = text && !assembled.some((b) => b.type === 'text') ? undefined : assembled;
     const content = text.trim();
-    const toolCalls: ChatToolCall[] = [...pendingTools.values()]
-      .filter((tool) => tool.name)
-      .map((tool) => ({ id: tool.id, name: tool.name, input: parseToolInput(tool.json) }));
+    const toolCalls: ChatToolCall[] = assembled
+      .filter((block) => block.type === 'tool_use' && block.name)
+      .map((block) => ({ id: block.id ?? '', name: block.name ?? '', input: block.input ?? {} }));
     if (!content && toolCalls.length === 0) {
       throw new AppError(
         ERROR_CODES.aiUpstreamError,
@@ -265,6 +368,16 @@ export class AnthropicProvider implements AiProviderAdapter {
         502,
       );
     }
-    return { content, model, tokensIn, tokensOut, ...(toolCalls.length > 0 ? { toolCalls } : {}) };
+    const totals = usageTotals(usage);
+    return {
+      content,
+      model,
+      tokensIn: totals?.tokensIn ?? null,
+      tokensOut: totals?.tokensOut ?? null,
+      ...(totals ? { cacheReadTokens: totals.cacheRead, cacheWriteTokens: totals.cacheWrite } : {}),
+      ...(toolCalls.length > 0 ? { toolCalls } : {}),
+      ...(providerContent ? { providerContent } : {}),
+      ...(stopReason ? { stopReason } : {}),
+    };
   }
 }

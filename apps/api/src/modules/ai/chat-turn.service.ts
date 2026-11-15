@@ -15,6 +15,7 @@ import {
 import { ConversationsService } from './conversations.service';
 import {
   AiGatewayService,
+  storableProviderContent,
   type ToolHandler,
   type ToolLoopEvent,
   type ToolLoopOptions,
@@ -129,6 +130,8 @@ export class ChatTurnService {
       content: created.content,
       model: result.model,
       modelId: result.modelId ?? null,
+      // Diputar ulang hanya bila isi jawaban tidak diubah (dokumen menambah teks ke jawaban).
+      ...(created.content === content ? { providerContent: storableProviderContent(result.providerContent) } : {}),
       tokensIn: result.tokensIn,
       tokensOut: result.tokensOut,
       ...(result.guardrails ? { guardrails: result.guardrails } : {}),
