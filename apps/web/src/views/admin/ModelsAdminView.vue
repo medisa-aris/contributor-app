@@ -24,6 +24,14 @@ import {
   type ModelTestResultDto,
 } from '@/api/models';
 import { ApiError } from '@/api/http';
+import {
+  adminCancelRun,
+  adminRuns,
+  getLongRunSettings,
+  saveLongRunSettings,
+  type LongRunSettings,
+  type RunDto,
+} from '@/api/runs';
 import { useToastStore } from '@/stores/toast.store';
 import { formatDateTime } from '@/utils/format';
 import {
@@ -242,6 +250,8 @@ const editForm = ref({
   supportsTools: false,
   supportsVision: false,
   supportsStream: true,
+  longRunAllowed: false,
+  acceptsSamplingParams: true,
 });
 const tierOptions = computed(() => [
   { value: '', label: '—' },
@@ -262,6 +272,8 @@ function openEdit(model: AiModelDto): void {
     supportsTools: model.supportsTools,
     supportsVision: model.supportsVision,
     supportsStream: model.supportsStream,
+    longRunAllowed: model.longRunAllowed,
+    acceptsSamplingParams: model.acceptsSamplingParams,
   };
   editOpen.value = true;
 }
@@ -286,6 +298,8 @@ async function submitEdit(): Promise<void> {
         supportsTools: editForm.value.supportsTools,
         supportsVision: editForm.value.supportsVision,
         supportsStream: editForm.value.supportsStream,
+        longRunAllowed: editForm.value.longRunAllowed,
+        acceptsSamplingParams: editForm.value.acceptsSamplingParams,
       }),
     );
     editOpen.value = false;
@@ -330,6 +344,57 @@ async function enableAfterTest(): Promise<void> {
   try {
     replaceModel(await enableModel(testTarget.value.id));
     testOpen.value = false;
+  } catch (caught) {
+    fail(caught);
+  }
+}
+
+// ───────── Kerja panjang ─────────
+const longRun = ref<LongRunSettings | null>(null);
+const longRunForm = ref({ maxMinutes: '60', maxIterations: '60', maxConcurrent: '2', autoPromote: true, budget: '' });
+const savingLongRun = ref(false);
+const runsActive = ref<RunDto[]>([]);
+
+async function loadLongRun(): Promise<void> {
+  try {
+    const [settings, runs] = await Promise.all([getLongRunSettings(), adminRuns()]);
+    longRun.value = settings;
+    runsActive.value = runs;
+    longRunForm.value = {
+      maxMinutes: String(settings.maxMinutes),
+      maxIterations: String(settings.maxIterations),
+      maxConcurrent: String(settings.maxConcurrentPerUser),
+      autoPromote: settings.autoPromote,
+      budget: settings.defaultTokenBudget ? String(settings.defaultTokenBudget) : '',
+    };
+  } catch {
+    longRun.value = null;
+  }
+}
+
+async function saveLongRun(): Promise<void> {
+  savingLongRun.value = true;
+  try {
+    await saveLongRunSettings({
+      maxMinutes: intOrNull(longRunForm.value.maxMinutes) ?? 60,
+      maxIterations: intOrNull(longRunForm.value.maxIterations) ?? 60,
+      maxConcurrentPerUser: intOrNull(longRunForm.value.maxConcurrent) ?? 2,
+      autoPromote: longRunForm.value.autoPromote,
+      defaultTokenBudget: intOrNull(longRunForm.value.budget),
+    });
+    toast.push({ variant: 'success', title: t('models.admin.saved') });
+    await loadLongRun();
+  } catch (caught) {
+    fail(caught);
+  } finally {
+    savingLongRun.value = false;
+  }
+}
+
+async function stopRun(id: string): Promise<void> {
+  try {
+    await adminCancelRun(id);
+    runsActive.value = runsActive.value.filter((r) => r.id !== id);
   } catch (caught) {
     fail(caught);
   }
@@ -402,7 +467,10 @@ async function addPicked(): Promise<void> {
   }
 }
 
-onMounted(load);
+onMounted(() => {
+  void load();
+  void loadLongRun();
+});
 </script>
 
 <template>
@@ -472,6 +540,38 @@ onMounted(load);
           </CaField>
         </div>
         <CaButton variant="primary" :loading="savingLimits" @click="saveLimits">{{ t('models.admin.limits.save') }}</CaButton>
+      </section>
+
+      <section v-if="longRun" class="ca-panel mdl-limits" aria-labelledby="mdl-longrun-title">
+        <h2 id="mdl-longrun-title" class="ca-panel__title">{{ t('runs.admin.title') }}</h2>
+        <div class="mdl-limits__grid">
+          <CaField :label="t('runs.admin.maxMinutes')">
+            <template #default="{ id }"><CaInput :id="id" v-model="longRunForm.maxMinutes" inputmode="numeric" /></template>
+          </CaField>
+          <CaField :label="t('runs.admin.maxIterations')">
+            <template #default="{ id }"><CaInput :id="id" v-model="longRunForm.maxIterations" inputmode="numeric" /></template>
+          </CaField>
+          <CaField :label="t('runs.admin.maxConcurrent')">
+            <template #default="{ id }"><CaInput :id="id" v-model="longRunForm.maxConcurrent" inputmode="numeric" /></template>
+          </CaField>
+          <CaField :label="t('runs.admin.tokenBudget')" :hint="t('models.admin.limits.unlimited')">
+            <template #default="{ id }"><CaInput :id="id" v-model="longRunForm.budget" inputmode="numeric" /></template>
+          </CaField>
+        </div>
+        <CaSwitch v-model="longRunForm.autoPromote" :label="t('runs.admin.autoPromote')" />
+        <CaButton variant="primary" :loading="savingLongRun" @click="saveLongRun">{{ t('runs.admin.save') }}</CaButton>
+        <h3 class="mdl-subtitle">{{ t('runs.admin.activeTitle') }}</h3>
+        <p v-if="runsActive.length === 0" class="mdl-muted">{{ t('runs.admin.activeEmpty') }}</p>
+        <ul v-else class="mdl-runs">
+          <li v-for="run in runsActive" :key="run.id">
+            <strong>{{ run.conversationTitle ?? run.prompt?.slice(0, 60) ?? run.id }}</strong>
+            <CaBadge size="small">{{ t(`runs.status.${run.status}`) }}</CaBadge>
+            <span class="mdl-muted">{{ t('runs.steps', { n: run.iterations, max: run.maxIterations }) }}</span>
+            <span class="mdl-muted">{{ t('runs.admin.attempt') }} {{ run.attempt }}</span>
+            <span v-if="run.leaseOwner" class="mdl-mono">{{ t('runs.admin.worker') }}: {{ run.leaseOwner }}</span>
+            <CaButton size="small" variant="secondary" @click="stopRun(run.id)">{{ t('runs.cancel') }}</CaButton>
+          </li>
+        </ul>
       </section>
 
       <h2 class="mdl-section">{{ t('models.admin.catalogTitle') }}</h2>
@@ -595,6 +695,8 @@ onMounted(load);
         <CaCheckbox v-model="editForm.supportsTools" :label="t('models.admin.editDialog.supportsTools')" />
         <CaCheckbox v-model="editForm.supportsVision" :label="t('models.admin.editDialog.supportsVision')" />
         <CaCheckbox v-model="editForm.supportsStream" :label="t('models.admin.editDialog.supportsStream')" />
+        <CaCheckbox v-model="editForm.longRunAllowed" :label="t('runs.admin.longRunAllowed')" />
+        <CaCheckbox v-model="editForm.acceptsSamplingParams" :label="t('runs.admin.acceptsSampling')" />
         <div class="mdl-form__actions">
           <CaButton type="submit" variant="primary" :loading="editSaving">{{ t('models.admin.editDialog.save') }}</CaButton>
         </div>
@@ -722,6 +824,25 @@ onMounted(load);
 .mdl-form__actions {
   display: flex;
   justify-content: flex-end;
+  gap: var(--ca-space-2);
+}
+.mdl-subtitle {
+  margin: var(--ca-space-3) 0 0;
+  font-size: var(--ca-text-300);
+}
+.mdl-runs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ca-space-2);
+}
+.mdl-runs li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--ca-space-2);
 }
 .mdl-discover__bar {

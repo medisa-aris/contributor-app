@@ -8,6 +8,7 @@ import { updatedRows } from '../../../database/query-result';
 import { ConversationsService } from '../conversations.service';
 import { ModelAccessService } from '../models/model-access.service';
 import { ModelCatalogService } from '../models/model-catalog.service';
+import type { ChatMessage } from '../providers/types';
 
 export type RunStatus =
   | 'queued'
@@ -72,6 +73,7 @@ export function runDto(row: RunRow) {
   return {
     id: row.id,
     kind: row.kind,
+    mode: row.options?.mode ?? null,
     conversationId: row.conversation_id,
     taskId: row.task_id,
     modelId: row.model_id,
@@ -232,6 +234,74 @@ export class RunsService {
     const run = rows[0]!;
     await this.event(run.id, 'status', { status: 'queued' });
     return { run: runDto(run), conversationId: prepared.id };
+  }
+
+  /** Model kerja panjang untuk promosi otomatis; null = tidak dapat dipromosikan (giliran tetap sinkron). */
+  async promotableModel(userId: string, conversationId: string): Promise<string | null> {
+    if (!(await this.settings()).autoPromote) return null;
+    try {
+      return await this.longRunModel(userId, conversationId, undefined);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Giliran chat yang ternyata panjang dipindah ke pekerja (§14.5): langkah yang sudah selesai
+   * menjadi checkpoint run, pekerja melanjutkan dari sana.
+   */
+  async createPromoted(
+    auth: AuthContext,
+    input: {
+      conversationId: string;
+      mode: ConversationMode;
+      counterpartStyle?: string;
+      webSearch?: boolean;
+      prompt: string;
+      promptMessageId: string;
+      modelId: string;
+      transcript: ChatMessage[];
+      iterations: number;
+    },
+  ) {
+    const settings = await this.settings();
+    const options: RunOptions = {
+      mode: input.mode,
+      ...(input.counterpartStyle ? { counterpartStyle: input.counterpartStyle } : {}),
+      ...(input.webSearch !== undefined ? { webSearch: input.webSearch } : {}),
+      promptMessageId: input.promptMessageId,
+    };
+    const run = await this.dataSource.transaction(async (manager) => {
+      const rows = (await manager.query(
+        `INSERT INTO ai_runs (kind, user_id, conversation_id, model_id, status, prompt, options, iterations,
+                             max_iterations, token_budget, checkpoint_seq, deadline_at)
+         VALUES ('conversation_turn', $1, $2, $3, 'queued', $4, $5, $6, $7, $8, $9,
+                 now() + ($10 || ' minutes')::interval)
+         RETURNING *`,
+        [
+          auth.user.id,
+          input.conversationId,
+          input.modelId,
+          input.prompt,
+          JSON.stringify(options),
+          input.iterations,
+          input.iterations + settings.maxIterations,
+          settings.defaultTokenBudget,
+          input.transcript.length,
+          String(settings.maxMinutes),
+        ],
+      )) as RunRow[];
+      for (const [index, message] of input.transcript.entries()) {
+        await manager.query(`INSERT INTO ai_run_messages (run_id, seq, message) VALUES ($1, $2, $3)`, [
+          rows[0]!.id,
+          index + 1,
+          JSON.stringify(message),
+        ]);
+      }
+      return rows[0]!;
+    });
+    await this.event(run.id, 'status', { status: 'queued', promoted: true });
+    return runDto(run);
   }
 
   async find(id: string): Promise<RunRow | null> {

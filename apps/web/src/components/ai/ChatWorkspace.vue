@@ -23,7 +23,7 @@ import { ApiError } from '@/api/http';
 import { useAuthStore } from '@/stores/auth.store';
 import { useConfigStore } from '@/stores/config.store';
 import { useToastStore } from '@/stores/toast.store';
-import { CaButton, CaEmptyState, CaIcon, CaSpinner, CaSwitch } from '@/components/ui';
+import { CaButton, CaEmptyState, CaIcon, CaSegmented, CaSpinner, CaSwitch } from '@/components/ui';
 import { formatDateTime, formatNumber } from '@/utils/format';
 import { useFullscreen } from '@/composables/useFullscreen';
 import { isOfficeFormat, type OfficeSourceKind, type UserDocument } from '@/api/documents';
@@ -31,6 +31,17 @@ import ChatMessage from './ChatMessage.vue';
 import ConversationConnectorsBar from './ConversationConnectorsBar.vue';
 import MemoryDoorsBar from './MemoryDoorsBar.vue';
 import ModelPicker from './ModelPicker.vue';
+import RunPanel from './RunPanel.vue';
+import {
+  cancelRun,
+  continueRun,
+  FINAL_RUN_STATUSES,
+  followRun,
+  getRun,
+  listRuns,
+  startRun,
+  type RunDto,
+} from '@/api/runs';
 import WebSearchToggle from './WebSearchToggle.vue';
 import type { ToolTraceStep } from '@/api/ai';
 import { decideConversationApproval } from '@/api/ai';
@@ -90,6 +101,154 @@ const MODEL_RECOVERY_CODES = ['AI_QUOTA_EXCEEDED', 'AI_MODEL_NOT_ALLOWED', 'AI_M
 function chooseModel(id: string | null): void {
   displayModelId.value = id;
   chosenModelId.value = id;
+}
+
+// ───────── Kerja panjang (§14.10) ─────────
+const longRun = ref(false);
+const runEffort = ref<'low' | 'medium' | 'high'>('high');
+const activeRun = ref<RunDto | null>(null);
+const runText = ref('');
+const runSteps = ref<ToolTraceStep[]>([]);
+const runCompactions = ref(0);
+const runReconnecting = ref(false);
+let runFollow: AbortController | null = null;
+let runLastEventId = 0;
+const canLongRun = computed(() => Boolean(modelPicker.value?.current?.longRunAllowed));
+const effortItems = computed(() => [
+  { key: 'low' as const, label: t('runs.effort.low') },
+  { key: 'medium' as const, label: t('runs.effort.medium') },
+  { key: 'high' as const, label: t('runs.effort.high') },
+]);
+
+function detachRun(): void {
+  runFollow?.abort();
+  runFollow = null;
+  activeRun.value = null;
+  runText.value = '';
+  runSteps.value = [];
+  runCompactions.value = 0;
+  runLastEventId = 0;
+}
+
+/** Pantau run lewat SSE; dipanggil saat run dimulai, dilanjutkan, atau percakapan dibuka ulang. */
+function attachRun(run: RunDto, fromEventId = 0): void {
+  runFollow?.abort();
+  const controller = new AbortController();
+  runFollow = controller;
+  activeRun.value = run;
+  runLastEventId = fromEventId;
+  if (fromEventId === 0) {
+    runText.value = '';
+    runSteps.value = [];
+    runCompactions.value = 0;
+  }
+  void followRun(
+    run.id,
+    (event) => {
+      runReconnecting.value = false;
+      const current = activeRun.value;
+      if (!current || current.id !== run.id) return;
+      const payload = event.payload;
+      if (event.type === 'status' && typeof payload.status === 'string') {
+        activeRun.value = { ...current, status: payload.status as RunDto['status'] };
+      } else if (event.type === 'delta') {
+        runText.value += String(payload.text ?? '');
+      } else if (event.type === 'tool') {
+        const step = payload as unknown as ToolTraceStep;
+        const index = runSteps.value.findIndex((s) => s.id === step.id);
+        runSteps.value = index >= 0 ? runSteps.value.map((s, i) => (i === index ? step : s)) : [...runSteps.value, step];
+      } else if (event.type === 'compaction') {
+        runCompactions.value += 1;
+      } else if (event.type === 'usage') {
+        activeRun.value = {
+          ...current,
+          tokensIn: Number(payload.tokensIn ?? current.tokensIn),
+          tokensOut: Number(payload.tokensOut ?? current.tokensOut),
+          iterations: Number(payload.iterations ?? current.iterations),
+        };
+      } else if (event.type === 'done' || event.type === 'error') {
+        const message = payload.message as ConversationMessage | undefined;
+        if (message && !messages.value.some((m) => m.id === message.id)) {
+          messages.value = [...messages.value, message];
+        }
+      }
+    },
+    controller.signal,
+    fromEventId,
+  )
+    .then(async (last) => {
+      runLastEventId = last;
+      if (controller.signal.aborted) return;
+      const fresh = await getRun(run.id);
+      activeRun.value = fresh;
+      if (FINAL_RUN_STATUSES.includes(fresh.status) || fresh.status === 'waiting_approval') {
+        if (conversationId.value) {
+          // Jawaban (atau hasil sementara saat dihentikan) sudah tersimpan di percakapan.
+          const detail = await conversationDetail(conversationId.value);
+          messages.value = detail.messages;
+        }
+        runText.value = '';
+        if (fresh.status === 'completed') detachRun();
+        void loadConversations({ silent: true });
+        void modelPicker.value?.reload();
+      }
+    })
+    .catch((caught: unknown) => {
+      streamError.value = caught instanceof ApiError ? caught.message : t('errors.loadFailed');
+    });
+}
+
+async function sendLongRun(prompt: string): Promise<void> {
+  try {
+    const result = await startRun({
+      mode: props.mode,
+      prompt,
+      ...(conversationId.value ? { conversationId: conversationId.value } : {}),
+      ...(props.mode === 'counterpart' ? { counterpartStyle: styleId.value } : {}),
+      ...(auth.can('ai.websearch.use') ? { webSearch: webSearch.value } : {}),
+      ...(chosenModelId.value ? { modelId: chosenModelId.value } : {}),
+      effort: runEffort.value,
+    });
+    conversationId.value = result.conversationId;
+    attachRun(result.run);
+    void loadConversations({ silent: true });
+  } catch (caught) {
+    streamError.value = caught instanceof ApiError ? caught.message : t('errors.loadFailed');
+    streamErrorCode.value = caught instanceof ApiError ? caught.code : '';
+    messages.value = messages.value.slice(0, -1);
+  } finally {
+    sending.value = false;
+  }
+}
+
+async function stopActiveRun(): Promise<void> {
+  if (!activeRun.value) return;
+  try {
+    activeRun.value = await cancelRun(activeRun.value.id);
+  } catch (caught) {
+    streamError.value = caught instanceof ApiError ? caught.message : t('errors.saveFailed');
+  }
+}
+
+async function continueActiveRun(): Promise<void> {
+  if (!activeRun.value) return;
+  try {
+    const run = await continueRun(activeRun.value.id);
+    runText.value = '';
+    attachRun(run, runLastEventId);
+  } catch (caught) {
+    streamError.value = caught instanceof ApiError ? caught.message : t('errors.saveFailed');
+  }
+}
+
+/** Saat percakapan dibuka: sambung ke run yang masih berjalan (tab lain / setelah browser ditutup). */
+async function reattachRun(id: string): Promise<void> {
+  try {
+    const active = (await listRuns('active')).find((run) => run.conversationId === id);
+    if (active && conversationId.value === id) attachRun(active);
+  } catch {
+    // daftar run opsional; percakapan tetap terbuka
+  }
 }
 
 function useDefaultModel(): void {
@@ -342,6 +501,8 @@ async function openConversation(id: string): Promise<void> {
     webSearch.value = detail.web_search === true;
     displayModelId.value = detail.model_id ?? null;
     chosenModelId.value = null;
+    detachRun();
+    void reattachRun(detail.id);
     void loadAttachments(detail.id);
   } catch (caught) {
     toast.push(
@@ -660,6 +821,7 @@ function startNew(): void {
   webSearch.value = false;
   displayModelId.value = null;
   chosenModelId.value = null;
+  detachRun();
   messages.value = [];
   viewerDoc.value = null;
   streamError.value = '';
@@ -701,6 +863,11 @@ async function send(): Promise<void> {
   ];
   draft.value = '';
 
+  if (longRun.value && canLongRun.value) {
+    await sendLongRun(prompt);
+    return;
+  }
+
   let assistantText = '';
   const controller = new AbortController();
   activeAbort = controller;
@@ -719,6 +886,12 @@ async function send(): Promise<void> {
       (event) => {
         if (event.type === 'ready') {
           conversationId.value = event.conversationId;
+        } else if (event.type === 'run_started') {
+          // Giliran panjang dipindah ke pekerja: lanjut dipantau sebagai kerja panjang.
+          conversationId.value = event.conversationId;
+          pendingText.value = '';
+          pendingSteps.value = [];
+          attachRun(event.run);
         } else if (event.type === 'delta') {
           pendingText.value += event.text;
           assistantText += event.text;
@@ -989,6 +1162,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.clearTimeout(searchTimer);
   activeAbort?.abort();
+  runFollow?.abort();
   recognizer?.stop();
 });
 </script>
@@ -1315,6 +1489,17 @@ onBeforeUnmount(() => {
         </template>
       </div>
 
+      <RunPanel
+        v-if="activeRun"
+        :run="activeRun"
+        :text="runText"
+        :steps="runSteps"
+        :compactions="runCompactions"
+        :reconnecting="runReconnecting"
+        @cancel="stopActiveRun"
+        @continue="continueActiveRun"
+      />
+
       <div v-if="streamError" class="chat__error" role="alert">
         <span>{{ streamError }}</span>
         <span v-if="MODEL_RECOVERY_CODES.includes(streamErrorCode)" class="chat__error-actions">
@@ -1344,6 +1529,11 @@ onBeforeUnmount(() => {
         :has-images="attachments.some((a) => a.kind === 'image' && a.enabled)"
         @update:model-value="chooseModel"
       />
+
+      <div v-if="canLongRun" class="chat__longrun" :title="t('runs.toggleHint')">
+        <CaSwitch v-model="longRun" :disabled="streaming || regenerating" :label="t('runs.toggle')" />
+        <CaSegmented v-if="longRun" v-model="runEffort" :items="effortItems" :label="t('runs.effortLabel')" />
+      </div>
 
       <form class="chat__composer" @submit.prevent="send">
         <textarea
@@ -2474,6 +2664,15 @@ onBeforeUnmount(() => {
   color: var(--ca-danger-fg);
   font-size: var(--ca-text-200);
   border-top: 1px solid var(--ca-stroke-2);
+}
+
+.chat__longrun {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ca-space-3);
+  padding: var(--ca-space-2) var(--ca-space-4) 0;
+  font-size: var(--ca-text-200);
 }
 
 .chat__error-actions {

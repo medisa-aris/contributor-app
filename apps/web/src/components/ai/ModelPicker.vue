@@ -91,7 +91,7 @@ function useDefault(): void {
   selected.value = models.value.find((m) => m.isDefault)?.id ?? null;
 }
 
-defineExpose({ reload, useDefault });
+defineExpose({ reload, useDefault, current });
 onMounted(reload);
 </script>
 

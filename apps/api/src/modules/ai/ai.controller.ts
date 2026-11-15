@@ -39,7 +39,7 @@ import {
 } from './dto/ai.dto';
 import { AiGatewayService, clampToolResult } from './gateway.service';
 import { TasksService } from './tasks.service';
-import type { ChatResult } from './providers/types';
+import type { ChatMessage, ChatResult } from './providers/types';
 import {
   applyLoopEvent,
   ChatToolsService,
@@ -48,12 +48,18 @@ import {
   type ToolTraceStep,
 } from './chat-tools.service';
 import { APPROVAL_PLACEHOLDER, ChatTurnService } from './chat-turn.service';
+import { RunsService } from './runs/runs.service';
 import { ToolApprovalsService } from './tool-approvals.service';
 import { WebSearchService } from './web-search/web-search.service';
 import { MemoryExtractionService } from '../memory/memory-extraction.service';
 import { MemoryService, type MemoryRetrieval } from '../memory/memory.service';
 import { DecideToolApprovalDto, SetConversationConnectorsDto } from './dto/ai.dto';
 
+
+/** Giliran chat dipindah ke kerja panjang (dilempar dari callback loop, ditangkap di chatStream). */
+class PromoteToRun extends Error {}
+const PROMOTE_AFTER_ITERATIONS = 3;
+const PROMOTE_AFTER_MS = 90_000;
 
 function sseWrite(res: Response, event: string, data: unknown): void {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
@@ -75,6 +81,7 @@ export class AiController {
     private readonly memory: MemoryService,
     private readonly memoryNotes: MemoryExtractionService,
     private readonly turns: ChatTurnService,
+    private readonly runs: RunsService,
   ) {}
 
   private memoryFor(auth: AuthContext, conversationId: string, query: string): Promise<MemoryRetrieval> {
@@ -188,22 +195,66 @@ export class AiController {
         abort.signal,
       );
       if (handlers.length > 0) {
-        const message = await this.toolTurn(
-          auth,
-          prepared.id,
-          handlers,
-          pendingApprovals,
-          {
+        // Promosi otomatis ke kerja panjang (§14.5) di batas iterasi, sebelum tool berikutnya jalan.
+        const promoteModel = await this.runs.promotableModel(auth.user.id, prepared.id);
+        const startedAt = Date.now();
+        const transcript: ChatMessage[] = [];
+        let iterations = 0;
+        let message;
+        try {
+          message = await this.toolTurn(
+            auth,
+            prepared.id,
+            handlers,
+            pendingApprovals,
+            {
+              mode: dto.mode,
+              counterpartStyle: dto.counterpartStyle,
+              messages: this.conversations.toChatMessages(prepared.history),
+              extraContext: context.text ?? undefined,
+              images: context.images.length > 0 ? context.images : undefined,
+              signal: abort.signal,
+              memory,
+            },
+            (event, payload) => sseWrite(res, event, payload),
+            {
+              onLoopEvent: (event) => {
+                if (event.type === 'assistant') {
+                  if (promoteModel && (iterations >= PROMOTE_AFTER_ITERATIONS || Date.now() - startedAt > PROMOTE_AFTER_MS)) {
+                    throw new PromoteToRun();
+                  }
+                  iterations += 1;
+                  transcript.push({ role: 'assistant', content: event.content, toolCalls: event.toolCalls });
+                } else if (event.type === 'tool_result' && event.outcome.status !== 'pending_approval') {
+                  transcript.push({
+                    role: 'tool',
+                    toolCallId: event.call.id,
+                    toolName: event.call.name,
+                    content: clampToolResult(event.outcome.content || '(kosong)'),
+                    ...(event.outcome.status === 'error' ? { isError: true } : {}),
+                  });
+                }
+              },
+            },
+          );
+        } catch (error) {
+          if (!(error instanceof PromoteToRun) || !promoteModel) throw error;
+          const promptMessage = [...prepared.history].reverse().find((m) => m.role === 'user')!;
+          const run = await this.runs.createPromoted(auth, {
+            conversationId: prepared.id,
             mode: dto.mode,
-            counterpartStyle: dto.counterpartStyle,
-            messages: this.conversations.toChatMessages(prepared.history),
-            extraContext: context.text ?? undefined,
-            images: context.images.length > 0 ? context.images : undefined,
-            signal: abort.signal,
-            memory,
-          },
-          (event, payload) => sseWrite(res, event, payload),
-        );
+            ...(dto.counterpartStyle ? { counterpartStyle: dto.counterpartStyle } : {}),
+            ...(dto.webSearch !== undefined ? { webSearch: dto.webSearch } : {}),
+            prompt: dto.prompt,
+            promptMessageId: String(promptMessage.id),
+            modelId: promoteModel,
+            transcript,
+            iterations,
+          });
+          sseWrite(res, 'run_started', { conversationId: prepared.id, run });
+          res.end();
+          return;
+        }
         this.afterTurn(auth, prepared.id);
         sseWrite(res, 'done', { conversationId: prepared.id, message });
         res.end();

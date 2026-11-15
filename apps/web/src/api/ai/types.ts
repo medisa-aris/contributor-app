@@ -122,6 +122,8 @@ export type StreamErrorInfo = {
 };
 
 export type StreamEvent =
+  /** Giliran dipindah ke kerja panjang; pantau lewat /ai/runs/:id/events. */
+  | { type: 'run_started'; conversationId: string; run: import('@/api/runs').RunDto }
   | { type: 'ready'; conversationId: string }
   | { type: 'delta'; text: string }
   | { type: 'tool'; step: ToolTraceStep }

@@ -99,6 +99,13 @@ function dispatch(block: string, onEvent: (event: StreamEvent) => void): void {
         message: body.message as Extract<StreamEvent, { type: 'done' }>['message'],
       });
       break;
+    case 'run_started':
+      onEvent({
+        type: 'run_started',
+        conversationId: String(body.conversationId ?? ''),
+        run: body.run as Extract<StreamEvent, { type: 'run_started' }>['run'],
+      });
+      break;
     case 'error':
       onEvent({
         type: 'error',

@@ -7,6 +7,7 @@ import { useNavigationStore } from '@/stores/navigation.store';
 import { useThemeStore, type ThemeMode } from '@/stores/theme.store';
 import { CaAvatar, CaBreadcrumb, CaIcon, CaIconButton, CaMenu } from '@/components/ui';
 import CommandPalette from './CommandPalette.vue';
+import RunsIndicator from './RunsIndicator.vue';
 import NotificationsMenu from './NotificationsMenu.vue';
 
 const emit = defineEmits<{ 'toggle-mobile': [] }>();
@@ -103,6 +104,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKeydown));
           </button>
         </template>
       </CaMenu>
+      <RunsIndicator />
       <NotificationsMenu />
       <CaMenu :items="userMenuItems" align="end" @select="onUserMenuSelect">
         <template #trigger>
