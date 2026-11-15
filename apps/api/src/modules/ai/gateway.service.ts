@@ -91,7 +91,9 @@ export type ToolLoopEvent =
   | { type: 'delta'; text: string }
   | { type: 'assistant'; content: string; toolCalls: ChatToolCall[] }
   | { type: 'tool_call'; call: ChatToolCall }
-  | { type: 'tool_result'; call: ChatToolCall; outcome: ToolOutcome };
+  | { type: 'tool_result'; call: ChatToolCall; outcome: ToolOutcome }
+  /** Pemakaian satu panggilan model di dalam loop (untuk anggaran kerja panjang). */
+  | { type: 'usage'; tokensIn: number; tokensOut: number };
 
 export interface ToolLoopResult {
   /** Teks jawaban akhir (giliran terakhir model). */
@@ -383,6 +385,7 @@ export class AiGatewayService {
       }
       tokensIn += result.tokensIn ?? 0;
       tokensOut += result.tokensOut ?? 0;
+      yield { type: 'usage', tokensIn: result.tokensIn ?? 0, tokensOut: result.tokensOut ?? 0 };
       model = result.model || model;
       modelId = result.modelId ?? modelId;
       for (const [category, count] of Object.entries(result.guardrails ?? {})) {

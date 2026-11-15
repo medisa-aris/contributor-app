@@ -3,6 +3,7 @@ import { ConnectorsModule } from '../connectors/connectors.module';
 import { DocumentsModule } from '../documents/documents.module';
 import { MemoryModule } from '../memory/memory.module';
 import { ChatToolsService } from './chat-tools.service';
+import { ChatTurnService } from './chat-turn.service';
 import { ToolApprovalsService } from './tool-approvals.service';
 import { AiController } from './ai.controller';
 import { AgentWorkspaceService } from './agents/agent-workspace.service';
@@ -19,6 +20,9 @@ import { ModelCatalogService } from './models/model-catalog.service';
 import { ModelsController } from './models/models.controller';
 import { PROVIDER_ADAPTER_FACTORY, ProviderRegistryService } from './models/provider-registry.service';
 import { UsageLedgerService } from './models/usage-ledger.service';
+import { RunWorkerService } from './runs/run-worker.service';
+import { RunsController } from './runs/runs.controller';
+import { RunsService } from './runs/runs.service';
 import { TasksService } from './tasks.service';
 import { WebSourceService } from './web-source.service';
 import { WebSearchAdminController } from './web-search/web-search-admin.controller';
@@ -32,6 +36,7 @@ import { WebSearchService } from './web-search/web-search.service';
     WebSearchAdminController,
     GuardrailsAdminController,
     ModelsController,
+    RunsController,
   ],
   providers: [
     // null = adapter asli; tes integrasi mengganti dengan pabrik adapter palsu.
@@ -49,6 +54,9 @@ import { WebSearchService } from './web-search/web-search.service';
     WebSourceService,
     WebSearchService,
     ChatToolsService,
+    ChatTurnService,
+    RunsService,
+    RunWorkerService,
     ToolApprovalsService,
     AgentWorkspaceService,
     TaskRunnerService,

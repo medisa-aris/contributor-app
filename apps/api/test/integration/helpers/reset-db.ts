@@ -5,6 +5,10 @@ import { ALL_PERMISSION_IDS, PERMISSION_CATALOG, SYSTEM_ROLES } from '@bara/shar
 export const TEST_PASSWORD = 'Test123456!';
 
 const TRUNCATE_TABLES = [
+  'ai_run_events',
+  'ai_run_tool_calls',
+  'ai_run_messages',
+  'ai_runs',
   'ai_usage_ledger',
   'ai_model_grants',
   'ai_models',

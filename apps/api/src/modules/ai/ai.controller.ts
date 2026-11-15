@@ -24,8 +24,7 @@ import { RequirePermission } from '../../common/decorators/require-permission.de
 import { paginated } from '../admin/common/pagination';
 import type { AuthContext } from '../../common/types/auth-context';
 import { AppError, ERROR_CODES } from '../../common/errors/app-error';
-import { DocumentsService, type UserDocument } from '../documents/documents.service';
-import { CREATE_DOCUMENT_TOOL_NAME, parseDocumentSpec } from '../documents/document-spec';
+import { DocumentsService } from '../documents/documents.service';
 import { ModelAccessService } from './models/model-access.service';
 import { ConversationsService } from './conversations.service';
 import {
@@ -38,14 +37,9 @@ import {
   UpdateAttachmentDto,
   UpdateConversationDto,
 } from './dto/ai.dto';
-import {
-  AiGatewayService,
-  clampToolResult,
-  type ToolHandler,
-  type ToolLoopEvent,
-} from './gateway.service';
+import { AiGatewayService, clampToolResult } from './gateway.service';
 import { TasksService } from './tasks.service';
-import type { ChatMessage, ChatResult } from './providers/types';
+import type { ChatResult } from './providers/types';
 import {
   applyLoopEvent,
   ChatToolsService,
@@ -53,14 +47,13 @@ import {
   type ToolTrace,
   type ToolTraceStep,
 } from './chat-tools.service';
+import { APPROVAL_PLACEHOLDER, ChatTurnService } from './chat-turn.service';
 import { ToolApprovalsService } from './tool-approvals.service';
 import { WebSearchService } from './web-search/web-search.service';
 import { MemoryExtractionService } from '../memory/memory-extraction.service';
 import { MemoryService, type MemoryRetrieval } from '../memory/memory.service';
 import { DecideToolApprovalDto, SetConversationConnectorsDto } from './dto/ai.dto';
 
-/** Isi jawaban saat giliran berhenti menunggu persetujuan tanpa teks dari model. */
-const APPROVAL_PLACEHOLDER = 'Saya perlu persetujuan Anda sebelum menjalankan operasi berikut.';
 
 function sseWrite(res: Response, event: string, data: unknown): void {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
@@ -81,23 +74,15 @@ export class AiController {
     private readonly webSearch: WebSearchService,
     private readonly memory: MemoryService,
     private readonly memoryNotes: MemoryExtractionService,
+    private readonly turns: ChatTurnService,
   ) {}
 
-  /** Memori relevan untuk giliran ini (buku sendiri + pintu yang dibuka di percakapan). */
   private memoryFor(auth: AuthContext, conversationId: string, query: string): Promise<MemoryRetrieval> {
-    return this.memory.retrieve(
-      auth.user.id,
-      auth.effective.allowed,
-      { kind: 'conversation', id: conversationId },
-      query,
-    );
+    return this.turns.memoryFor(auth, conversationId, query);
   }
 
-  /** Jadwalkan pencatatan memori di belakang layar setelah giliran tersimpan. */
   private afterTurn(auth: AuthContext, conversationId: string): void {
-    if (auth.effective.allowed.has(PERMISSIONS.memorySelfManage)) {
-      this.memoryNotes.scheduleConversation(conversationId);
-    }
+    this.turns.afterTurn(auth, conversationId);
   }
 
   /** Ketersediaan pencarian web untuk menampilkan opsinya; nama penyedia tidak dibuka. */
@@ -651,124 +636,12 @@ export class AiController {
     return this.tasks.cancel(auth, id);
   }
 
-  /**
-   * Satu giliran chat dengan loop tool konektor. `emit` (opsional) meneruskan delta teks
-   * dan perubahan langkah tool ke klien SSE.
-   */
-  private async toolTurn(
-    auth: AuthContext,
-    conversationId: string,
-    handlers: ToolHandler[],
-    pendingApprovals: string[],
-    options: {
-      mode: ConversationMode;
-      counterpartStyle?: string;
-      messages: ChatMessage[];
-      extraContext?: string;
-      images?: { name: string; mimeType: string; dataBase64: string }[];
-      signal?: AbortSignal;
-      memory?: MemoryRetrieval;
-    },
-    emit?: (event: string, payload: unknown) => void,
-  ) {
-    const { memory, ...loopOptions } = options;
-    const handlerMap = new Map(handlers.map((h) => [h.tool.name, h]));
-    const steps: ToolTraceStep[] = [];
-    const result = await this.gateway.drainToolLoop(
-      {
-        ...loopOptions,
-        memoryContext: memory?.block || undefined,
-        guard: { userId: auth.user.id, conversationId },
-        documents: true,
-        handlers,
-        stream: Boolean(emit),
-        toolRules: this.chatTools.toolRules(handlers),
-      },
-      (event: ToolLoopEvent) => {
-        if (event.type === 'delta') {
-          emit?.('delta', { text: event.text });
-          return;
-        }
-        if (event.type === 'assistant') {
-          if (event.content.trim()) emit?.('delta', { text: '\n\n' });
-          return;
-        }
-        const changed = applyLoopEvent(steps, event, handlerMap);
-        if (changed) emit?.('tool', changed);
-      },
-    );
-    const content =
-      loopContent(result) || (result.stop === 'pending_approval' ? APPROVAL_PLACEHOLDER : '');
-    const created = await this.runDocumentTools(auth, conversationId, {
-      content,
-      model: result.model,
-      tokensIn: result.tokensIn,
-      tokensOut: result.tokensOut,
-      ...(result.unhandledToolCalls.length > 0 ? { toolCalls: result.unhandledToolCalls } : {}),
-    });
-    const assistant = await this.conversations.completeTurn(conversationId, {
-      content: created.content,
-      model: result.model,
-      modelId: result.modelId ?? null,
-      tokensIn: result.tokensIn,
-      tokensOut: result.tokensOut,
-      ...(result.guardrails ? { guardrails: result.guardrails } : {}),
-      memoryRefs: memory?.refs ?? [],
-    });
-    const trace: ToolTrace = {
-      steps,
-      transcript: result.appended,
-      pending: result.pending
-        ? { approvalId: result.pending.approvalId, callId: result.pending.call.id }
-        : null,
-    };
-    if (steps.length > 0) await this.chatTools.saveTrace(String(assistant.id), trace);
-    await this.toolApprovals.attachMessage(pendingApprovals, String(assistant.id));
-    await this.documents.attachToMessage(
-      auth.user.id,
-      created.documents.map((doc) => doc.id),
-      String(assistant.id),
-    );
-    return {
-      ...assistant,
-      documents: created.documents,
-      tool_trace: steps.length > 0 ? { steps, pending: trace.pending } : null,
-    };
+  private toolTurn(...args: Parameters<ChatTurnService['toolTurn']>) {
+    return this.turns.toolTurn(...args);
   }
 
-  /**
-   * Jalankan tool create_document yang diminta model. Kegagalan satu dokumen tidak
-   * menggagalkan giliran; alasannya ditambahkan ke jawaban agar pengguna tahu.
-   */
-  private async runDocumentTools(
-    auth: AuthContext,
-    conversationId: string,
-    result: ChatResult,
-  ): Promise<{ content: string; documents: UserDocument[] }> {
-    const documents: UserDocument[] = [];
-    const failures: string[] = [];
-    for (const call of result.toolCalls ?? []) {
-      if (call.name !== CREATE_DOCUMENT_TOOL_NAME) continue;
-      try {
-        documents.push(
-          await this.documents.create(auth.user.id, conversationId, parseDocumentSpec(call.input)),
-        );
-      } catch (error) {
-        failures.push(error instanceof Error ? error.message : 'Kesalahan tidak dikenal.');
-      }
-    }
-    const parts: string[] = [];
-    if (result.content.trim()) parts.push(result.content.trim());
-    else if (documents.length > 0) {
-      parts.push(
-        documents.length === 1
-          ? `Dokumen "${documents[0]!.title}" sudah dibuat.`
-          : `${documents.length} dokumen sudah dibuat.`,
-      );
-    }
-    if (failures.length > 0) parts.push(`Dokumen gagal dibuat: ${failures.join(' ')}`);
-    if (parts.length === 0) parts.push('Penyedia AI tidak mengembalikan jawaban.');
-    return { content: parts.join('\n\n'), documents };
+  private runDocumentTools(...args: Parameters<ChatTurnService['runDocumentTools']>) {
+    return this.turns.runDocumentTools(...args);
   }
 
   private assertModePermission(auth: AuthContext, mode: ConversationMode): void {

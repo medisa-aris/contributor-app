@@ -596,7 +596,7 @@ export class TaskRunnerService implements OnApplicationBootstrap, OnModuleDestro
           }
           return;
         }
-        if (event.type === 'delta') return;
+        if (event.type === 'delta' || event.type === 'usage') return;
         if (
           event.type === 'tool_call' &&
           (event.call.name === CLARIFY_TOOL || event.call.name === DELEGATE_TOOL)
