@@ -10,8 +10,10 @@ import {
   grantReach,
   listGrants,
   myModels,
+  teamUsage,
   updateGrant,
   type AiModelDto,
+  type TeamUsage,
   type GrantTarget,
   type ModelGrantDto,
   type QuotaPeriod,
@@ -20,6 +22,7 @@ import {
 } from '@/api/models';
 import { ApiError } from '@/api/http';
 import { useToastStore } from '@/stores/toast.store';
+import { downloadCsv } from '@/utils/csv';
 import {
   CaBadge,
   CaButton,
@@ -54,7 +57,49 @@ const tab = ref('grants');
 const tabs = computed(() => [
   { key: 'grants', label: t('models.grants.tabs.grants') },
   { key: 'team', label: t('models.grants.tabs.team') },
+  { key: 'usage', label: t('models.usage.tab') },
 ]);
+
+// ───────── Pemakaian ─────────
+const usagePeriod = ref<QuotaPeriod>('day');
+const usageGroup = ref<'user' | 'model'>('user');
+const usage = ref<TeamUsage | null>(null);
+const usageLoading = ref(false);
+const usagePeriodItems = computed(() => [
+  { key: 'day' as const, label: t('models.usage.today') },
+  { key: 'week' as const, label: t('models.usage.thisWeek') },
+]);
+const usageGroupItems = computed(() => [
+  { key: 'user' as const, label: t('models.usage.perPerson') },
+  { key: 'model' as const, label: t('models.usage.perModel') },
+]);
+const usageMax = computed(() => Math.max(1, ...(usage.value?.rows.map((r) => r.tokens) ?? [1])));
+
+async function loadUsage(): Promise<void> {
+  usageLoading.value = true;
+  try {
+    usage.value = await teamUsage(usagePeriod.value, usageGroup.value);
+  } catch (caught) {
+    fail(caught);
+  } finally {
+    usageLoading.value = false;
+  }
+}
+
+function onTab(key: string): void {
+  tab.value = key;
+  if (key === 'usage' && !usage.value) void loadUsage();
+}
+
+function exportUsage(): void {
+  if (!usage.value) return;
+  const label = usageGroup.value === 'user' ? t('models.grants.columns.target') : t('models.grants.columns.model');
+  downloadCsv(
+    `pemakaian-ai-${usagePeriod.value}-${usage.value.since.slice(0, 10)}`,
+    [label, t('models.usage.tokens')],
+    usage.value.rows.map((r) => [r.label, r.tokens]),
+  );
+}
 
 async function load(): Promise<void> {
   loading.value = true;
@@ -296,7 +341,7 @@ onMounted(load);
       <p v-if="defaultBanner" class="grt-banner"><CaIcon name="sparkle" :size="14" /> {{ defaultBanner }}</p>
       <CaEmptyState v-if="noReach" :title="t('models.grants.noReach')" />
       <template v-else>
-        <CaTabs v-model="tab" :items="tabs" class="grt-tabs" />
+        <CaTabs :model-value="tab" :items="tabs" class="grt-tabs" @update:model-value="onTab" />
 
         <CaTable
           v-if="tab === 'grants'"
@@ -340,6 +385,25 @@ onMounted(load);
             />
           </template>
         </CaTable>
+
+        <div v-else-if="tab === 'usage'" class="grt-usage">
+          <div class="grt-usage__bar">
+            <CaSegmented v-model="usagePeriod" :items="usagePeriodItems" :label="t('models.usage.tab')" @update:model-value="loadUsage" />
+            <CaSegmented v-model="usageGroup" :items="usageGroupItems" :label="t('models.usage.tab')" @update:model-value="loadUsage" />
+            <CaButton size="small" :disabled="!usage || usage.rows.length === 0" @click="exportUsage">
+              {{ t('models.usage.exportCsv') }}
+            </CaButton>
+          </div>
+          <CaSpinner v-if="usageLoading && !usage" />
+          <CaEmptyState v-else-if="usage && usage.rows.length === 0" :title="t('models.usage.teamEmpty')" />
+          <ul v-else-if="usage" class="grt-usage__list">
+            <li v-for="row in usage.rows" :key="row.key">
+              <span class="grt-usage__label">{{ row.label }}</span>
+              <span class="grt-usage__track"><span class="grt-usage__fill" :style="{ width: `${(row.tokens / usageMax) * 100}%` }" /></span>
+              <span class="grt-usage__value">{{ formatTokens(row.tokens) }}</span>
+            </li>
+          </ul>
+        </div>
 
         <div v-else class="grt-team">
           <p class="grt-muted">{{ t('models.grants.teamSource') }}</p>
@@ -548,6 +612,51 @@ onMounted(load);
 }
 .grt-person:hover {
   text-decoration: underline;
+}
+.grt-usage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ca-space-4);
+}
+.grt-usage__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ca-space-3);
+}
+.grt-usage__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ca-space-2);
+}
+.grt-usage__list li {
+  display: grid;
+  grid-template-columns: minmax(120px, 220px) 1fr auto;
+  align-items: center;
+  gap: var(--ca-space-3);
+}
+.grt-usage__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.grt-usage__track {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--ca-bg-surface-3);
+  overflow: hidden;
+}
+.grt-usage__fill {
+  display: block;
+  height: 100%;
+  background: var(--ca-color-brand, #16a34a);
+}
+.grt-usage__value {
+  font-variant-numeric: tabular-nums;
+  color: var(--ca-fg-2);
 }
 .grt-form {
   display: flex;

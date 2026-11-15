@@ -6,6 +6,7 @@ import {
   addModels,
   checkProvider,
   deleteModel,
+  discoverModels,
   disableModel,
   enableModel,
   getDefaultLimits,
@@ -19,6 +20,7 @@ import {
   type AiProviderCode,
   type AiProviderStatusDto,
   type DefaultModelLimitsDto,
+  type DiscoveredModel,
   type ModelTestResultDto,
 } from '@/api/models';
 import { ApiError } from '@/api/http';
@@ -333,6 +335,73 @@ async function enableAfterTest(): Promise<void> {
   }
 }
 
+// ───────── Cari model ─────────
+const discoverOpen = ref(false);
+const discoverProvider = ref<AiProviderCode>('openrouter');
+const discovering = ref(false);
+const discovered = ref<DiscoveredModel[] | null>(null);
+const discoverFilter = ref('');
+const discoverPicked = ref<string[]>([]);
+const discoverAdding = ref(false);
+const configuredOptions = computed(() =>
+  providers.value.filter((p) => p.configured).map((p) => ({ value: p.code, label: p.code })),
+);
+const discoverVisible = computed(() => {
+  const q = discoverFilter.value.trim().toLowerCase();
+  const list = discovered.value ?? [];
+  return (q ? list.filter((m) => m.modelKey.toLowerCase().includes(q) || m.displayName.toLowerCase().includes(q)) : list).slice(0, 200);
+});
+
+function openDiscover(): void {
+  discoverProvider.value = providers.value.find((p) => p.configured)?.code ?? 'openrouter';
+  discovered.value = null;
+  discoverFilter.value = '';
+  discoverPicked.value = [];
+  discoverOpen.value = true;
+}
+
+async function runDiscover(): Promise<void> {
+  discovering.value = true;
+  discoverPicked.value = [];
+  try {
+    discovered.value = await discoverModels(discoverProvider.value);
+  } catch (caught) {
+    fail(caught);
+  } finally {
+    discovering.value = false;
+  }
+}
+
+function togglePick(key: string, on: boolean): void {
+  discoverPicked.value = on ? [...new Set([...discoverPicked.value, key])] : discoverPicked.value.filter((k) => k !== key);
+}
+
+async function addPicked(): Promise<void> {
+  const items = (discovered.value ?? []).filter((m) => discoverPicked.value.includes(m.modelKey));
+  if (items.length === 0) return;
+  discoverAdding.value = true;
+  try {
+    const created = await addModels(
+      items.map((m) => ({
+        provider: discoverProvider.value,
+        modelKey: m.modelKey,
+        displayName: m.displayName,
+        ...(m.contextWindow ? { contextWindow: m.contextWindow } : {}),
+        ...(m.maxOutputTokens ? { maxOutputTokens: m.maxOutputTokens } : {}),
+        ...(m.supportsTools !== null ? { supportsTools: m.supportsTools } : {}),
+        ...(m.supportsVision !== null ? { supportsVision: m.supportsVision } : {}),
+      })),
+    );
+    created.forEach(replaceModel);
+    discoverOpen.value = false;
+    toast.push({ variant: 'success', title: t('models.discover.added', { n: created.length }) });
+  } catch (caught) {
+    fail(caught);
+  } finally {
+    discoverAdding.value = false;
+  }
+}
+
 onMounted(load);
 </script>
 
@@ -340,6 +409,9 @@ onMounted(load);
   <section>
     <CaPageHeader :title="t('models.admin.title')" :description="t('models.admin.description')">
       <template #actions>
+        <CaButton v-if="!loading && !failed" :disabled="configuredOptions.length === 0" @click="openDiscover">
+          {{ t('models.discover.button') }}
+        </CaButton>
         <CaButton v-if="!loading && !failed" variant="primary" @click="openAdd">{{ t('models.admin.addManual') }}</CaButton>
       </template>
     </CaPageHeader>
@@ -467,6 +539,37 @@ onMounted(load);
           </CaButton>
         </div>
       </form>
+    </CaDialog>
+
+    <CaDialog v-model:open="discoverOpen" :title="t('models.discover.title')" size="large">
+      <div class="mdl-form">
+        <div class="mdl-discover__bar">
+          <CaSelect v-model="discoverProvider" :options="configuredOptions" />
+          <CaButton :loading="discovering" @click="runDiscover">{{ t('models.discover.load') }}</CaButton>
+          <CaInput v-if="discovered" v-model="discoverFilter" type="search" :placeholder="t('models.discover.search')" />
+        </div>
+        <p v-if="discovered && discovered.length === 0" class="mdl-muted">{{ t('models.discover.empty') }}</p>
+        <ul v-if="discovered && discovered.length > 0" class="mdl-discover__list">
+          <li v-for="item in discoverVisible" :key="item.modelKey">
+            <CaCheckbox
+              :model-value="discoverPicked.includes(item.modelKey)"
+              :disabled="item.alreadyInCatalog"
+              :label="item.displayName"
+              @update:model-value="togglePick(item.modelKey, $event)"
+            />
+            <span class="mdl-mono">{{ item.modelKey }}</span>
+            <span v-if="item.contextWindow" class="mdl-muted">{{ t('models.discover.context', { n: item.contextWindow.toLocaleString('id-ID') }) }}</span>
+            <CaBadge v-if="item.supportsTools" size="small">{{ t('models.admin.capability.tools') }}</CaBadge>
+            <CaBadge v-if="item.supportsVision" size="small">{{ t('models.admin.capability.vision') }}</CaBadge>
+            <CaBadge v-if="item.alreadyInCatalog" variant="success" size="small">{{ t('models.discover.already') }}</CaBadge>
+          </li>
+        </ul>
+        <div class="mdl-form__actions">
+          <CaButton variant="primary" :loading="discoverAdding" :disabled="discoverPicked.length === 0" @click="addPicked">
+            {{ t('models.discover.add', { n: discoverPicked.length }) }}
+          </CaButton>
+        </div>
+      </div>
     </CaDialog>
 
     <CaDialog v-model:open="editOpen" :title="t('models.admin.editDialog.title')">
@@ -619,6 +722,28 @@ onMounted(load);
 .mdl-form__actions {
   display: flex;
   justify-content: flex-end;
+  gap: var(--ca-space-2);
+}
+.mdl-discover__bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ca-space-2);
+  align-items: center;
+}
+.mdl-discover__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 50vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ca-space-2);
+}
+.mdl-discover__list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--ca-space-2);
 }
 .mdl-probes {

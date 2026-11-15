@@ -528,6 +528,37 @@ export class ModelAccessService {
     }
   }
 
+  /** "Pemakaian AI saya": pemakaian hari ini dan minggu ini per model beserta batasnya. */
+  async usageMe(userId: string) {
+    const tz = await this.timezone();
+    const now = new Date();
+    const day = quotaWindow('day', now, tz);
+    const week = quotaWindow('week', now, tz);
+    const [{ models }, today, thisWeek, catalog] = await Promise.all([
+      this.userModels(userId),
+      this.ledger.byModel(userId, day.start),
+      this.ledger.byModel(userId, week.start),
+      this.catalog.list(),
+    ]);
+    const ids = new Set([...models.map((m) => m.id), ...thisWeek.keys()]);
+    return [...ids].map((id) => {
+      const allowed = models.find((m) => m.id === id) ?? null;
+      const model = catalog.find((m) => m.id === id);
+      return {
+        modelId: id,
+        displayName: allowed?.displayName ?? model?.displayName ?? '(dihapus)',
+        isDefault: allowed?.isDefault ?? false,
+        allowed: allowed !== null,
+        today: today.get(id)?.tokens ?? 0,
+        week: thisWeek.get(id)?.tokens ?? 0,
+        estimated: Boolean(thisWeek.get(id)?.estimated),
+        quotas: allowed?.quotas ?? [],
+        dayResetsAt: day.end.toISOString(),
+        weekResetsAt: week.end.toISOString(),
+      };
+    });
+  }
+
   /** Ringkasan efektif untuk satu orang ("Lihat efektif"). */
   async effective(userId: string): Promise<UserModelDto[]> {
     return (await this.userModels(userId)).models;

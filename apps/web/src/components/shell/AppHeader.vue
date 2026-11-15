@@ -37,12 +37,17 @@ const themeMenuItems = computed(() => [
 ]);
 
 const userMenuItems = computed(() => [
+  ...(auth.can('ai.workspace.access') ? [{ key: 'usage', label: t('models.usage.menu') }] : []),
   { key: 'showcase', label: t('shell.showcase') },
   { key: 'docs', label: t('shell.docs') },
   { key: 'logout', label: t('shell.logout'), danger: true, divider: true },
 ]);
 
 async function onUserMenuSelect(key: string): Promise<void> {
+  if (key === 'usage') {
+    await router.push('/workspace/usage');
+    return;
+  }
   if (key === 'showcase') {
     await router.push('/showcase');
     return;

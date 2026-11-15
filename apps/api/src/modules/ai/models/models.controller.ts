@@ -23,9 +23,11 @@ import {
   TestModelDto,
   UpdateGrantDto,
   UpdateModelDto,
+  UsageQueryDto,
 } from './dto/models.dto';
 import { GrantService } from './grant.service';
 import { ModelAccessService } from './model-access.service';
+import { quotaWindow } from './model-access';
 import { ModelCatalogService } from './model-catalog.service';
 import { ProviderRegistryService } from './provider-registry.service';
 import { UsageLedgerService } from './usage-ledger.service';
@@ -92,6 +94,12 @@ export class ModelsController {
   }
 
   // ───────────────────────── Katalog ─────────────────────────
+
+  @RequirePermission(PERMISSIONS.modelsManage)
+  @Get('admin/ai/providers/:code/discover')
+  discover(@Param('code') code: string) {
+    return this.catalog.discover(providerCode(code));
+  }
 
   @RequirePermission(PERMISSIONS.modelsManage)
   @Get('admin/ai/models')
@@ -241,7 +249,39 @@ export class ModelsController {
       .map((m) => this.catalog.toDto(m));
   }
 
+  @RequirePermission(PERMISSIONS.modelsGrantManage)
+  @Get('ai/usage/team')
+  async teamUsage(@CurrentAuth() auth: AuthContext, @Query() query: UsageQueryDto) {
+    const caller = await this.grantsService.caller(auth);
+    const userIds = caller.scope === 'admin' ? null : caller.reach.userIds;
+    const window = quotaWindow(query.period, new Date(), await this.access.timezone());
+    const totals = userIds && userIds.length === 0 ? [] : await this.ledger.totals(userIds, window.start, query.groupBy);
+    const labels = await this.usageLabels(query.groupBy, totals.map((t) => t.key));
+    return {
+      period: query.period,
+      since: window.start.toISOString(),
+      resetsAt: window.end.toISOString(),
+      rows: totals
+        .map((row) => ({ key: row.key, label: labels.get(row.key) ?? '(dihapus)', tokens: row.tokens, limit: null }))
+        .sort((a, b) => b.tokens - a.tokens),
+    };
+  }
+
+  private async usageLabels(groupBy: 'user' | 'model', keys: string[]): Promise<Map<string, string>> {
+    if (keys.length === 0) return new Map();
+    if (groupBy === 'model') {
+      return new Map((await this.catalog.list()).map((m) => [m.id, m.displayName]));
+    }
+    return this.grantsService.userNames(keys);
+  }
+
   // ───────────────────────── Pengguna ─────────────────────────
+
+  @RequirePermission(PERMISSIONS.workspaceAccess)
+  @Get('ai/usage/me')
+  usageMe(@CurrentAuth() auth: AuthContext) {
+    return this.access.usageMe(auth.user.id);
+  }
 
   @RequirePermission(PERMISSIONS.workspaceAccess)
   @Get('ai/models')

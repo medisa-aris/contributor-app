@@ -98,3 +98,58 @@ describe('penyamaran kredensial pada galat penyedia', () => {
     expect(text).not.toContain('abcdefghijkl');
   });
 });
+
+describe('pencarian model dari penyedia', () => {
+  async function discover(code: 'openrouter' | 'anthropic' | 'ollama', responses: Record<string, unknown>) {
+    const { ModelCatalogService } = await import('../../src/modules/ai/models/model-catalog.service');
+    const registry = { listHeaders: () => ({}) };
+    const service = new ModelCatalogService({} as never, {} as never, registry as never);
+    const fetchImpl = ((url: string) => {
+      const body = Object.entries(responses).find(([suffix]) => url.endsWith(suffix))?.[1];
+      return Promise.resolve(
+        body === undefined
+          ? new Response('tidak ada', { status: 404 })
+          : new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+      );
+    }) as typeof fetch;
+    return (service as unknown as { fetchModelList: (c: string, b: string, f: typeof fetch) => Promise<unknown[]> }).fetchModelList(
+      code,
+      code === 'ollama' ? 'http://ollama.local/v1' : 'https://x/v1',
+      fetchImpl,
+    );
+  }
+
+  it('OpenRouter: konteks, keluaran, tools, dan gambar dari metadata', async () => {
+    const items = await discover('openrouter', {
+      '/models': {
+        data: [
+          {
+            id: 'a/b',
+            name: 'Model B',
+            context_length: 1000,
+            top_provider: { max_completion_tokens: 200 },
+            supported_parameters: ['tools'],
+            architecture: { input_modalities: ['text', 'image'] },
+          },
+        ],
+      },
+    });
+    expect(items).toEqual([
+      { modelKey: 'a/b', displayName: 'Model B', contextWindow: 1000, maxOutputTokens: 200, supportsTools: true, supportsVision: true },
+    ]);
+  });
+
+  it('Anthropic: display_name dan batas token', async () => {
+    const items = await discover('anthropic', {
+      '/models': { data: [{ id: 'claude-x', display_name: 'Claude X', max_input_tokens: 1_000_000, max_tokens: 128_000 }] },
+    });
+    expect(items[0]).toMatchObject({ modelKey: 'claude-x', displayName: 'Claude X', contextWindow: 1_000_000, maxOutputTokens: 128_000 });
+  });
+
+  it('Ollama: jatuh ke /api/tags bila endpoint kompatibel OpenAI tidak ada', async () => {
+    const items = await discover('ollama', { '/api/tags': { models: [{ name: 'qwen2.5:3b' }] } });
+    expect(items).toEqual([
+      { modelKey: 'qwen2.5:3b', displayName: 'qwen2.5:3b', contextWindow: null, maxOutputTokens: null, supportsTools: null, supportsVision: null },
+    ]);
+  });
+});

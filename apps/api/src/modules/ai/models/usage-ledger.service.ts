@@ -91,6 +91,19 @@ export class UsageLedgerService {
     return rows[0]?.n ?? 0;
   }
 
+  /** Pemakaian satu pengguna per model sejak `since` (yang dihitung ke kuota). */
+  async byModel(userId: string, since: Date): Promise<Map<string, { tokens: number; estimated: boolean }>> {
+    const rows = (await this.dataSource.query(
+      `SELECT model_id::text AS model_id, COALESCE(sum(tokens_in + tokens_out), 0)::bigint AS tokens,
+              bool_or(estimated) AS estimated
+         FROM ai_usage_ledger
+        WHERE user_id = $1 AND counts_toward_quota AND created_at >= $2 AND model_id IS NOT NULL
+        GROUP BY model_id`,
+      [userId, since],
+    )) as { model_id: string; tokens: string; estimated: boolean }[];
+    return new Map(rows.map((r) => [r.model_id, { tokens: Number(r.tokens), estimated: r.estimated }]));
+  }
+
   /** Total per model dalam jendela, untuk satu atau banyak pengguna. */
   async totals(
     userIds: string[] | null,

@@ -357,6 +357,25 @@ describe('Katalog model, izin, dan kuota (e2e)', () => {
     ]);
   });
 
+  it('pemakaian saya dan pemakaian tim (leader hanya melihat jangkauannya)', async () => {
+    const mine = await asClient(app, memberA).get('/api/ai/usage/me').expect(200);
+    const s = (mine.body.data as { modelId: string; today: number; week: number; quotas: unknown[] }[]).find(
+      (row) => row.modelId === sModelId,
+    )!;
+    expect(s.today).toBeGreaterThanOrEqual(400);
+    expect(s.week).toBeGreaterThanOrEqual(s.today);
+    expect(s.quotas.length).toBeGreaterThan(0);
+
+    const team = await asClient(app, manager).get('/api/ai/usage/team?period=day&groupBy=user').expect(200);
+    const labels = (team.body.data.rows as { label: string; tokens: number }[]).map((r) => r.label);
+    expect(labels).toContain('Anggota A');
+    expect(labels).not.toContain('Manajer HR');
+    const byModel = await asClient(app, admin).get('/api/ai/usage/team?period=week&groupBy=model').expect(200);
+    expect((byModel.body.data.rows as { key: string }[]).map((r) => r.key)).toContain(sModelId);
+    const staf = await loginAs(app, 'staf@test.local');
+    await asClient(app, staf).get('/api/ai/usage/team?period=day&groupBy=user').expect(403);
+  });
+
   it('superadmin memakai semua model aktif tanpa izin', async () => {
     const ids = (await modelsOf(superadmin)).map((m) => m.id);
     expect(ids).toEqual(expect.arrayContaining([defaultModelId, sModelId, premiumId]));

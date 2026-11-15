@@ -73,7 +73,18 @@ export interface ModelPatch {
   sortOrder?: number;
 }
 
+export interface DiscoveredModel {
+  modelKey: string;
+  displayName: string;
+  contextWindow: number | null;
+  maxOutputTokens: number | null;
+  supportsTools: boolean | null;
+  supportsVision: boolean | null;
+  alreadyInCatalog: boolean;
+}
+
 const VERSION_TTL_MS = 3000;
+const DISCOVERY_TTL_MS = 10 * 60_000;
 const PING_TOOL = {
   name: 'ping',
   description: 'Alat uji. Panggil dengan value "ok".',
@@ -134,6 +145,7 @@ export class ModelCatalogService {
   private cache: { version: number; models: CatalogModel[] } | null = null;
   private versionCache: { value: number; at: number } | null = null;
   private seeding: Promise<void> | null = null;
+  private readonly discoveryCache = new Map<AiProviderCode, { at: number; items: Omit<DiscoveredModel, 'alreadyInCatalog'>[] }>();
 
   constructor(
     @Inject(DATA_SOURCE) private readonly dataSource: DataSource,
@@ -248,16 +260,36 @@ export class ModelCatalogService {
 
   async create(
     userId: string,
-    items: { provider: AiProviderCode; modelKey: string; displayName?: string; description?: string | null }[],
+    items: {
+      provider: AiProviderCode;
+      modelKey: string;
+      displayName?: string;
+      description?: string | null;
+      contextWindow?: number | null;
+      maxOutputTokens?: number | null;
+      supportsTools?: boolean;
+      supportsVision?: boolean;
+    }[],
   ): Promise<CatalogModel[]> {
     const ids: string[] = [];
     for (const item of items) {
       const rows = (await this.dataSource.query(
-        `INSERT INTO ai_models (provider, model_key, display_name, description, created_by)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO ai_models (provider, model_key, display_name, description, created_by,
+                               context_window, max_output_tokens, supports_tools, supports_vision)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          ON CONFLICT (provider, model_key) DO NOTHING
          RETURNING id`,
-        [item.provider, item.modelKey.trim(), item.displayName?.trim() || item.modelKey.trim(), item.description ?? null, userId],
+        [
+          item.provider,
+          item.modelKey.trim(),
+          item.displayName?.trim() || item.modelKey.trim(),
+          item.description ?? null,
+          userId,
+          item.contextWindow ?? null,
+          item.maxOutputTokens ?? null,
+          item.supportsTools ?? false,
+          item.supportsVision ?? false,
+        ],
       )) as { id: string }[];
       if (rows[0]) ids.push(rows[0].id);
     }
@@ -450,6 +482,90 @@ export class ModelCatalogService {
     );
     await this.bump();
     return { model: await this.get(id), probes, usage };
+  }
+
+  /**
+   * Daftar model dari endpoint penyedia (tanpa menulis apa pun). Hasil di-cache 10 menit;
+   * model yang sudah ada di katalog ditandai.
+   */
+  async discover(code: AiProviderCode, fetchImpl: typeof fetch = fetch): Promise<DiscoveredModel[]> {
+    const settings = this.registry.settings(code);
+    if (!settings.configured) {
+      throw new AppError(ERROR_CODES.aiModelUnavailable, `Penyedia ${code} belum dikonfigurasi di .env.`, 409, {
+        reason: 'provider_unconfigured',
+      });
+    }
+    let cached = this.discoveryCache.get(code);
+    if (!cached || Date.now() - cached.at > DISCOVERY_TTL_MS) {
+      cached = { at: Date.now(), items: await this.fetchModelList(code, settings.baseUrl, fetchImpl) };
+      this.discoveryCache.set(code, cached);
+    }
+    const existing = new Set((await this.list()).filter((m) => m.provider === code).map((m) => m.modelKey));
+    return cached.items.map((item) => ({ ...item, alreadyInCatalog: existing.has(item.modelKey) }));
+  }
+
+  private async fetchModelList(
+    code: AiProviderCode,
+    baseUrl: string,
+    fetchImpl: typeof fetch,
+  ): Promise<Omit<DiscoveredModel, 'alreadyInCatalog'>[]> {
+    const get = async (url: string): Promise<unknown> => {
+      const response = await fetchImpl(url, {
+        headers: this.registry.listHeaders(code),
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!response.ok) {
+        throw new AppError(ERROR_CODES.aiUpstreamError, `Penyedia merespons ${response.status} saat mengambil daftar model.`, 502);
+      }
+      return response.json();
+    };
+    const num = (value: unknown): number | null => (typeof value === 'number' && value > 0 ? value : null);
+    if (code === 'ollama') {
+      // Endpoint kompatibel OpenAI dulu, lalu API asli Ollama (/api/tags).
+      try {
+        const body = (await get(`${baseUrl}/models`)) as { data?: { id: string }[] };
+        if (Array.isArray(body.data)) {
+          return body.data.map((m) => ({ modelKey: m.id, displayName: m.id, contextWindow: null, maxOutputTokens: null, supportsTools: null, supportsVision: null }));
+        }
+      } catch {
+        // lanjut ke /api/tags
+      }
+      const root = baseUrl.replace(/\/v1$/, '');
+      const body = (await get(`${root}/api/tags`)) as { models?: { name: string }[] };
+      return (body.models ?? []).map((m) => ({ modelKey: m.name, displayName: m.name, contextWindow: null, maxOutputTokens: null, supportsTools: null, supportsVision: null }));
+    }
+    const body = (await get(`${baseUrl}/models`)) as { data?: Record<string, unknown>[] };
+    const rows = Array.isArray(body.data) ? body.data : [];
+    return rows
+      .filter((m) => typeof m.id === 'string')
+      .map((m) => {
+        const id = m.id as string;
+        if (code === 'openrouter') {
+          const arch = (m.architecture ?? {}) as { input_modalities?: string[] };
+          const params = Array.isArray(m.supported_parameters) ? (m.supported_parameters as string[]) : [];
+          const top = (m.top_provider ?? {}) as { max_completion_tokens?: number };
+          return {
+            modelKey: id,
+            displayName: typeof m.name === 'string' ? m.name : id,
+            contextWindow: num(m.context_length),
+            maxOutputTokens: num(top.max_completion_tokens),
+            supportsTools: params.includes('tools'),
+            supportsVision: Array.isArray(arch.input_modalities) ? arch.input_modalities.includes('image') : null,
+          };
+        }
+        if (code === 'anthropic') {
+          return {
+            modelKey: id,
+            displayName: typeof m.display_name === 'string' ? m.display_name : id,
+            contextWindow: num(m.max_input_tokens),
+            maxOutputTokens: num(m.max_tokens),
+            supportsTools: true,
+            supportsVision: true,
+          };
+        }
+        return { modelKey: id, displayName: id, contextWindow: null, maxOutputTokens: null, supportsTools: null, supportsVision: null };
+      })
+      .sort((a, b) => a.displayName.localeCompare(b.displayName));
   }
 
   private errorText(error: unknown): string {

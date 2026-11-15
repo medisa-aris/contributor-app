@@ -311,6 +311,13 @@ export class GrantService {
     };
   }
 
+  async userNames(ids: string[]): Promise<Map<string, string>> {
+    const rows = (await this.dataSource.query(`SELECT id::text, display_name FROM users WHERE id = ANY($1::uuid[])`, [
+      ids,
+    ])) as { id: string; display_name: string }[];
+    return new Map(rows.map((r) => [r.id, r.display_name]));
+  }
+
   /** Pengguna yang boleh dilihat efektifnya oleh pemanggil. */
   async assertUserInReach(auth: AuthContext, userId: string): Promise<void> {
     const caller = await this.caller(auth);

@@ -38,6 +38,11 @@ export class NewModelItemDto {
   @IsString()
   @MaxLength(2000)
   description?: string;
+
+  @IsOptional() @IsInt() @Min(1) contextWindow?: number;
+  @IsOptional() @IsInt() @Min(1) maxOutputTokens?: number;
+  @IsOptional() @IsBoolean() supportsTools?: boolean;
+  @IsOptional() @IsBoolean() supportsVision?: boolean;
 }
 
 export class CreateModelsDto {
@@ -104,4 +109,9 @@ export class EffectiveQueryDto {
 
 export class PreferredModelDto {
   @ValidateIf((_, v) => v !== null) @IsUUID() modelId: string | null;
+}
+
+export class UsageQueryDto {
+  @IsIn(PERIODS) period: QuotaPeriod;
+  @IsIn(['user', 'model']) groupBy: 'user' | 'model';
 }

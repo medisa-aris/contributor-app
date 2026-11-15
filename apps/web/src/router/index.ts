@@ -89,6 +89,7 @@ export const router = createRouter({
         admin('workspace/subordinate', 'workspace-subordinate', () => import('@/views/SubordinateView.vue'), 'ai.subordinate.execute'),
         admin('workspace/history', 'workspace-history', () => import('@/views/WorkspaceHistoryView.vue'), 'ai.workspace.history.read'),
         admin('workspace/documents', 'workspace-documents', () => import('@/views/MyDocumentsView.vue'), 'ai.documents.manage'),
+        admin('workspace/usage', 'workspace-usage', () => import('@/views/MyUsageView.vue'), 'ai.workspace.access'),
         admin('workspace/model-grants', 'workspace-model-grants', () => import('@/views/ModelGrantsView.vue'), 'ai.models.grant.manage'),
         admin('workspace/mind-map', 'workspace-mind-map', () => import('@/views/MindMapView.vue'), 'ai.mindmap.team.read'),
         admin('workspace/memory', 'workspace-memory', () => import('@/views/MemoryView.vue'), 'ai.memory.self.manage'),
