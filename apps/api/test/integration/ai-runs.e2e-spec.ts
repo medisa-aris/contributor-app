@@ -5,6 +5,7 @@ import type { DataSource } from 'typeorm';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/configure-app';
 import { DATA_SOURCE } from '../../src/database/database.module';
+import { TaskRunnerService } from '../../src/modules/ai/agents/task-runner.service';
 import { PROVIDER_ADAPTER_FACTORY } from '../../src/modules/ai/models/provider-registry.service';
 import type { AiProviderAdapter, ChatRequestOptions, ChatResult } from '../../src/modules/ai/providers/types';
 import { asClient, loginAs, type AuthedClient } from './helpers/auth-as';
@@ -189,6 +190,50 @@ describe('Kerja panjang: run percakapan (e2e)', () => {
     expect(c.status).toBe(409);
     await asClient(app, manager).post(`/api/ai/runs/${a.body.data.run.id}/cancel`).expect(200);
     await asClient(app, manager).post(`/api/ai/runs/${b.body.data.run.id}/cancel`).expect(200);
+  });
+
+  it('tugas agent: lease kedaluwarsa → dilanjutkan dari checkpoint, bukan digagalkan', async () => {
+    const agent = await asClient(app, manager).post('/api/ai/agents', { name: 'Agent Pemulihan', instruction: 'Bantu saya menyusun ringkasan.' });
+    expect(agent.status).toBe(201);
+    const task = await asClient(app, manager).post('/api/ai/agent-tasks', {
+      agentId: agent.body.data.id,
+      instruction: 'Susun ringkasan mingguan.',
+    });
+    expect(task.status).toBe(201);
+    const taskId = task.body.data.id as string;
+    const runner = app.get(TaskRunnerService);
+    await runner.idle(15000);
+    const first = (await dataSource.query(`SELECT status, current_run_id FROM ai_tasks WHERE id = $1`, [taskId])) as {
+      status: string;
+      current_run_id: string;
+    }[];
+    expect(first[0]!.status).toBe('completed');
+    expect(first[0]!.current_run_id).not.toBeNull();
+
+    // Instance mati di tengah langkah: tugas tertinggal "running", lease kedaluwarsa, tool belum berhasil disimpan.
+    await dataSource.query(
+      `INSERT INTO ai_task_messages (task_id, agent_id, message) VALUES ($1, $2, $3)`,
+      [taskId, agent.body.data.id, JSON.stringify({ role: 'assistant', content: 'Mengambil data.', toolCalls: [{ id: 'x1', name: 'db__run_query', input: {} }] })],
+    );
+    await dataSource.query(`UPDATE ai_tasks SET status = 'running' WHERE id = $1`, [taskId]);
+    await dataSource.query(
+      `UPDATE ai_runs SET status = 'running', lease_owner = 'instance-mati', lease_expires_at = now() - interval '1 second', attempt = 1
+        WHERE id = $1`,
+      [first[0]!.current_run_id],
+    );
+    await runner.recover();
+    await runner.idle(15000);
+    const after = (await dataSource.query(`SELECT status FROM ai_tasks WHERE id = $1`, [taskId])) as { status: string }[];
+    expect(after[0]!.status).toBe('completed');
+    const repaired = (await dataSource.query(
+      `SELECT message FROM ai_task_messages WHERE task_id = $1 AND message->>'toolCallId' = 'x1'`,
+      [taskId],
+    )) as { message: { content: string } }[];
+    expect(repaired[0]!.message.content).toContain('Status tidak diketahui');
+    const events = (await dataSource.query(`SELECT event_type FROM ai_task_events WHERE task_id = $1`, [taskId])) as {
+      event_type: string;
+    }[];
+    expect(events.map((e) => e.event_type)).toContain('resumed');
   });
 
   it('daftar proses aktif dan larangan membaca run milik orang lain', async () => {
