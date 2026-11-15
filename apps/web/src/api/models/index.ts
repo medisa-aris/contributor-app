@@ -76,10 +76,11 @@ export interface GrantInput {
   tokenLimit: number | null;
   period: QuotaPeriod;
   note?: string | null;
+  fallbackToDefault?: boolean;
 }
 export const listGrants = () => apiGet<ModelGrantDto[]>('/ai/model-grants');
 export const createGrant = (input: GrantInput) => apiPost<ModelGrantDto>('/ai/model-grants', input);
-export const updateGrant = (id: string, patch: Partial<Pick<GrantInput, 'tokenLimit' | 'period' | 'includeSubDepartments' | 'note'>>) =>
+export const updateGrant = (id: string, patch: Partial<Pick<GrantInput, 'tokenLimit' | 'period' | 'includeSubDepartments' | 'note' | 'fallbackToDefault'>>) =>
   apiPatch<ModelGrantDto>(`/ai/model-grants/${id}`, patch);
 export const deleteGrant = (id: string) => apiDelete<void>(`/ai/model-grants/${id}`);
 export const grantReach = () => apiGet<ReachDto>('/ai/model-grants/reach');

@@ -97,9 +97,11 @@ export class CreateGrantDto {
   @ValidateIf((_, v) => v !== null) @IsInt() @Min(1) tokenLimit: number | null;
   @IsIn(PERIODS) period: QuotaPeriod;
   @IsOptional() @ValidateIf((_, v) => v !== null) @IsString() @MaxLength(300) note?: string | null;
+  @IsOptional() @IsBoolean() fallbackToDefault?: boolean;
 }
 
 export class UpdateGrantDto {
+  @IsOptional() @IsBoolean() fallbackToDefault?: boolean;
   @IsOptional() @ValidateIf((_, v) => v !== null) @IsInt() @Min(1) tokenLimit?: number | null;
   @IsOptional() @IsIn(PERIODS) period?: QuotaPeriod;
   @IsOptional() @IsBoolean() includeSubDepartments?: boolean;

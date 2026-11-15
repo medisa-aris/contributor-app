@@ -369,29 +369,37 @@ export class AiGatewayService {
 
   async chat(options: GatewayChatOptions): Promise<ChatResult> {
     const { call, request } = await this.prepare(options);
-    const result = await call.adapter.chat(request);
-    await this.record(call, request, result);
-    return { ...result, modelId: call.model.id };
+    try {
+      const result = await call.adapter.chat(request);
+      await this.record(call, request, result);
+      return { ...result, modelId: call.model.id };
+    } finally {
+      await this.access.release(call.reservationId);
+    }
   }
 
   async *stream(options: GatewayChatOptions): AsyncGenerator<string, ChatResult> {
     const { call, request, idle } = await this.prepare(options);
-    const inner = call.adapter.stream(request);
-    const idleMs = idle ? this.registry.longRunTimeouts().idleMs : 0;
-    for (;;) {
-      // Kerja panjang: putus hanya bila penyedia diam terlalu lama, bukan karena total durasi.
-      const timer = idle ? setTimeout(() => idle.abort(new Error('Penyedia AI tidak mengirim data terlalu lama.')), idleMs) : null;
-      let step: IteratorResult<string, ChatResult>;
-      try {
-        step = await inner.next();
-      } finally {
-        if (timer) clearTimeout(timer);
+    try {
+      const inner = call.adapter.stream(request);
+      const idleMs = idle ? this.registry.longRunTimeouts().idleMs : 0;
+      for (;;) {
+        // Kerja panjang: putus hanya bila penyedia diam terlalu lama, bukan karena total durasi.
+        const timer = idle ? setTimeout(() => idle.abort(new Error('Penyedia AI tidak mengirim data terlalu lama.')), idleMs) : null;
+        let step: IteratorResult<string, ChatResult>;
+        try {
+          step = await inner.next();
+        } finally {
+          if (timer) clearTimeout(timer);
+        }
+        if (step.done) {
+          await this.record(call, request, step.value);
+          return { ...step.value, modelId: call.model.id };
+        }
+        yield step.value;
       }
-      if (step.done) {
-        await this.record(call, request, step.value);
-        return { ...step.value, modelId: call.model.id };
-      }
-      yield step.value;
+    } finally {
+      await this.access.release(call.reservationId);
     }
   }
 

@@ -22,6 +22,7 @@ export interface GrantInput {
   tokenLimit: number | null;
   period: QuotaPeriod;
   note?: string | null;
+  fallbackToDefault?: boolean;
 }
 
 export interface GrantPatch {
@@ -29,6 +30,7 @@ export interface GrantPatch {
   period?: QuotaPeriod;
   includeSubDepartments?: boolean;
   note?: string | null;
+  fallbackToDefault?: boolean;
 }
 
 interface GrantDbRow {
@@ -43,6 +45,7 @@ interface GrantDbRow {
   period: QuotaPeriod;
   granted_scope: 'admin' | 'leader';
   note: string | null;
+  fallback_to_default: boolean;
   created_by: string;
   created_by_name: string | null;
   created_at: Date | string;
@@ -131,6 +134,7 @@ export class GrantService {
       editable: caller.scope === 'admin' || (row.granted_scope === 'leader' && inReach),
       outOfReach: caller.scope === 'leader' && !inReach,
       notApplicable: row.is_default,
+      fallbackToDefault: row.fallback_to_default,
     };
   }
 
@@ -200,8 +204,8 @@ export class GrantService {
       const rows = (await this.dataSource.query(
         `INSERT INTO ai_model_grants
            (target_type, target_id, include_sub_departments, model_id, token_limit, period,
-            granted_scope, note, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+            granted_scope, note, created_by, fallback_to_default)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
         [
           input.targetType,
           input.targetId,
@@ -212,6 +216,7 @@ export class GrantService {
           caller.scope,
           input.note?.trim() || null,
           caller.userId,
+          input.fallbackToDefault ?? false,
         ],
       )) as { id: string }[];
       id = rows[0]!.id;
@@ -251,6 +256,7 @@ export class GrantService {
     if (patch.period !== undefined) add('period', patch.period);
     if (patch.includeSubDepartments !== undefined) add('include_sub_departments', patch.includeSubDepartments);
     if (patch.note !== undefined) add('note', patch.note?.trim() || null);
+    if (patch.fallbackToDefault !== undefined) add('fallback_to_default', patch.fallbackToDefault);
     if (sets.length > 0) {
       try {
         await this.dataSource.query(

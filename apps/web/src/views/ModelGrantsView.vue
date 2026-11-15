@@ -190,6 +190,7 @@ const form = ref({
   limit: '50000',
   period: 'day' as QuotaPeriod,
   note: '',
+  fallbackToDefault: false,
 });
 
 const targetItems = computed(() => {
@@ -227,6 +228,7 @@ function openCreate(): void {
     limit: '50000',
     period: 'day',
     note: '',
+    fallbackToDefault: false,
   };
   dialogOpen.value = true;
 }
@@ -242,6 +244,7 @@ function openEdit(grant: ModelGrantDto): void {
     limit: grant.tokenLimit === null ? '50000' : String(grant.tokenLimit),
     period: grant.period,
     note: grant.note ?? '',
+    fallbackToDefault: grant.fallbackToDefault,
   };
   dialogOpen.value = true;
 }
@@ -261,6 +264,7 @@ async function submit(): Promise<void> {
         period: form.value.period,
         includeSubDepartments: form.value.includeSubDepartments,
         note: form.value.note.trim() || null,
+        fallbackToDefault: form.value.fallbackToDefault,
       });
       grants.value = grants.value.map((g) => (g.id === updated.id ? updated : g));
     } else {
@@ -274,6 +278,7 @@ async function submit(): Promise<void> {
           tokenLimit,
           period: form.value.period,
           note: form.value.note.trim() || null,
+          fallbackToDefault: form.value.fallbackToDefault,
         });
         grants.value = [created, ...grants.value];
       }
@@ -365,7 +370,10 @@ onMounted(load);
             <span>{{ row.modelName }}</span>
             <CaBadge v-if="row.notApplicable" size="small">{{ t('models.grants.notApplicable') }}</CaBadge>
           </template>
-          <template #cell-limit="{ row }">{{ limitText(row as ModelGrantDto) }}</template>
+          <template #cell-limit="{ row }">
+            {{ limitText(row as ModelGrantDto) }}
+            <CaBadge v-if="row.fallbackToDefault" size="small">{{ t('models.grants.fallbackBadge') }}</CaBadge>
+          </template>
           <template #cell-grantedBy="{ row }">
             <span class="grt-target">
               <span v-if="!row.editable" :title="t('models.grants.lockedHint')"><CaIcon name="shield" :size="13" /></span>
@@ -503,6 +511,11 @@ onMounted(load);
             </div>
           </template>
         </CaField>
+        <CaCheckbox
+          v-if="!form.unlimited"
+          v-model="form.fallbackToDefault"
+          :label="t('models.grants.dialog.fallbackToDefault')"
+        />
         <CaField :label="t('models.grants.dialog.note')">
           <template #default="{ id }"><CaInput :id="id" v-model="form.note" /></template>
         </CaField>

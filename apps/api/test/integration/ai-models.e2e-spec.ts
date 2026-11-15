@@ -11,7 +11,7 @@ import { resetDatabase, seedTestFixtures, type TestFixtures } from './helpers/re
 
 /** Model tanpa dukungan tools: adapter palsu tidak pernah memanggil alat untuknya. */
 const NO_TOOLS_KEY = 'model-tanpa-tools';
-const tokens = { in: 100, out: 100 };
+const tokens = { in: 100, out: 100, delayMs: 0 };
 const requests: ChatRequestOptions[] = [];
 
 function reply(options: ChatRequestOptions): ChatResult {
@@ -28,7 +28,10 @@ function reply(options: ChatRequestOptions): ChatResult {
 
 const adapter: AiProviderAdapter = {
   id: 'palsu',
-  chat: (options) => Promise.resolve(reply(options)),
+  chat: async (options) => {
+    if (tokens.delayMs) await new Promise((r) => setTimeout(r, tokens.delayMs));
+    return reply(options);
+  },
   stream: async function* (options) {
     yield 'Jawaban ';
     return reply(options);
@@ -134,6 +137,7 @@ describe('Katalog model, izin, dan kuota (e2e)', () => {
   beforeEach(() => {
     tokens.in = 100;
     tokens.out = 100;
+    tokens.delayMs = 0;
   });
 
   it('migrasi mengisi model bawaan dari env tanpa izin apa pun; status penyedia tanpa kredensial', async () => {
@@ -380,6 +384,41 @@ describe('Katalog model, izin, dan kuota (e2e)', () => {
     expect((byModel.body.data.rows as { key: string }[]).map((r) => r.key)).toContain(sModelId);
     const staf = await loginAs(app, 'staf@test.local');
     await asClient(app, staf).get('/api/ai/usage/team?period=day&groupBy=user').expect(403);
+  });
+
+  it('reservasi token: permintaan paralel tidak bersama-sama melampaui kuota', async () => {
+    // A2 mendapat S lewat izin departemen (300/hari) dan belum memakainya. Penyedia lambat →
+    // ketiga permintaan benar-benar berjalan bersamaan.
+    tokens.delayMs = 400;
+    const results = await Promise.all([chat(memberA2, sModelId, 'P1'), chat(memberA2, sModelId, 'P2'), chat(memberA2, sModelId, 'P3')]);
+    const statuses = results.map((r) => r.status).sort();
+    expect(statuses.filter((s) => s === 200)).toHaveLength(1);
+    expect(statuses.filter((s) => s === 429)).toHaveLength(2);
+    const left = (await dataSource.query(`SELECT count(*)::int AS n FROM ai_quota_reservations`)) as { n: number }[];
+    expect(left[0]!.n).toBe(0); // reservasi dilepas setelah pemakaian dicatat
+  });
+
+  it('opsi izin: saat kuota habis, panggilan dipindah ke model bawaan', async () => {
+    const created = await grant(manager, {
+      targetType: 'user',
+      targetId: ids.a2,
+      modelId: sModelId,
+      tokenLimit: 1,
+      fallbackToDefault: true,
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.data.fallbackToDefault).toBe(true);
+    await chat(memberA2, sModelId, 'pakai sisa satu token').expect(200);
+    const fallback = await chat(memberA2, sModelId, 'kuota sudah habis');
+    expect(fallback.status).toBe(200);
+    expect(fallback.body.data.assistant.model_id).toBe(defaultModelId);
+  });
+
+  it('notifikasi kuota hampir habis / habis muncul di menu notifikasi', async () => {
+    const res = await asClient(app, memberA).get('/api/notifications').expect(200);
+    const kinds = (res.body.data as { kind: string; routePath: string }[]).filter((n) => n.kind.startsWith('quota'));
+    expect(kinds.length).toBeGreaterThan(0);
+    expect(kinds[0]!.routePath).toBe('/workspace/usage');
   });
 
   it('superadmin memakai semua model aktif tanpa izin', async () => {

@@ -35,6 +35,11 @@ const KIND_ICON: Record<NotificationKind, { icon: string; tone: string }> = {
   taskDone: { icon: 'check-circle', tone: 'success' },
   taskFailed: { icon: 'error-circle', tone: 'danger' },
   documentFailed: { icon: 'error-circle', tone: 'danger' },
+  quotaWarning: { icon: 'warning', tone: 'warning' },
+  quotaExhausted: { icon: 'error-circle', tone: 'danger' },
+  runDone: { icon: 'check-circle', tone: 'success' },
+  runFailed: { icon: 'error-circle', tone: 'danger' },
+  runAction: { icon: 'warning', tone: 'warning' },
 };
 
 async function load(): Promise<void> {

@@ -16,6 +16,8 @@ export interface GrantRow {
   grantedScope: 'admin' | 'leader';
   createdBy: string;
   label: string;
+  /** Saat kuota habis, panggilan dipindah ke model bawaan (P3). */
+  fallbackToDefault?: boolean;
 }
 
 export interface Subject {

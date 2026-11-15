@@ -90,6 +90,8 @@ export interface ModelGrantDto {
   outOfReach: boolean;
   /** Izin pada model yang kini menjadi model bawaan (tidak berlaku). */
   notApplicable: boolean;
+  /** Saat kuota habis, panggilan dipindah ke model bawaan (bukan ditolak). */
+  fallbackToDefault: boolean;
 }
 
 export interface QuotaWindowDto {

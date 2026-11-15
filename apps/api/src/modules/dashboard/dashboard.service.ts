@@ -8,6 +8,7 @@ import {
 import { DataSource } from 'typeorm';
 import type { AuthContext } from '../../common/types/auth-context';
 import { DATA_SOURCE } from '../../database/database.module';
+import { ModelAccessService } from '../ai/models/model-access.service';
 import { GuardrailsService } from '../ai/guardrails/guardrails.service';
 
 const NOTIFICATION_LIMIT = 20;
@@ -29,6 +30,7 @@ export class DashboardService {
   constructor(
     @Inject(DATA_SOURCE) private readonly dataSource: DataSource,
     private readonly guardrails: GuardrailsService,
+    private readonly modelAccess: ModelAccessService,
   ) {}
 
   /** Hanya status aktif; kategori dan istilah tetap khusus admin. */
@@ -144,6 +146,53 @@ export class DashboardService {
         createdAt: iso(task.at),
         routePath: '/workspace/subordinate',
       });
+    }
+
+    // Kerja panjang yang selesai/gagal (7 hari) atau menunggu tindakan.
+    const runs = (await this.dataSource.query(
+      `SELECT r.id, r.status, r.conversation_id, r.options->>'mode' AS mode,
+              COALESCE(c.title, left(r.prompt, 80), 'Kerja panjang') AS title,
+              COALESCE(r.finished_at, r.created_at) AS at
+         FROM ai_runs r LEFT JOIN conversations c ON c.id = r.conversation_id
+        WHERE r.user_id = $1 AND r.kind = 'conversation_turn'
+          AND (r.status IN ('waiting_approval', 'waiting_input')
+               OR (r.status IN ('completed', 'failed', 'budget_exhausted', 'deadline_exceeded')
+                   AND COALESCE(r.finished_at, r.created_at) > now() - make_interval(days => $2)))
+        ORDER BY at DESC LIMIT $3`,
+      [auth.user.id, RECENT_TASK_DAYS, NOTIFICATION_LIMIT],
+    )) as { id: string; status: string; conversation_id: string; mode: string | null; title: string; at: string }[];
+    for (const run of runs) {
+      items.push({
+        id: `run:${run.id}:${run.status}`,
+        kind:
+          run.status === 'completed'
+            ? 'runDone'
+            : run.status === 'failed'
+              ? 'runFailed'
+              : 'runAction',
+        title: run.title,
+        createdAt: iso(run.at),
+        routePath: `/workspace/${run.mode === 'counterpart' ? 'counterpart' : 'second-brain'}?c=${run.conversation_id}`,
+      });
+    }
+
+    // Kuota model: peringatan di 80% dan saat habis (per jendela, id stabil per periode).
+    if (can(PERMISSIONS.workspaceAccess)) {
+      const { models } = await this.modelAccess.userModels(auth.user.id).catch(() => ({ models: [] as Awaited<ReturnType<ModelAccessService['userModels']>>['models'] }));
+      for (const model of models) {
+        for (const quota of model.quotas) {
+          const ratio = quota.limit > 0 ? quota.used / quota.limit : 0;
+          if (ratio < 0.8) continue;
+          const exhausted = ratio >= 1;
+          items.push({
+            id: `quota:${model.id}:${quota.period}:${quota.resetsAt}:${exhausted ? 'full' : 'warn'}`,
+            kind: exhausted ? 'quotaExhausted' : 'quotaWarning',
+            title: `${model.displayName} · ${Math.min(100, Math.round(ratio * 100))}% ${quota.period === 'day' ? 'hari ini' : 'minggu ini'}`,
+            createdAt: new Date().toISOString(),
+            routePath: '/workspace/usage',
+          });
+        }
+      }
     }
 
     if (can(PERMISSIONS.agentsApprove)) {

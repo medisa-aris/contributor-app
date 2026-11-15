@@ -75,6 +75,7 @@ describe('Kerja panjang: run percakapan (e2e)', () => {
   }
 
   beforeAll(async () => {
+    process.env.AI_WORKER_ENABLED = 'true';
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(PROVIDER_ADAPTER_FACTORY)
       .useValue(() => adapter)
@@ -91,6 +92,7 @@ describe('Kerja panjang: run percakapan (e2e)', () => {
   afterAll(async () => {
     behaviour.mode = 'normal';
     await app.close();
+    process.env.AI_WORKER_ENABLED = 'false';
   });
 
   beforeEach(() => {

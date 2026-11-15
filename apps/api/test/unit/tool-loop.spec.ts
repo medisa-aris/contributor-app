@@ -101,7 +101,8 @@ function gatewayWith(replies: ChatResult[]): {
   // Penegakan model/kuota diuji terpisah; di sini cukup otorisasi yang selalu lolos.
   const access = {
     authorize: () =>
-      Promise.resolve({ model, adapter, maxTokens: null, dropImages: false, userId: null, agentId: null, source: 'system', sourceId: null }),
+      Promise.resolve({ model, adapter, maxTokens: null, dropImages: false, userId: null, agentId: null, source: 'system', sourceId: null, reservationId: null }),
+    release: () => Promise.resolve(),
   } as unknown as ModelAccessService;
   const ledger = { record: () => Promise.resolve() } as unknown as UsageLedgerService;
   const registry = { timeoutMs: () => 60_000 } as unknown as ProviderRegistryService;

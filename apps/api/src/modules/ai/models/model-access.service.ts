@@ -47,7 +47,19 @@ export interface AuthorizedCall {
   agentId: string | null;
   source: AiUsageSource;
   sourceId: string | null;
+  /** Reservasi token yang dilepas gateway setelah pemakaian dicatat. */
+  reservationId: string | null;
+  /** true bila model dipindah ke model bawaan karena kuota habis. */
+  fellBackToDefault: boolean;
 }
+
+/** Kuota model habis tetapi izinnya mengizinkan pindah ke model bawaan. */
+class FallbackToDefault extends Error {}
+
+/** Reservasi kedaluwarsa sendiri bila gateway tidak sempat melepasnya (proses mati). */
+const RESERVATION_MINUTES = 15;
+/** Ukuran reservasi bila model tidak menyebut batas keluaran. */
+const DEFAULT_RESERVATION = 8192;
 
 interface SubjectInfo extends Subject {
   isSuperadmin: boolean;
@@ -95,7 +107,7 @@ export class ModelAccessService {
     if (this.grantCache && this.grantCache.version === version) return this.grantCache.rows;
     const rows = (await this.dataSource.query(
       `SELECT g.id, g.target_type, g.target_id, g.include_sub_departments, g.model_id,
-              g.token_limit, g.period, g.granted_scope, g.created_by,
+              g.token_limit, g.period, g.granted_scope, g.created_by, g.fallback_to_default,
               CASE g.target_type
                 WHEN 'user' THEN 'Izin pribadi'
                 WHEN 'department' THEN 'Izin Departemen ' || COALESCE(d.name, '?')
@@ -118,6 +130,7 @@ export class ModelAccessService {
       granted_scope: 'admin' | 'leader';
       created_by: string;
       label: string;
+      fallback_to_default: boolean;
     }[];
     const mapped: GrantRow[] = rows.map((r) => ({
       id: r.id,
@@ -130,6 +143,7 @@ export class ModelAccessService {
       grantedScope: r.granted_scope,
       createdBy: r.created_by,
       label: r.label,
+      fallbackToDefault: r.fallback_to_default,
     }));
     this.grantCache = { version, rows: mapped };
     return mapped;
@@ -191,11 +205,24 @@ export class ModelAccessService {
     const source: AiUsageSource =
       ctx.source === 'task' && task?.parent_task_id ? 'agent_subtask' : ctx.source;
 
-    const model = enforced
+    let model = enforced
       ? await this.pickEnforced(ctx.userId!, ctx, task, agentId)
       : await this.pickSystem(ctx);
+    let fellBackToDefault = false;
+    let quota: { remaining: number | null; reservationId: string | null } = { remaining: null, reservationId: null };
+    if (enforced && !NON_QUOTA_SOURCES.includes(source)) {
+      try {
+        quota = await this.checkQuota(ctx.userId!, model, agentId);
+      } catch (error) {
+        if (!(error instanceof FallbackToDefault)) throw error;
+        model = await this.catalog.defaultModel();
+        fellBackToDefault = true;
+        quota = await this.checkQuota(ctx.userId!, model, agentId);
+      }
+    }
 
     if (ctx.needs.tools && !model.supportsTools) {
+      await this.release(quota.reservationId);
       throw new AppError(
         ERROR_CODES.aiModelCapabilityMissing,
         `Model ${model.displayName} tidak mendukung dokumen, konektor, dan alat lain. Pilih model lain.`,
@@ -204,13 +231,13 @@ export class ModelAccessService {
       );
     }
     const adapter = this.registry.adapter(model.provider);
-    if (!adapter) throw this.unavailable(model, 'provider_unconfigured');
+    if (!adapter) {
+      await this.release(quota.reservationId);
+      throw this.unavailable(model, 'provider_unconfigured');
+    }
 
     let maxTokens = model.maxOutputTokens;
-    if (enforced && !NON_QUOTA_SOURCES.includes(source)) {
-      const remaining = await this.checkQuota(ctx.userId!, model, agentId);
-      if (remaining !== null) maxTokens = maxTokens === null ? remaining : Math.min(maxTokens, remaining);
-    }
+    if (quota.remaining !== null) maxTokens = maxTokens === null ? quota.remaining : Math.min(maxTokens, quota.remaining);
     return {
       model,
       adapter,
@@ -220,7 +247,14 @@ export class ModelAccessService {
       agentId,
       source,
       sourceId: ctx.conversationId ?? ctx.taskId ?? null,
+      reservationId: quota.reservationId,
+      fellBackToDefault,
     };
+  }
+
+  async release(reservationId: string | null): Promise<void> {
+    if (!reservationId) return;
+    await this.dataSource.query(`DELETE FROM ai_quota_reservations WHERE id = $1`, [reservationId]).catch(() => undefined);
   }
 
   private async taskInfo(taskId: string) {
@@ -310,10 +344,18 @@ export class ModelAccessService {
     return new Set([defaultModel.id, ...access.models.keys()]);
   }
 
-  /** Sisa token terkecil yang berlaku (null = tanpa batas); lempar bila habis. */
-  private async checkQuota(userId: string, model: CatalogModel, agentId: string | null): Promise<number | null> {
+  /**
+   * Sisa token terkecil yang berlaku (null = tanpa batas) setelah dikurangi reservasi panggilan
+   * lain yang sedang berjalan; lempar bila habis. Bila ada batas, panggilan ini mereservasi tokennya
+   * sendiri di bawah advisory lock agar permintaan paralel tidak bersama-sama melampaui kuota (P3).
+   */
+  private async checkQuota(
+    userId: string,
+    model: CatalogModel,
+    agentId: string | null,
+  ): Promise<{ remaining: number | null; reservationId: string | null }> {
     const checks = await this.quotaChecks(userId, model, agentId);
-    if (checks === 'superadmin') return null;
+    if (checks === 'superadmin') return { remaining: null, reservationId: null };
     if (model.isDefault) {
       const limits = await this.catalog.defaultLimits();
       if (limits.requestsPerMinute) {
@@ -330,10 +372,25 @@ export class ModelAccessService {
         }
       }
     }
-    let remaining: number | null = null;
-    for (const check of checks) {
-      const left = check.limit - check.used;
-      if (left <= 0) {
+    if (checks.length === 0) return { remaining: null, reservationId: null };
+    const grants = await this.grants();
+    return this.dataSource.transaction(async (manager) => {
+      await manager.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [`${userId}:${model.id}`]);
+      await manager.query(`DELETE FROM ai_quota_reservations WHERE expires_at < now()`);
+      const reserved = (await manager.query(
+        `SELECT COALESCE(sum(tokens) FILTER (WHERE user_id = $1), 0)::bigint AS by_user,
+                COALESCE(sum(tokens) FILTER (WHERE $3::uuid IS NOT NULL AND agent_id = $3), 0)::bigint AS by_agent
+           FROM ai_quota_reservations WHERE model_id = $2 AND expires_at > now()`,
+        [userId, model.id, agentId],
+      )) as { by_user: string; by_agent: string }[];
+      const reservedBy = { user: Number(reserved[0]?.by_user ?? 0), agent: Number(reserved[0]?.by_agent ?? 0) };
+      let remaining: number | null = null;
+      for (const check of checks) {
+        const left = check.limit - check.used - reservedBy[check.scope];
+        if (left <= 0) {
+          if (!model.isDefault && grants.find((g) => g.id === check.sourceGrantId)?.fallbackToDefault) {
+            throw new FallbackToDefault();
+          }
         this.logExceeded(userId, model, `${check.scope}:${check.period}:${check.resetsAt.toISOString()}`, AUDIT_EVENTS.aiQuotaExceeded);
         const who = check.scope === 'agent' ? 'agent ini' : 'Anda';
         throw new AppError(
@@ -342,10 +399,17 @@ export class ModelAccessService {
           429,
           { modelId: model.id, period: check.period, limit: check.limit, used: check.used, resetsAt: check.resetsAt.toISOString() },
         );
+        }
+        remaining = remaining === null ? left : Math.min(remaining, left);
       }
-      remaining = remaining === null ? left : Math.min(remaining, left);
-    }
-    return remaining;
+      const tokens = Math.max(1, Math.min(remaining ?? DEFAULT_RESERVATION, model.maxOutputTokens ?? DEFAULT_RESERVATION));
+      const rows = (await manager.query(
+        `INSERT INTO ai_quota_reservations (user_id, model_id, agent_id, tokens, expires_at)
+         VALUES ($1, $2, $3, $4, now() + ($5 || ' minutes')::interval) RETURNING id`,
+        [userId, model.id, agentId, tokens, String(RESERVATION_MINUTES)],
+      )) as { id: string }[];
+      return { remaining, reservationId: rows[0]!.id };
+    });
   }
 
   private async quotaChecks(
