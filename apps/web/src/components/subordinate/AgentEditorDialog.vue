@@ -10,7 +10,8 @@ import {
   type PersonalAgentInput,
   type Skill,
 } from '@/api/subordinate';
-import { CaButton, CaCheckbox, CaDialog, CaField, CaInput, CaSwitch, CaTextarea } from '@/components/ui';
+import { CaButton, CaCheckbox, CaDialog, CaField, CaInput, CaSelect, CaSwitch, CaTextarea } from '@/components/ui';
+import { myModels, type UserModelDto } from '@/api/models';
 import { useAuthStore } from '@/stores/auth.store';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
 
@@ -38,7 +39,19 @@ const form = reactive({
   memory: '',
   skillIds: [] as string[],
   connectors: {} as Record<string, ConnectorAccess | null>,
+  modelId: '',
 });
+// Agent menjalankan loop tool, jadi hanya model yang mendukung tools yang ditawarkan.
+const allowedModels = ref<UserModelDto[]>([]);
+const modelOptions = computed(() => [
+  { value: '', label: t('models.agent.systemDefault') },
+  ...allowedModels.value
+    .filter((m) => m.supportsTools)
+    .map((m) => ({ value: m.id, label: m.isDefault ? `${m.displayName} · ${t('models.picker.defaultLimited')}` : m.displayName })),
+]);
+const modelNotAllowed = computed(
+  () => Boolean(form.modelId) && allowedModels.value.length > 0 && !allowedModels.value.some((m) => m.id === form.modelId),
+);
 const saving = ref(false);
 const error = ref('');
 
@@ -61,8 +74,16 @@ watch(
       memory: agent?.memory ?? '',
       skillIds: agent?.skills.map((s) => s.id) ?? [],
       connectors: Object.fromEntries((agent?.connectors ?? []).filter((c) => c.granted).map((c) => [connectorKey(c), c.access])),
+      modelId: agent?.model_id ?? '',
     });
     error.value = '';
+    void myModels()
+      .then((result) => {
+        allowedModels.value = result.models;
+      })
+      .catch(() => {
+        allowedModels.value = [];
+      });
   },
   { immediate: true },
 );
@@ -99,6 +120,7 @@ async function submit(): Promise<void> {
     boundaries: form.boundaries.trim(),
     memory: form.memory.trim(),
     skillIds: form.skillIds,
+    modelId: form.modelId || null,
     connectors: props.connectors
       .filter((item) => form.connectors[connectorKey(item)])
       .map((item) => ({
@@ -155,6 +177,15 @@ async function submit(): Promise<void> {
       <CaField :label="t('subordinate.agents.description')">
         <template #default="{ id }">
           <CaInput :id="id" v-model="form.description" :placeholder="t('subordinate.agents.descriptionPlaceholder')" />
+        </template>
+      </CaField>
+      <CaField
+        :label="t('models.agent.label')"
+        :hint="modelNotAllowed ? undefined : t('models.agent.toolsOnly')"
+        :error="modelNotAllowed ? t('models.agent.notAllowed') : undefined"
+      >
+        <template #default="{ id }">
+          <CaSelect :id="id" v-model="form.modelId" :options="modelOptions" />
         </template>
       </CaField>
       <CaField :label="t('subordinate.agents.responsibilities')" :hint="t('subordinate.agents.responsibilitiesHint')">

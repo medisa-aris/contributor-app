@@ -26,6 +26,7 @@ import type { AuthContext } from '../../common/types/auth-context';
 import { AppError, ERROR_CODES } from '../../common/errors/app-error';
 import { DocumentsService, type UserDocument } from '../documents/documents.service';
 import { CREATE_DOCUMENT_TOOL_NAME, parseDocumentSpec } from '../documents/document-spec';
+import { ModelAccessService } from './models/model-access.service';
 import { ConversationsService } from './conversations.service';
 import {
   AddUrlAttachmentDto,
@@ -70,6 +71,7 @@ function sseWrite(res: Response, event: string, data: unknown): void {
 export class AiController {
   constructor(
     private readonly gateway: AiGatewayService,
+    private readonly modelAccess: ModelAccessService,
     private readonly conversations: ConversationsService,
     private readonly attachments: AttachmentsService,
     private readonly tasks: TasksService,
@@ -111,7 +113,9 @@ export class AiController {
   async chat(@CurrentAuth() auth: AuthContext, @Body() dto: ChatRequestDto) {
     this.assertModePermission(auth, dto.mode);
     this.webSearch.assertAllowed(auth, dto.webSearch);
+    if (dto.modelId) await this.modelAccess.assertSelectable(auth.user.id, dto.modelId);
     const prepared = await this.conversations.prepareTurn(auth, dto);
+    if (dto.modelId) await this.modelAccess.setConversationModel(auth.user.id, prepared.id, dto.modelId);
     const context = await this.attachments.chatContext(prepared.id);
     const memory = await this.memoryFor(auth, prepared.id, dto.prompt);
     const pendingApprovals: string[] = [];
@@ -143,6 +147,7 @@ export class AiController {
     const assistant = await this.conversations.completeTurn(prepared.id, {
       content: created.content,
       model: result.model,
+      modelId: result.modelId ?? null,
       tokensIn: result.tokensIn,
       tokensOut: result.tokensOut,
       ...(result.guardrails ? { guardrails: result.guardrails } : {}),
@@ -182,7 +187,11 @@ export class AiController {
     });
 
     try {
+      if (dto.modelId) await this.modelAccess.assertSelectable(auth.user.id, dto.modelId);
       const prepared = await this.conversations.prepareTurn(auth, dto);
+      if (dto.modelId) {
+        await this.modelAccess.setConversationModel(auth.user.id, prepared.id, dto.modelId);
+      }
       const context = await this.attachments.chatContext(prepared.id);
       const memory = await this.memoryFor(auth, prepared.id, dto.prompt);
       sseWrite(res, 'ready', { conversationId: prepared.id });
@@ -246,6 +255,7 @@ export class AiController {
       const assistant = await this.conversations.completeTurn(prepared.id, {
         content: created.content,
         model: final.model,
+        modelId: final.modelId ?? null,
         tokensIn: final.tokensIn,
         tokensOut: final.tokensOut,
         ...(final.guardrails ? { guardrails: final.guardrails } : {}),
@@ -293,8 +303,12 @@ export class AiController {
   /** Draf percakapan agar lampiran bisa diunggah sebelum pesan pertama. */
   @RequirePermission(PERMISSIONS.secondBrainQuery)
   @Post('conversations')
-  createConversation(@CurrentAuth() auth: AuthContext, @Body() dto: CreateConversationDto) {
-    return this.conversations.createDraft(auth, dto.mode);
+  async createConversation(@CurrentAuth() auth: AuthContext, @Body() dto: CreateConversationDto) {
+    if (dto.modelId) await this.modelAccess.assertSelectable(auth.user.id, dto.modelId);
+    const draft = await this.conversations.createDraft(auth, dto.mode);
+    if (!dto.modelId) return draft;
+    await this.modelAccess.setConversationModel(auth.user.id, draft.id, dto.modelId);
+    return { ...draft, model_id: dto.modelId };
   }
 
   @RequirePermission(PERMISSIONS.secondBrainQuery)
@@ -377,12 +391,17 @@ export class AiController {
 
   @RequirePermission(PERMISSIONS.workspaceHistoryRead)
   @Patch('conversations/:id')
-  updateConversation(
+  async updateConversation(
     @CurrentAuth() auth: AuthContext,
     @Param('id', new ParseUUIDPipe({ errorHttpStatusCode: 404 })) id: string,
     @Body() dto: UpdateConversationDto,
   ) {
-    return this.conversations.update(auth, id, dto);
+    const { modelId, ...rest } = dto;
+    if (modelId !== undefined) {
+      await this.conversations.detail(auth, id); // pastikan milik pengguna (404 bila bukan)
+      await this.modelAccess.setConversationModel(auth.user.id, id, modelId);
+    }
+    return this.conversations.update(auth, id, rest);
   }
 
   @HttpCode(200)
@@ -403,6 +422,7 @@ export class AiController {
       const loop = await this.gateway.drainToolLoop(
         {
           guard: { userId: auth.user.id, conversationId: prepared.id },
+          usageSource: 'regenerate',
           mode: prepared.mode,
           counterpartStyle: prepared.counterpartStyle ?? undefined,
           messages: this.conversations.toChatMessages(prepared.history),
@@ -422,6 +442,7 @@ export class AiController {
         {
           content: loopContent(loop) || 'Penyedia AI tidak mengembalikan jawaban.',
           model: loop.model,
+          modelId: loop.modelId ?? null,
           tokensIn: loop.tokensIn,
           tokensOut: loop.tokensOut,
           ...(loop.guardrails ? { guardrails: loop.guardrails } : {}),
@@ -440,6 +461,7 @@ export class AiController {
     }
     const result = await this.gateway.chat({
       guard: { userId: auth.user.id, conversationId: prepared.id },
+      usageSource: 'regenerate',
       mode: prepared.mode,
       counterpartStyle: prepared.counterpartStyle ?? undefined,
       messages: this.conversations.toChatMessages(prepared.history),
@@ -453,6 +475,7 @@ export class AiController {
       {
         content: result.content,
         model: result.model,
+        modelId: result.modelId ?? null,
         tokensIn: result.tokensIn,
         tokensOut: result.tokensOut,
         ...(result.guardrails ? { guardrails: result.guardrails } : {}),
@@ -686,6 +709,7 @@ export class AiController {
     const assistant = await this.conversations.completeTurn(conversationId, {
       content: created.content,
       model: result.model,
+      modelId: result.modelId ?? null,
       tokensIn: result.tokensIn,
       tokensOut: result.tokensOut,
       ...(result.guardrails ? { guardrails: result.guardrails } : {}),

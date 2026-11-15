@@ -569,6 +569,7 @@ export class TaskRunnerService implements OnApplicationBootstrap, OnModuleDestro
     return this.gateway.drainToolLoop(
       {
         guard: { userId: task.user_id, taskId: task.id },
+        agentId: agent.id,
         mode: 'subordinate',
         systemPrompt,
         memoryContext: memory.block || undefined,

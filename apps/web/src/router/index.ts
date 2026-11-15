@@ -76,6 +76,7 @@ export const router = createRouter({
         admin('administration/config', 'admin-config', () => import('@/views/admin/ConfigAdminView.vue'), 'config.read'),
         admin('administration/sessions', 'admin-sessions', () => import('@/views/admin/SessionsAdminView.vue'), 'security.sessions.manage'),
         admin('administration/providers', 'admin-providers', () => import('@/views/admin/ProvidersAdminView.vue'), 'providers.health.read'),
+        admin('administration/models', 'admin-models', () => import('@/views/admin/ModelsAdminView.vue'), 'ai.models.manage'),
         admin('administration/guardrails', 'admin-guardrails', () => import('@/views/admin/GuardrailsAdminView.vue'), 'ai.guardrails.manage'),
         {
           path: 'workspace',
@@ -88,6 +89,7 @@ export const router = createRouter({
         admin('workspace/subordinate', 'workspace-subordinate', () => import('@/views/SubordinateView.vue'), 'ai.subordinate.execute'),
         admin('workspace/history', 'workspace-history', () => import('@/views/WorkspaceHistoryView.vue'), 'ai.workspace.history.read'),
         admin('workspace/documents', 'workspace-documents', () => import('@/views/MyDocumentsView.vue'), 'ai.documents.manage'),
+        admin('workspace/model-grants', 'workspace-model-grants', () => import('@/views/ModelGrantsView.vue'), 'ai.models.grant.manage'),
         admin('workspace/mind-map', 'workspace-mind-map', () => import('@/views/MindMapView.vue'), 'ai.mindmap.team.read'),
         admin('workspace/memory', 'workspace-memory', () => import('@/views/MemoryView.vue'), 'ai.memory.self.manage'),
         admin('knowledge/documents', 'knowledge-documents', () => import('@/views/knowledge/KnowledgeDocumentsView.vue'), 'knowledge.documents.read'),

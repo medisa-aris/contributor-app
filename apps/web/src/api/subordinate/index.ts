@@ -17,6 +17,8 @@ export interface PersonalAgent {
   status: 'active' | 'inactive';
   template_id: string | null;
   template_name: string | null;
+  /** Model katalog agent; null = model bawaan/pilihan pemilik. */
+  model_id: string | null;
   task_count: number;
   created_at: string;
   updated_at: string;
@@ -35,6 +37,7 @@ export interface PersonalAgentInput {
   status?: 'active' | 'inactive';
   skillIds?: string[];
   connectors?: { connectorType: ConnectorType; connectorId: string; access: ConnectorAccess }[];
+  modelId?: string | null;
 }
 
 export interface AgentTemplate {

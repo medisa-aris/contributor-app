@@ -4,6 +4,10 @@ import {
   clampToolResult,
   type ToolHandler,
 } from '../../src/modules/ai/gateway.service';
+import type { ModelAccessService } from '../../src/modules/ai/models/model-access.service';
+import type { ModelCatalogService } from '../../src/modules/ai/models/model-catalog.service';
+import type { ProviderRegistryService } from '../../src/modules/ai/models/provider-registry.service';
+import type { UsageLedgerService } from '../../src/modules/ai/models/usage-ledger.service';
 import { toAnthropicMessages } from '../../src/modules/ai/providers/anthropic.provider';
 import { toOpenAiMessages } from '../../src/modules/ai/providers/openai-compatible.provider';
 import type {
@@ -93,8 +97,15 @@ function gatewayWith(replies: ChatResult[]): {
   const config = {
     get: (_key: string, fallback?: unknown) => fallback,
   } as unknown as ConfigService;
-  const gateway = new AiGatewayService(config);
-  (gateway as unknown as { adapter: AiProviderAdapter }).adapter = adapter;
+  const model = { id: 'm1', provider: 'openrouter', modelKey: 'model-uji', displayName: 'Model Uji', maxOutputTokens: null };
+  // Penegakan model/kuota diuji terpisah; di sini cukup otorisasi yang selalu lolos.
+  const access = {
+    authorize: () =>
+      Promise.resolve({ model, adapter, maxTokens: null, dropImages: false, userId: null, agentId: null, source: 'system', sourceId: null }),
+  } as unknown as ModelAccessService;
+  const ledger = { record: () => Promise.resolve() } as unknown as UsageLedgerService;
+  const registry = { timeoutMs: () => 60_000 } as unknown as ProviderRegistryService;
+  const gateway = new AiGatewayService(config, registry, {} as ModelCatalogService, access, ledger);
   return { gateway, requests };
 }
 

@@ -21,6 +21,9 @@ export interface AppConfig {
   openaiApiKey: string | null;
   anthropicApiKey: string | null;
   ollamaBaseUrl: string | null;
+  openrouterBaseUrl: string | null;
+  openaiBaseUrl: string | null;
+  anthropicBaseUrl: string | null;
   tavilyApiKey: string | null;
   firecrawlApiKey: string | null;
   braveSearchApiKey: string | null;
@@ -68,12 +71,16 @@ export default (): { app: AppConfig } => ({
     aiUploadDir: resolve(process.env.AI_UPLOAD_DIR ?? resolve(process.cwd(), 'var', 'ai-uploads')),
     aiProvider: process.env.AI_PROVIDER ?? 'openrouter',
     aiModel: process.env.AI_MODEL ?? 'google/gemini-3.1-flash-lite',
-    aiBaseUrl: process.env.AI_BASE_URL ?? 'https://openrouter.ai/api/v1',
+    // Usang: hanya berlaku untuk AI_PROVIDER bila base URL khusus penyedia tidak diatur.
+    aiBaseUrl: process.env.AI_BASE_URL?.trim() ?? '',
     aiTimeoutMs: Number(process.env.AI_TIMEOUT_MS ?? 60000),
     openrouterApiKey: process.env.OPENROUTER_API_KEY ?? null,
     openaiApiKey: process.env.OPENAI_API_KEY ?? null,
     anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? null,
     ollamaBaseUrl: process.env.OLLAMA_BASE_URL ?? null,
+    openrouterBaseUrl: process.env.OPENROUTER_BASE_URL?.trim() || null,
+    openaiBaseUrl: process.env.OPENAI_BASE_URL?.trim() || null,
+    anthropicBaseUrl: process.env.ANTHROPIC_BASE_URL?.trim() || null,
     tavilyApiKey: process.env.TAVILY_API_KEY?.trim() || null,
     firecrawlApiKey: process.env.FIRECRAWL_API_KEY?.trim() || null,
     braveSearchApiKey: process.env.BRAVE_SEARCH_API_KEY?.trim() || null,

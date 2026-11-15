@@ -1,7 +1,6 @@
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { INestApplication } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
@@ -10,7 +9,7 @@ import { z } from 'zod';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/configure-app';
 import { DATA_SOURCE } from '../../src/database/database.module';
-import { AiGatewayService } from '../../src/modules/ai/gateway.service';
+import { PROVIDER_ADAPTER_FACTORY } from '../../src/modules/ai/models/provider-registry.service';
 import type {
   AiProviderAdapter,
   ChatRequestOptions,
@@ -101,15 +100,9 @@ describe('Konektor MCP (e2e)', () => {
     const port = (mcpHttp.address() as AddressInfo).port;
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
-      .overrideProvider(AiGatewayService)
-      .useFactory({
-        factory: (config: ConfigService) => {
-          const gateway = new AiGatewayService(config);
-          (gateway as unknown as { adapter: AiProviderAdapter }).adapter = adapter;
-          return gateway;
-        },
-        inject: [ConfigService],
-      })
+      // Adapter palsu untuk semua penyedia; registry tetap membungkusnya dengan Guardrails.
+      .overrideProvider(PROVIDER_ADAPTER_FACTORY)
+      .useValue(() => adapter)
       .compile();
     app = moduleRef.createNestApplication({ logger: false });
     configureApp(app);

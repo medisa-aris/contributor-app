@@ -64,6 +64,8 @@ export interface ChatResult {
   toolCalls?: ChatToolCall[];
   /** Jumlah data pribadi yang dimasking per kategori; tanpa nilainya. */
   guardrails?: Record<string, number>;
+  /** Model katalog (ai_models.id) yang menjalankan panggilan; diisi gateway. */
+  modelId?: string;
 }
 
 export interface AiProviderAdapter {

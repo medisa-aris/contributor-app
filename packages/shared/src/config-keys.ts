@@ -19,6 +19,9 @@ export const APP_CONFIG_KEYS = {
   memoryMaxContextTokens: 'ai.memory_max_context_tokens',
   memoryMaxExtractionsPerDay: 'ai.memory_max_extractions_per_day',
   memoryRetentionDays: 'ai.memory_retention_days',
+  defaultModelTokenLimit: 'ai.default_model.token_limit',
+  defaultModelPeriod: 'ai.default_model.period',
+  defaultModelRequestsPerMinute: 'ai.default_model.requests_per_minute',
   guardrailsEnabled: 'ai.guardrails_enabled',
   guardrailsBlockImages: 'ai.guardrails_block_images',
   guardrailsCategories: 'ai.guardrails_categories',
@@ -28,6 +31,11 @@ export const APP_CONFIG_KEYS = {
   sessionIdleMinutes: 'security.session_idle_minutes',
   sessionAbsoluteHours: 'security.session_absolute_hours',
 } as const;
+
+/** Batas model bawaan hanya boleh diubah lewat layar Model AI. */
+export function isModelConfigKey(key: string): boolean {
+  return key.startsWith('ai.default_model.');
+}
 
 /** Kunci Guardrails hanya boleh dibaca dan diubah lewat admin/guardrails. */
 export function isGuardrailConfigKey(key: string): boolean {
@@ -108,6 +116,24 @@ export const APP_CONFIG_DEFINITIONS: readonly AppConfigDefinition[] = [
     description: 'Arsipkan catatan memori jenis peristiwa setelah N hari; 0 = tidak pernah',
     isPublic: false,
     defaultValue: 0,
+  },
+  {
+    key: APP_CONFIG_KEYS.defaultModelTokenLimit,
+    description: 'Batas token per pengguna untuk model bawaan (null = tanpa batas)',
+    isPublic: false,
+    defaultValue: null,
+  },
+  {
+    key: APP_CONFIG_KEYS.defaultModelPeriod,
+    description: 'Periode batas token model bawaan (day/week)',
+    isPublic: false,
+    defaultValue: 'day',
+  },
+  {
+    key: APP_CONFIG_KEYS.defaultModelRequestsPerMinute,
+    description: 'Batas permintaan per menit per pengguna untuk model bawaan (null = tanpa batas)',
+    isPublic: false,
+    defaultValue: null,
   },
   {
     key: APP_CONFIG_KEYS.lockoutThreshold,

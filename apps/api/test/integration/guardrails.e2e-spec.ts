@@ -1,12 +1,10 @@
 import type { INestApplication } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { DataSource } from 'typeorm';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/configure-app';
 import { DATA_SOURCE } from '../../src/database/database.module';
-import { AiGatewayService } from '../../src/modules/ai/gateway.service';
-import { GuardedProvider } from '../../src/modules/ai/guardrails/guarded-provider';
+import { PROVIDER_ADAPTER_FACTORY } from '../../src/modules/ai/models/provider-registry.service';
 import { GuardrailsService } from '../../src/modules/ai/guardrails/guardrails.service';
 import type {
   AiProviderAdapter,
@@ -51,18 +49,9 @@ describe('Guardrails (e2e)', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
-      .overrideProvider(AiGatewayService)
-      .useFactory({
-        factory: (config: ConfigService, guardrails: GuardrailsService) => {
-          const gateway = new AiGatewayService(config, guardrails);
-          (gateway as unknown as { adapter: AiProviderAdapter }).adapter = new GuardedProvider(
-            adapter,
-            guardrails,
-          );
-          return gateway;
-        },
-        inject: [ConfigService, GuardrailsService],
-      })
+      // Adapter palsu untuk semua penyedia; registry tetap membungkusnya dengan Guardrails.
+      .overrideProvider(PROVIDER_ADAPTER_FACTORY)
+      .useValue(() => adapter)
       .compile();
     app = moduleRef.createNestApplication({ logger: false });
     configureApp(app);

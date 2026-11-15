@@ -28,6 +28,7 @@ export async function chatStream(
       conversationId: payload.conversationId,
       counterpartStyle: payload.counterpartStyle,
       webSearch: payload.webSearch,
+      modelId: payload.modelId,
     }),
     signal,
   });

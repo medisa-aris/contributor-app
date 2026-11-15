@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { MemoryContextKind, MemoryEntryType, MemoryReachSubjectDto } from '@bara/shared';
 import { DataSource, type EntityManager } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
+import { OrgReachService } from '../rbac/org-reach.service';
 
 type Queryable = Pick<DataSource | EntityManager, 'query'>;
 
@@ -22,30 +23,16 @@ export interface ScopeSubject {
   skipAgentProfile?: boolean;
 }
 
-/** Jangkauan atasan: subtree departemen yang ia kepalai + agent pribadinya sendiri. */
-const REACH_SQL = `
-  WITH RECURSIVE led AS (
-    SELECT id FROM departments WHERE head_user_id = $1 AND is_active
-    UNION
-    SELECT d.id FROM departments d JOIN led ON d.parent_id = led.id WHERE d.is_active
-  )
-  SELECT 'user'::text AS kind, u.id AS ref_id
-    FROM users u
-   WHERE u.status = 'active' AND u.id <> $1
-     AND (u.department_id IN (SELECT id FROM led)
-          OR u.id IN (SELECT head_user_id FROM departments WHERE id IN (SELECT id FROM led)))
-  UNION
-  SELECT 'agent'::text, a.id
-    FROM agents a
-   WHERE a.owner_user_id = $1 AND a.status = 'active' AND NOT a.is_template`;
-
 /**
  * Satu-satunya tempat cakupan memori ditentukan. Dihitung ulang setiap kueri, sehingga
  * pencabutan izin, perubahan kepala departemen, atau pengguna nonaktif langsung berlaku.
  */
 @Injectable()
 export class MemoryScopeService {
-  constructor(@Inject(DATA_SOURCE) private readonly dataSource: DataSource) {}
+  constructor(
+    @Inject(DATA_SOURCE) private readonly dataSource: DataSource,
+    private readonly orgReach: OrgReachService,
+  ) {}
 
   async ensureUserSubject(userId: string, db: Queryable = this.dataSource): Promise<string> {
     await db.query(
@@ -83,13 +70,9 @@ export class MemoryScopeService {
 
   /** Subjek dalam jangkauan beserta status izin pintunya (tanpa isi memori). */
   async reach(leaderUserId: string): Promise<MemoryReachSubjectDto[]> {
-    const refs = (await this.dataSource.query(REACH_SQL, [leaderUserId])) as {
-      kind: 'user' | 'agent';
-      ref_id: string;
-    }[];
-    if (refs.length === 0) return [];
-    const userIds = refs.filter((r) => r.kind === 'user').map((r) => r.ref_id);
-    const agentIds = refs.filter((r) => r.kind === 'agent').map((r) => r.ref_id);
+    // Jangkauan bersama (OrgReachService); agent milik bawahan belum masuk jangkauan memori (R6).
+    const { userIds, agentIds } = await this.orgReach.reach(leaderUserId);
+    if (userIds.length === 0 && agentIds.length === 0) return [];
     await this.dataSource.query(
       `INSERT INTO memory_subjects (kind, user_id, owner_user_id)
        SELECT 'user', id, id FROM unnest($1::uuid[]) AS id

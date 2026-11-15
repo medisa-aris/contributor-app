@@ -1,15 +1,14 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CREATE_DOCUMENT_TOOL } from '../documents/document-spec';
-import { GuardedProvider } from './guardrails/guarded-provider';
-import { GuardrailsService } from './guardrails/guardrails.service';
 import { AI_LIMITS, validateChatMessages } from './limits';
 import { buildSystemPrompt, type PromptMode } from './prompts';
-import { resolveProviderConfig, type AiProviderSettings } from './provider-resolver';
-import { AnthropicProvider } from './providers/anthropic.provider';
+import { ModelAccessService, type AuthorizedCall } from './models/model-access.service';
+import { ModelCatalogService } from './models/model-catalog.service';
+import { ProviderRegistryService } from './models/provider-registry.service';
+import { UsageLedgerService, type AiUsageSource } from './models/usage-ledger.service';
 import { OpenAiCompatibleProvider } from './providers/openai-compatible.provider';
 import type {
-  AiProviderAdapter,
   ChatImageAttachment,
   ChatMessage,
   ChatRequestOptions,
@@ -44,8 +43,14 @@ export interface GatewayChatOptions {
   guard?: GuardScope;
   /** Blok "Memori yang relevan" dari memori terpusat, ditambahkan setelah system prompt. */
   memoryContext?: string;
-  /** Ganti model aktif untuk permintaan ini (mis. model ekstraksi memori). */
+  /** id model penyedia untuk panggilan sistem (mis. model ekstraksi memori); dicocokkan ke katalog. */
   model?: string;
+  /** Model katalog yang diminta eksplisit; wajib diizinkan untuk pengguna. */
+  modelId?: string | null;
+  /** Agent yang melakukan panggilan (model agent dan izin agent). */
+  agentId?: string;
+  /** Sumber pemakaian untuk buku besar; bawaan diturunkan dari `guard`. */
+  usageSource?: AiUsageSource;
 }
 
 /** Hasil eksekusi satu tool di dalam loop. */
@@ -74,6 +79,8 @@ export interface ToolLoopResult {
   /** Teks jawaban akhir (giliran terakhir model). */
   content: string;
   model: string;
+  /** Model katalog yang menjalankan loop. */
+  modelId?: string;
   tokensIn: number;
   tokensOut: number;
   /** Pesan baru yang ditambahkan loop (asisten + hasil tool), untuk disimpan/dilanjutkan. */
@@ -112,68 +119,65 @@ export function clampToolResult(
 @Injectable()
 export class AiGatewayService {
   private readonly logger = new Logger(AiGatewayService.name);
-  private adapter: AiProviderAdapter | null = null;
-  private embedder: OpenAiCompatibleProvider | null = null;
+  private readonly embedders = new Map<string, OpenAiCompatibleProvider>();
 
   constructor(
     private readonly config: ConfigService,
-    @Optional() private readonly guardrails?: GuardrailsService,
+    private readonly registry: ProviderRegistryService,
+    private readonly catalog: ModelCatalogService,
+    private readonly access: ModelAccessService,
+    private readonly ledger: UsageLedgerService,
   ) {}
 
-  private settings(): AiProviderSettings {
-    return {
-      aiProvider: this.config.get<string>('app.aiProvider', 'openrouter'),
-      aiModel: this.config.get<string>('app.aiModel', ''),
-      aiBaseUrl: this.config.get<string>('app.aiBaseUrl', ''),
-      aiTimeoutMs: this.config.get<number>('app.aiTimeoutMs', 60000),
-      openrouterApiKey: this.config.get<string | null>('app.openrouterApiKey', null),
-      openaiApiKey: this.config.get<string | null>('app.openaiApiKey', null),
-      anthropicApiKey: this.config.get<string | null>('app.anthropicApiKey', null),
-      ollamaBaseUrl: this.config.get<string | null>('app.ollamaBaseUrl', null),
-    };
-  }
-
-  /** Adapter di-cache per proses; kredensial hanya ada di memori server. */
-  resolveAdapter(): AiProviderAdapter {
-    if (this.adapter) return this.adapter;
-    const resolved = resolveProviderConfig(this.settings());
-    this.logger.log(
-      `Penyedia AI aktif: ${resolved.provider} (model ${resolved.model}, batas waktu ${resolved.timeoutMs} ms)`,
-    );
-    const provider: AiProviderAdapter =
-      resolved.adapter === 'anthropic'
-        ? new AnthropicProvider({
-            baseUrl: resolved.baseUrl,
-            apiKey: resolved.apiKey ?? '',
-          })
-        : new OpenAiCompatibleProvider({ baseUrl: resolved.baseUrl, apiKey: resolved.apiKey });
-    this.adapter = this.guardrails ? new GuardedProvider(provider, this.guardrails) : provider;
-    return this.adapter;
-  }
-
+  /** id model bawaan dari env; hanya nilai awal tampilan sebelum hasil panggilan tersedia. */
   activeModel(): string {
-    return this.settings().aiModel;
+    return this.config.get<string>('app.aiModel', '');
   }
 
   /**
-   * Embedding teks lewat penyedia kompatibel OpenAI. null bila penyedia aktif tidak punya
-   * endpoint embedding (Anthropic). Pemanggil wajib menyaring data pribadi lebih dulu.
+   * Embedding teks lewat penyedia model bawaan bila kompatibel OpenAI. null bila penyedia
+   * itu tidak punya endpoint embedding (Anthropic). Pemanggil wajib menyaring data pribadi.
    */
   async embed(texts: string[], model: string, signal?: AbortSignal): Promise<number[][] | null> {
-    const resolved = resolveProviderConfig(this.settings());
-    if (resolved.adapter !== 'openai-compatible') return null;
-    this.embedder ??= new OpenAiCompatibleProvider({ baseUrl: resolved.baseUrl, apiKey: resolved.apiKey });
-    const timeout = AbortSignal.timeout(this.settings().aiTimeoutMs);
-    return this.embedder.embed(texts, model, signal ? AbortSignal.any([timeout, signal]) : timeout);
+    const defaultModel = await this.catalog.defaultModel();
+    if (defaultModel.provider === 'anthropic') return null;
+    const settings = this.registry.settings(defaultModel.provider);
+    if (!settings.configured) return null;
+    let embedder = this.embedders.get(settings.code);
+    if (!embedder) {
+      embedder = new OpenAiCompatibleProvider({ baseUrl: settings.baseUrl, apiKey: settings.apiKey });
+      this.embedders.set(settings.code, embedder);
+    }
+    const timeout = AbortSignal.timeout(this.registry.timeoutMs());
+    return embedder.embed(texts, model, signal ? AbortSignal.any([timeout, signal]) : timeout);
   }
 
-  private buildRequest(options: GatewayChatOptions): ChatRequestOptions {
+  private usageSource(options: GatewayChatOptions): AiUsageSource {
+    if (options.usageSource) return options.usageSource;
+    if (options.guard?.conversationId) return 'conversation';
+    if (options.guard?.taskId) return 'task';
+    return 'system';
+  }
+
+  /** Tentukan model (dan periksa izin/kuota), lalu susun permintaan untuk adapter penyedianya. */
+  private async prepare(options: GatewayChatOptions): Promise<{ call: AuthorizedCall; request: ChatRequestOptions }> {
     const tools = [...(options.documents ? [CREATE_DOCUMENT_TOOL] : []), ...(options.tools ?? [])];
     validateChatMessages(
       options.messages,
       tools.length > 0 ? AI_LIMITS.maxHistoryMessagesWithTools : AI_LIMITS.maxHistoryMessages,
     );
-    const timeout = AbortSignal.timeout(this.settings().aiTimeoutMs);
+    const images = options.images && options.images.length > 0 ? options.images : undefined;
+    const call = await this.access.authorize({
+      userId: options.guard?.userId ?? null,
+      source: this.usageSource(options),
+      ...(options.guard?.conversationId ? { conversationId: options.guard.conversationId } : {}),
+      ...(options.guard?.taskId ? { taskId: options.guard.taskId } : {}),
+      ...(options.agentId ? { agentId: options.agentId } : {}),
+      ...(options.modelId !== undefined ? { modelId: options.modelId } : {}),
+      ...(options.model ? { modelKey: options.model } : {}),
+      needs: { tools: tools.length > 0, vision: Boolean(images) },
+    });
+    const timeout = AbortSignal.timeout(this.registry.timeoutMs());
     const signal = options.signal ? AbortSignal.any([timeout, options.signal]) : timeout;
     const basePrompt =
       options.systemPrompt ??
@@ -183,31 +187,70 @@ export class AiGatewayService {
         options.extraContext,
         options.documents === true,
       );
-    const systemPrompt = [basePrompt, options.memoryContext, options.toolRules]
+    const imageNote =
+      images && call.dropImages
+        ? `Catatan sistem: ${images.length} gambar terlampir tidak dikirim karena model ${call.model.displayName} tidak mendukung gambar.`
+        : undefined;
+    const systemPrompt = [basePrompt, options.memoryContext, options.toolRules, imageNote]
       .filter((part): part is string => Boolean(part?.trim()))
       .join('\n\n');
+    const baseMax =
+      options.documents || (options.tools?.length ?? 0) > 0
+        ? AI_LIMITS.maxOutputTokensWithDocuments
+        : AI_LIMITS.maxOutputTokens;
     return {
-      model: options.model || this.settings().aiModel,
-      systemPrompt,
-      messages: options.messages,
-      maxTokens:
-        options.documents || (options.tools?.length ?? 0) > 0
-          ? AI_LIMITS.maxOutputTokensWithDocuments
-          : AI_LIMITS.maxOutputTokens,
-      temperature: MODE_TEMPERATURE[options.mode],
-      signal,
-      ...(options.images && options.images.length > 0 ? { images: options.images } : {}),
-      ...(tools.length > 0 ? { tools } : {}),
-      ...(options.guard ? { guard: options.guard } : {}),
+      call,
+      request: {
+        model: call.model.modelKey,
+        systemPrompt,
+        messages: options.messages,
+        maxTokens: call.maxTokens === null ? baseMax : Math.max(1, Math.min(baseMax, call.maxTokens)),
+        temperature: MODE_TEMPERATURE[options.mode],
+        signal,
+        ...(images && !call.dropImages ? { images } : {}),
+        ...(tools.length > 0 ? { tools } : {}),
+        ...(options.guard ? { guard: options.guard } : {}),
+      },
     };
   }
 
-  async chat(options: GatewayChatOptions): Promise<ChatResult> {
-    return this.resolveAdapter().chat(this.buildRequest(options));
+  /** Satu baris buku besar per panggilan; token diestimasi bila penyedia tidak melaporkannya. */
+  private async record(call: AuthorizedCall, request: ChatRequestOptions, result: ChatResult): Promise<void> {
+    const estimated = result.tokensIn === null || result.tokensOut === null;
+    const inputChars =
+      request.systemPrompt.length + request.messages.reduce((sum, m) => sum + (m.content?.length ?? 0), 0);
+    await this.ledger.record({
+      userId: call.userId,
+      modelId: call.model.id,
+      provider: call.model.provider,
+      modelKey: call.model.modelKey,
+      source: call.source,
+      sourceId: call.sourceId,
+      agentId: call.agentId,
+      tokensIn: result.tokensIn ?? Math.ceil(inputChars / 4),
+      tokensOut: result.tokensOut ?? Math.ceil(result.content.length / 4),
+      estimated,
+    });
   }
 
-  stream(options: GatewayChatOptions): AsyncGenerator<string, ChatResult> {
-    return this.resolveAdapter().stream(this.buildRequest(options));
+  async chat(options: GatewayChatOptions): Promise<ChatResult> {
+    const { call, request } = await this.prepare(options);
+    const result = await call.adapter.chat(request);
+    await this.record(call, request, result);
+    return { ...result, modelId: call.model.id };
+  }
+
+  async *stream(options: GatewayChatOptions): AsyncGenerator<string, ChatResult> {
+    const { call, request } = await this.prepare(options);
+    const inner = call.adapter.stream(request);
+    for (;;) {
+      const step = await inner.next();
+      if (step.done) {
+        await this.record(call, request, step.value);
+        return { ...step.value, modelId: call.model.id };
+      }
+      yield step.value;
+    }
   }
 
   /**
@@ -224,6 +267,7 @@ export class AiGatewayService {
     let tokensIn = 0;
     let tokensOut = 0;
     let model = this.activeModel();
+    let modelId: string | undefined;
     const guardrails: Record<string, number> = {};
     const guardrailsResult = () =>
       Object.keys(guardrails).length > 0 ? { guardrails: { ...guardrails } } : {};
@@ -254,6 +298,7 @@ export class AiGatewayService {
       tokensIn += result.tokensIn ?? 0;
       tokensOut += result.tokensOut ?? 0;
       model = result.model || model;
+      modelId = result.modelId ?? modelId;
       for (const [category, count] of Object.entries(result.guardrails ?? {})) {
         guardrails[category] = Math.max(guardrails[category] ?? 0, count);
       }
@@ -266,6 +311,7 @@ export class AiGatewayService {
         return {
           content: result.content,
           model,
+          ...(modelId ? { modelId } : {}),
           tokensIn,
           tokensOut,
           appended,
@@ -322,6 +368,7 @@ export class AiGatewayService {
         return {
           content: result.content,
           model,
+          ...(modelId ? { modelId } : {}),
           tokensIn,
           tokensOut,
           appended,
@@ -337,6 +384,7 @@ export class AiGatewayService {
       content:
         'Batas langkah kerja tercapai sebelum tugas selesai. Persempit permintaan lalu coba lagi.',
       model,
+      ...(modelId ? { modelId } : {}),
       tokensIn,
       tokensOut,
       appended,

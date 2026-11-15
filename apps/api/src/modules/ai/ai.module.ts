@@ -13,6 +13,12 @@ import { ConversationsService } from './conversations.service';
 import { AiGatewayService } from './gateway.service';
 import { GuardrailsAdminController } from './guardrails/guardrails-admin.controller';
 import { GuardrailsService } from './guardrails/guardrails.service';
+import { GrantService } from './models/grant.service';
+import { ModelAccessService } from './models/model-access.service';
+import { ModelCatalogService } from './models/model-catalog.service';
+import { ModelsController } from './models/models.controller';
+import { PROVIDER_ADAPTER_FACTORY, ProviderRegistryService } from './models/provider-registry.service';
+import { UsageLedgerService } from './models/usage-ledger.service';
 import { TasksService } from './tasks.service';
 import { WebSourceService } from './web-source.service';
 import { WebSearchAdminController } from './web-search/web-search-admin.controller';
@@ -20,8 +26,21 @@ import { WebSearchService } from './web-search/web-search.service';
 
 @Module({
   imports: [DocumentsModule, ConnectorsModule, forwardRef(() => MemoryModule)],
-  controllers: [AiController, WorkspaceAgentsController, WebSearchAdminController, GuardrailsAdminController],
+  controllers: [
+    AiController,
+    WorkspaceAgentsController,
+    WebSearchAdminController,
+    GuardrailsAdminController,
+    ModelsController,
+  ],
   providers: [
+    // null = adapter asli; tes integrasi mengganti dengan pabrik adapter palsu.
+    { provide: PROVIDER_ADAPTER_FACTORY, useValue: null },
+    ProviderRegistryService,
+    ModelCatalogService,
+    UsageLedgerService,
+    ModelAccessService,
+    GrantService,
     AiGatewayService,
     GuardrailsService,
     AttachmentsService,
@@ -35,6 +54,8 @@ import { WebSearchService } from './web-search/web-search.service';
     TaskRunnerService,
   ],
   exports: [
+    ModelCatalogService,
+    ModelAccessService,
     AiGatewayService,
     GuardrailsService,
     AttachmentsService,

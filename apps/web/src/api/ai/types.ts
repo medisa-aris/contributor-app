@@ -7,6 +7,7 @@ export type ConversationSummary = {
   title: string;
   counterpart_style: string | null;
   web_search?: boolean;
+  model_id?: string | null;
   starred_at: string | null;
   updated_at: string;
   created_at: string;
@@ -110,6 +111,8 @@ export interface ChatRequestPayload {
   conversationId?: string;
   counterpartStyle?: string;
   webSearch?: boolean;
+  /** Model katalog pilihan pengguna; dikirim hanya bila dipilih eksplisit. */
+  modelId?: string;
 }
 
 export type StreamErrorInfo = {

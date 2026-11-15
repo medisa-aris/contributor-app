@@ -5,6 +5,9 @@ import { ALL_PERMISSION_IDS, PERMISSION_CATALOG, SYSTEM_ROLES } from '@bara/shar
 export const TEST_PASSWORD = 'Test123456!';
 
 const TRUNCATE_TABLES = [
+  'ai_usage_ledger',
+  'ai_model_grants',
+  'ai_models',
   'memory_extraction_runs',
   'memory_access_log',
   'task_memory_doors',
@@ -57,6 +60,8 @@ const TRUNCATE_TABLES = [
 
 export async function resetDatabase(dataSource: DataSource): Promise<void> {
   await dataSource.query(`TRUNCATE TABLE ${TRUNCATE_TABLES.join(', ')} RESTART IDENTITY CASCADE`);
+  // Cache katalog model berkunci versi; naikkan agar app yang sedang berjalan memuat ulang.
+  await dataSource.query(`UPDATE ai_models_meta SET version = version + 1 WHERE id = 1`);
 }
 
 export interface TestFixtures {
@@ -80,6 +85,7 @@ export const MANAGER_PERMISSIONS = [
   'ai.subordinate.execute',
   'ai.mindmap.team.read',
   'ai.documents.manage',
+  'ai.models.grant.manage',
   'ai.agents.manage',
   'ai.memory.self.manage',
   'ai.memory.doors.open',

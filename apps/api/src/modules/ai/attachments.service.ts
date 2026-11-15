@@ -352,6 +352,7 @@ export class AttachmentsService {
         mode: 'second_brain',
         messages: [{ role: 'user', content: prompt }],
         signal: AbortSignal.timeout(45_000),
+        usageSource: 'attachment_summary',
       });
       const summary = result.content.trim().slice(0, MAX_URL_SUMMARY_CHARS);
       if (summary) return summary;

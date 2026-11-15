@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { ApiError } from '@/api/http';
 import { createAgent, deleteAgent, listAgents, updateAgent, type AgentRow } from '@/api/agents';
+import { listCatalog, myModels } from '@/api/models';
 import { useAuthStore } from '@/stores/auth.store';
 import { useToastStore } from '@/stores/toast.store';
 import { usePagedList } from '@/composables/usePagedList';
@@ -73,7 +74,23 @@ const editForm = ref({
   tools: '',
   requireApproval: false,
   status: 'active' as 'active' | 'inactive',
+  modelId: '',
 });
+// Agent template boleh memakai model aktif mana pun yang mendukung tools.
+const modelOptions = ref<CaSelectOption[]>([]);
+async function loadModelOptions(): Promise<void> {
+  try {
+    const models = auth.can('ai.models.manage')
+      ? (await listCatalog()).filter((m) => m.status === 'enabled' && m.supportsTools)
+      : (await myModels()).models.filter((m) => m.supportsTools);
+    modelOptions.value = [
+      { value: '', label: t('models.agent.systemDefault') },
+      ...models.map((m) => ({ value: m.id, label: m.displayName })),
+    ];
+  } catch {
+    modelOptions.value = [{ value: '', label: t('models.agent.systemDefault') }];
+  }
+}
 
 function openCreate(): void {
   editTarget.value = null;
@@ -85,8 +102,10 @@ function openCreate(): void {
     tools: '',
     requireApproval: false,
     status: 'active',
+    modelId: '',
   };
   editError.value = '';
+  void loadModelOptions();
   editOpen.value = true;
 }
 
@@ -100,8 +119,10 @@ function openEdit(row: AgentRow): void {
     tools: row.tool_allowlist.join(', '),
     requireApproval: row.require_approval,
     status: row.status,
+    modelId: row.model_id ?? '',
   };
   editError.value = '';
+  void loadModelOptions();
   editOpen.value = true;
 }
 
@@ -134,6 +155,7 @@ async function submitEdit(): Promise<void> {
         toolAllowlist: tools,
         requireApproval: editForm.value.requireApproval,
         status: editForm.value.status,
+        modelId: editForm.value.modelId || null,
       });
       toast.push({ variant: 'success', title: t('agents.agentUpdated') });
     } else {
@@ -144,6 +166,7 @@ async function submitEdit(): Promise<void> {
         instruction: editForm.value.instruction.trim(),
         toolAllowlist: tools,
         requireApproval: editForm.value.requireApproval,
+        modelId: editForm.value.modelId || null,
       });
       toast.push({ variant: 'success', title: t('agents.agentCreated') });
     }
@@ -301,6 +324,11 @@ function statusLabel(row: AgentRow): string {
               :aria-describedby="describedBy"
               :options="statusOptions"
             />
+          </template>
+        </CaField>
+        <CaField :label="t('models.agent.label')" :hint="t('models.agent.toolsOnly')">
+          <template #default="{ id }">
+            <CaSelect :id="id" v-model="editForm.modelId" :options="modelOptions" />
           </template>
         </CaField>
         <CaCheckbox v-model="editForm.requireApproval">

@@ -9,6 +9,7 @@ export type AgentRow = {
   tool_allowlist: string[];
   require_approval: boolean;
   status: 'active' | 'inactive';
+  model_id: string | null;
   task_count: number | null;
   created_at: string;
   updated_at: string;

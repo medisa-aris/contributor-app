@@ -395,7 +395,7 @@ describe('GuardedProvider', () => {
 });
 
 describe('arsitektur', () => {
-  it('adapter penyedia hanya dibuat di gateway', () => {
+  it('adapter penyedia hanya dibuat di registry penyedia (dan embedder gateway)', () => {
     const root = join(process.cwd(), 'src');
     const offenders: string[] = [];
     const walk = (dir: string): void => {
@@ -405,6 +405,7 @@ describe('arsitektur', () => {
         else if (
           path.endsWith('.ts') &&
           !path.endsWith('gateway.service.ts') &&
+          !path.endsWith(join('models', 'provider-registry.service.ts')) &&
           /new (AnthropicProvider|OpenAiCompatibleProvider)\(/.test(readFileSync(path, 'utf8'))
         ) {
           offenders.push(path);

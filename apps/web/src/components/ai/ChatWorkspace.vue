@@ -30,6 +30,7 @@ import { isOfficeFormat, type OfficeSourceKind, type UserDocument } from '@/api/
 import ChatMessage from './ChatMessage.vue';
 import ConversationConnectorsBar from './ConversationConnectorsBar.vue';
 import MemoryDoorsBar from './MemoryDoorsBar.vue';
+import ModelPicker from './ModelPicker.vue';
 import WebSearchToggle from './WebSearchToggle.vue';
 import type { ToolTraceStep } from '@/api/ai';
 import { decideConversationApproval } from '@/api/ai';
@@ -79,6 +80,23 @@ const canBrowseHistory = computed(() => auth.can('ai.workspace.history.read'));
 
 const conversationId = ref<string | null>(null);
 const webSearch = ref(false);
+/** Model yang tampil di pemilih; `chosenModelId` hanya terisi bila pengguna memilih sendiri. */
+const displayModelId = ref<string | null>(null);
+const chosenModelId = ref<string | null>(null);
+const modelPicker = ref<InstanceType<typeof ModelPicker> | null>(null);
+const streamErrorCode = ref('');
+const MODEL_RECOVERY_CODES = ['AI_QUOTA_EXCEEDED', 'AI_MODEL_NOT_ALLOWED', 'AI_MODEL_UNAVAILABLE', 'AI_MODEL_CAPABILITY_MISSING'];
+
+function chooseModel(id: string | null): void {
+  displayModelId.value = id;
+  chosenModelId.value = id;
+}
+
+function useDefaultModel(): void {
+  modelPicker.value?.useDefault();
+  streamError.value = '';
+  streamErrorCode.value = '';
+}
 const messages = ref<ConversationMessage[]>([]);
 const draft = ref('');
 const styleId = ref(COUNTERPART_STYLES[0]!.id);
@@ -322,6 +340,8 @@ async function openConversation(id: string): Promise<void> {
     streamError.value = '';
     if (detail.counterpart_style) styleId.value = detail.counterpart_style;
     webSearch.value = detail.web_search === true;
+    displayModelId.value = detail.model_id ?? null;
+    chosenModelId.value = null;
     void loadAttachments(detail.id);
   } catch (caught) {
     toast.push(
@@ -638,6 +658,8 @@ function startNew(): void {
   if (streaming.value || regenerating.value || uploading.value || addingUrl.value) return;
   conversationId.value = null;
   webSearch.value = false;
+  displayModelId.value = null;
+  chosenModelId.value = null;
   messages.value = [];
   viewerDoc.value = null;
   streamError.value = '';
@@ -663,6 +685,7 @@ async function send(): Promise<void> {
 
   sending.value = true;
   streamError.value = '';
+  streamErrorCode.value = '';
   pendingText.value = '';
   messages.value = [
     ...messages.value,
@@ -691,6 +714,7 @@ async function send(): Promise<void> {
         conversationId: conversationId.value ?? undefined,
         counterpartStyle: props.mode === 'counterpart' ? styleId.value : undefined,
         ...(auth.can('ai.websearch.use') ? { webSearch: webSearch.value } : {}),
+        ...(chosenModelId.value ? { modelId: chosenModelId.value } : {}),
       },
       (event) => {
         if (event.type === 'ready') {
@@ -713,6 +737,7 @@ async function send(): Promise<void> {
           void loadConversations({ silent: true });
         } else {
           streamError.value = event.info.message;
+          streamErrorCode.value = event.info.code;
           pendingText.value = '';
         }
       },
@@ -722,12 +747,15 @@ async function send(): Promise<void> {
   } catch (caught) {
     if (!stopRequested) {
       streamError.value = caught instanceof ApiError ? caught.message : t('errors.loadFailed');
+      streamErrorCode.value = caught instanceof ApiError ? caught.code : '';
     }
   } finally {
     pendingText.value = '';
     pendingSteps.value = [];
     streaming.value = false;
     sending.value = false;
+    // Kuota berubah setelah setiap giliran; model yang dipilih kini tersimpan di percakapan.
+    void modelPicker.value?.reload();
     if (activeAbort === controller) activeAbort = null;
     if (stopRequested) {
       stopRequested = false;
@@ -1287,7 +1315,12 @@ onBeforeUnmount(() => {
         </template>
       </div>
 
-      <p v-if="streamError" class="chat__error" role="alert">{{ streamError }}</p>
+      <div v-if="streamError" class="chat__error" role="alert">
+        <span>{{ streamError }}</span>
+        <span v-if="MODEL_RECOVERY_CODES.includes(streamErrorCode)" class="chat__error-actions">
+          <CaButton size="small" variant="secondary" @click="useDefaultModel">{{ t('models.picker.useDefault') }}</CaButton>
+        </span>
+      </div>
 
       <ConversationConnectorsBar
         :conversation-id="conversationId"
@@ -1302,6 +1335,15 @@ onBeforeUnmount(() => {
       />
 
       <WebSearchToggle v-model="webSearch" :disabled="streaming || regenerating" />
+
+      <ModelPicker
+        ref="modelPicker"
+        :model-value="displayModelId"
+        :disabled="streaming || regenerating"
+        needs-tools
+        :has-images="attachments.some((a) => a.kind === 'image' && a.enabled)"
+        @update:model-value="chooseModel"
+      />
 
       <form class="chat__composer" @submit.prevent="send">
         <textarea
@@ -2423,11 +2465,20 @@ onBeforeUnmount(() => {
 }
 
 .chat__error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ca-space-3);
   margin: 0;
   padding: var(--ca-space-3) var(--ca-space-6);
   color: var(--ca-danger-fg);
   font-size: var(--ca-text-200);
   border-top: 1px solid var(--ca-stroke-2);
+}
+
+.chat__error-actions {
+  display: inline-flex;
+  gap: var(--ca-space-2);
 }
 
 .chat__attachment-open {

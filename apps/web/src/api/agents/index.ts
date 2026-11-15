@@ -23,6 +23,7 @@ export function createAgent(input: {
   instruction: string;
   toolAllowlist: string[];
   requireApproval: boolean;
+  modelId?: string | null;
 }): Promise<AgentRow> {
   return apiPost<AgentRow>('/agents', input);
 }
@@ -34,6 +35,7 @@ export function updateAgent(
     description?: string;
     instruction?: string;
     toolAllowlist?: string[];
+    modelId?: string | null;
     requireApproval?: boolean;
     status?: 'active' | 'inactive';
   },

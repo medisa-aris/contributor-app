@@ -14,6 +14,7 @@ import {
   Min,
   MinLength,
   ValidateNested,
+  ValidateIf,
 } from 'class-validator';
 import { ConnectorAttachmentDto } from '../../../connectors/dto/connectors.dto';
 import { MEMORY_LIMITS } from '@bara/shared';
@@ -67,6 +68,12 @@ export class PersonalAgentDto {
   @ValidateNested({ each: true })
   @Type(() => ConnectorAttachmentDto)
   connectors?: ConnectorAttachmentDto[];
+
+  /** Model katalog untuk agent ini; null = model bawaan/preferensi pemilik. */
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsUUID()
+  modelId?: string | null;
 }
 
 export class UpdatePersonalAgentDto {
@@ -123,6 +130,12 @@ export class UpdatePersonalAgentDto {
   @ValidateNested({ each: true })
   @Type(() => ConnectorAttachmentDto)
   connectors?: ConnectorAttachmentDto[];
+
+  /** Model katalog untuk agent ini; null = model bawaan/preferensi pemilik. */
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsUUID()
+  modelId?: string | null;
 }
 
 export class FromTemplateDto {

@@ -10,6 +10,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 import { COUNTERPART_STYLES, type ConversationMode } from '@bara/shared';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
@@ -42,11 +43,20 @@ export class ChatRequestDto {
   @IsOptional()
   @IsBoolean()
   webSearch?: boolean;
+
+  /** Model katalog pilihan pengguna untuk giliran ini (disimpan pada percakapan). */
+  @IsOptional()
+  @IsUUID()
+  modelId?: string;
 }
 
 export class CreateConversationDto {
   @IsIn(CONVERSATION_MODES)
   mode: ConversationMode;
+
+  @IsOptional()
+  @IsUUID()
+  modelId?: string;
 }
 
 export class UpdateAttachmentDto {
@@ -82,6 +92,12 @@ export class UpdateConversationDto {
   @IsOptional()
   @IsBoolean()
   starred?: boolean;
+
+  /** null = kembali ke urutan bawaan (preferensi pengguna, lalu model bawaan). */
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsUUID()
+  modelId?: string | null;
 }
 
 export class CreateTaskDto {

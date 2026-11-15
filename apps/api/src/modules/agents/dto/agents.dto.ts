@@ -13,6 +13,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 
@@ -45,6 +46,12 @@ export class CreateAgentDto {
 
   @IsBoolean()
   requireApproval: boolean;
+
+  /** Model katalog untuk agent ini; null = model bawaan/preferensi pemilik. */
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsUUID()
+  modelId?: string | null;
 }
 
 export class UpdateAgentDto {
@@ -78,6 +85,12 @@ export class UpdateAgentDto {
   @IsOptional()
   @IsIn(AGENT_STATUSES)
   status?: (typeof AGENT_STATUSES)[number];
+
+  /** Model katalog untuk agent ini; null = model bawaan/preferensi pemilik. */
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsUUID()
+  modelId?: string | null;
 }
 
 export class ExecuteAgentDto {

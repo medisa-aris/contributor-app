@@ -403,6 +403,7 @@ export class MemoryExtractionService implements OnApplicationBootstrap, OnModule
           },
         ],
         guard: source.kind === 'conversation' ? { userId, conversationId: source.id } : { userId, taskId: source.id },
+        usageSource: 'memory',
         ...(extractorModel ? { model: extractorModel } : {}),
       });
       tokensIn = result.tokensIn;

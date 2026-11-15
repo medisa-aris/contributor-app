@@ -6,6 +6,7 @@ import { AppError, ERROR_CODES } from '../../common/errors/app-error';
 import { DATA_SOURCE } from '../../database/database.module';
 import { updatedRows } from '../../database/query-result';
 import { AuditService } from '../audit/audit.service';
+import { ModelAccessService } from '../ai/models/model-access.service';
 import { TasksService, type TaskEventRow, type TaskRow } from '../ai/tasks.service';
 import { EffectivePermissionsService } from '../rbac/effective-permissions.service';
 import type {
@@ -24,6 +25,7 @@ export interface AgentRow {
   tool_allowlist: string[];
   require_approval: boolean;
   status: 'active' | 'inactive';
+  model_id: string | null;
   task_count: number | null;
   created_at: string;
   updated_at: string;
@@ -47,7 +49,7 @@ export interface ApprovalRow {
 
 const AGENT_SELECT = `
   SELECT a.id, a.code, a.name, a.description, a.instruction, a.tool_allowlist, a.require_approval,
-         a.status, a.created_at, a.updated_at,
+         a.status, a.model_id, a.created_at, a.updated_at,
          (SELECT count(*)::int FROM ai_tasks t WHERE t.agent_id = a.id) AS task_count
     FROM agents a`;
 
@@ -70,6 +72,7 @@ export class AgentsService {
     private readonly tasks: TasksService,
     private readonly audit: AuditService,
     private readonly effective: EffectivePermissionsService,
+    private readonly modelAccess: ModelAccessService,
   ) {}
 
   async list(options: {
@@ -98,10 +101,11 @@ export class AgentsService {
   }
 
   async create(auth: AuthContext, dto: CreateAgentDto): Promise<AgentRow> {
+    await this.modelAccess.assertAgentModel(dto.modelId ?? null, null);
     try {
       const rows = (await this.dataSource.query(
-        `INSERT INTO agents (code, name, description, instruction, tool_allowlist, require_approval, is_template)
-         VALUES ($1, $2, $3, $4, $5, $6, true) RETURNING id`,
+        `INSERT INTO agents (code, name, description, instruction, tool_allowlist, require_approval, is_template, model_id)
+         VALUES ($1, $2, $3, $4, $5, $6, true, $7) RETURNING id`,
         [
           dto.code,
           dto.name,
@@ -109,6 +113,7 @@ export class AgentsService {
           dto.instruction,
           JSON.stringify(dto.toolAllowlist),
           dto.requireApproval,
+          dto.modelId ?? null,
         ],
       )) as { id: string }[];
       await this.audit.record({
@@ -145,6 +150,10 @@ export class AgentsService {
     if (dto.toolAllowlist !== undefined) push('tool_allowlist', JSON.stringify(dto.toolAllowlist));
     if (dto.requireApproval !== undefined) push('require_approval', dto.requireApproval);
     if (dto.status !== undefined) push('status', dto.status);
+    if (dto.modelId !== undefined) {
+      await this.modelAccess.assertAgentModel(dto.modelId, null);
+      push('model_id', dto.modelId);
+    }
     if (sets.length > 0) {
       await this.dataSource.query(
         `UPDATE agents SET ${sets.join(', ')}, updated_at = now() WHERE id = $1`,

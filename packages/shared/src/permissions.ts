@@ -16,6 +16,7 @@ export const PERMISSIONS = {
   webSearchUse: 'ai.websearch.use',
   memorySelfManage: 'ai.memory.self.manage',
   memoryDoorsOpen: 'ai.memory.doors.open',
+  modelsGrantManage: 'ai.models.grant.manage',
 
   // Knowledge Center
   knowledgeDocumentsRead: 'knowledge.documents.read',
@@ -60,6 +61,7 @@ export const PERMISSIONS = {
   auditRead: 'audit.logs.read',
   providersHealthRead: 'providers.health.read',
   guardrailsManage: 'ai.guardrails.manage',
+  modelsManage: 'ai.models.manage',
 } as const;
 
 export type PermissionId = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -118,6 +120,8 @@ export const PERMISSION_CATALOG: readonly PermissionDefinition[] = [
   { id: PERMISSIONS.configManage, name: 'Mengelola Konfigurasi', description: 'Mengubah konfigurasi aplikasi', application: 'administration', module: 'platform' },
   { id: PERMISSIONS.sessionsManage, name: 'Mengelola Sesi Pengguna', description: 'Melihat dan mencabut sesi pengguna', application: 'administration', module: 'platform' },
   { id: PERMISSIONS.auditRead, name: 'Membaca Log Audit', description: 'Log audit keamanan dan perubahan', application: 'administration', module: 'diagnostics' },
+  { id: PERMISSIONS.modelsGrantManage, name: 'Memberi Izin Model AI', description: 'Memberi izin model AI dan kuota token kepada orang, departemen, atau agent dalam jangkauan; melihat pemakaian', application: 'ai-workspace', module: 'workspace' },
+  { id: PERMISSIONS.modelsManage, name: 'Mengelola Model AI', description: 'Menambah, menguji, mengaktifkan, dan menetapkan model bawaan dari penyedia yang dikonfigurasi di .env', application: 'administration', module: 'platform' },
   { id: PERMISSIONS.guardrailsManage, name: 'Mengelola Guardrails', description: 'Mengaktifkan masking data pribadi sebelum dikirim ke LLM dan mengatur kategorinya', application: 'administration', module: 'platform' },
   { id: PERMISSIONS.providersHealthRead, name: 'Melihat Status Provider AI', description: 'Status kesehatan provider AI terkonfigurasi', application: 'administration', module: 'platform' },
 ];
