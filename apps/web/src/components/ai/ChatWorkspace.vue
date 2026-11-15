@@ -29,6 +29,7 @@ import { useFullscreen } from '@/composables/useFullscreen';
 import { isOfficeFormat, type OfficeSourceKind, type UserDocument } from '@/api/documents';
 import ChatMessage from './ChatMessage.vue';
 import ConversationConnectorsBar from './ConversationConnectorsBar.vue';
+import MemoryDoorsBar from './MemoryDoorsBar.vue';
 import WebSearchToggle from './WebSearchToggle.vue';
 import type { ToolTraceStep } from '@/api/ai';
 import { decideConversationApproval } from '@/api/ai';
@@ -1270,6 +1271,7 @@ onBeforeUnmount(() => {
             :active-document-id="viewerDoc?.id ?? null"
             :tool-steps="message.tool_trace?.steps ?? []"
             :guardrails="message.guardrails ?? null"
+            :memory-refs="message.memory_refs ?? []"
             :busy-approval-id="busyApprovalId"
             @regenerate="regenerate"
             @open-document="openDocument"
@@ -1288,6 +1290,12 @@ onBeforeUnmount(() => {
       <p v-if="streamError" class="chat__error" role="alert">{{ streamError }}</p>
 
       <ConversationConnectorsBar
+        :conversation-id="conversationId"
+        :ensure-conversation="ensureConversation"
+        :disabled="streaming || regenerating"
+      />
+
+      <MemoryDoorsBar
         :conversation-id="conversationId"
         :ensure-conversation="ensureConversation"
         :disabled="streaming || regenerating"

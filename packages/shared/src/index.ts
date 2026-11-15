@@ -13,3 +13,4 @@ export * from './dto/navigation.dto';
 export * from './dto/audit.dto';
 export * from './dto/provider.dto';
 export * from './dto/dashboard.dto';
+export * from './dto/memory.dto';

@@ -5,13 +5,16 @@ import {
   type OnApplicationBootstrap,
   type OnModuleDestroy,
 } from '@nestjs/common';
-import { AUDIT_EVENTS } from '@bara/shared';
+import { AUDIT_EVENTS, PERMISSIONS } from '@bara/shared';
 import { DataSource } from 'typeorm';
 import { AppError, ERROR_CODES } from '../../../common/errors/app-error';
 import type { AuthContext } from '../../../common/types/auth-context';
 import { DATA_SOURCE } from '../../../database/database.module';
 import { updatedRows } from '../../../database/query-result';
 import { AuditService } from '../../audit/audit.service';
+import { MemoryExtractionService } from '../../memory/memory-extraction.service';
+import { MemoryService } from '../../memory/memory.service';
+import { EffectivePermissionsService } from '../../rbac/effective-permissions.service';
 import {
   ConnectorToolsService,
   type ConnectorAttachment,
@@ -84,7 +87,19 @@ export class TaskRunnerService implements OnApplicationBootstrap, OnModuleDestro
     private readonly approvals: ToolApprovalsService,
     private readonly audit: AuditService,
     private readonly webSearch: WebSearchService,
+    private readonly effective: EffectivePermissionsService,
+    private readonly memory: MemoryService,
+    private readonly memoryNotes: MemoryExtractionService,
   ) {}
+
+  /** Izin memori pemilik tugas; runner berjalan di luar konteks permintaan HTTP. */
+  private async memoryPermissions(userId: string): Promise<Set<string>> {
+    const allowed = new Set<string>();
+    for (const permission of [PERMISSIONS.memorySelfManage, PERMISSIONS.memoryDoorsOpen]) {
+      if ((await this.effective.can(userId, permission)).allowed) allowed.add(permission);
+    }
+    return allowed;
+  }
 
   async onApplicationBootstrap(): Promise<void> {
     // Tugas yang sedang berjalan saat server mati tidak dapat dilanjutkan otomatis.
@@ -128,6 +143,7 @@ export class TaskRunnerService implements OnApplicationBootstrap, OnModuleDestro
       label = group.name;
     }
     this.webSearch.assertAllowed(auth, dto.webSearch);
+    const memoryDoors = await this.memory.assertOpenable(auth, dto.memorySubjectIds ?? []);
     const instruction = dto.instruction.trim();
     const title = dto.title?.trim() || makeTitle(instruction);
     const rows = (await this.dataSource.query(
@@ -143,6 +159,9 @@ export class TaskRunnerService implements OnApplicationBootstrap, OnModuleDestro
       ],
     )) as RunnerTask[];
     const task = rows[0]!;
+    if (memoryDoors.length > 0) {
+      await this.memory.setContextDoors(auth, { kind: 'task', id: task.id }, memoryDoors);
+    }
     await this.appendMessage(task.id, leaderId, { role: 'user', content: instruction });
     await this.event(
       task.id,
@@ -481,6 +500,10 @@ export class TaskRunnerService implements OnApplicationBootstrap, OnModuleDestro
       entityId: task.id,
       payload: { durationMs, tokensIn: result.tokensIn, tokensOut: result.tokensOut },
     });
+    if (!task.parent_task_id) {
+      const permissions = await this.memoryPermissions(task.user_id);
+      if (permissions.has(PERMISSIONS.memorySelfManage)) this.memoryNotes.scheduleTask(task.id);
+    }
   }
 
   /** Loop tool untuk satu agent; event dicatat ke tugas `eventTaskId`. */
@@ -533,6 +556,14 @@ export class TaskRunnerService implements OnApplicationBootstrap, OnModuleDestro
       }),
       ...(options.groupNote ? { groupNote: options.groupNote } : {}),
     });
+    // Sub-tugas delegasi memakai pintu memori yang dibuka pada tugas induknya.
+    const memory = await this.memory.retrieve(
+      task.user_id,
+      await this.memoryPermissions(task.user_id),
+      { kind: 'task', id: task.parent_task_id ?? task.id },
+      task.instruction,
+      { agentId: agent.id },
+    );
     const handlerMap = new Map(handlers.map((h) => [h.tool.name, h]));
     const steps: ToolTraceStep[] = [];
     return this.gateway.drainToolLoop(
@@ -540,6 +571,7 @@ export class TaskRunnerService implements OnApplicationBootstrap, OnModuleDestro
         guard: { userId: task.user_id, taskId: task.id },
         mode: 'subordinate',
         systemPrompt,
+        memoryContext: memory.block || undefined,
         toolRules:
           [
             this.connectorTools.toolRules(connectorHandlers),

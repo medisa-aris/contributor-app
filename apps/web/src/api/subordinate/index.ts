@@ -162,6 +162,7 @@ export function createAgentTask(input: {
   agentId?: string;
   groupId?: string;
   webSearch?: boolean;
+  memorySubjectIds?: string[];
 }): Promise<AgentTaskRow> {
   return apiPost<AgentTaskRow>('/ai/agent-tasks', input);
 }

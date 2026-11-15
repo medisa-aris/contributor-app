@@ -42,6 +42,10 @@ export interface GatewayChatOptions {
   toolRules?: string;
   /** Pemilik permintaan untuk kamus per percakapan dan audit Guardrails. */
   guard?: GuardScope;
+  /** Blok "Memori yang relevan" dari memori terpusat, ditambahkan setelah system prompt. */
+  memoryContext?: string;
+  /** Ganti model aktif untuk permintaan ini (mis. model ekstraksi memori). */
+  model?: string;
 }
 
 /** Hasil eksekusi satu tool di dalam loop. */
@@ -109,6 +113,7 @@ export function clampToolResult(
 export class AiGatewayService {
   private readonly logger = new Logger(AiGatewayService.name);
   private adapter: AiProviderAdapter | null = null;
+  private embedder: OpenAiCompatibleProvider | null = null;
 
   constructor(
     private readonly config: ConfigService,
@@ -150,6 +155,18 @@ export class AiGatewayService {
     return this.settings().aiModel;
   }
 
+  /**
+   * Embedding teks lewat penyedia kompatibel OpenAI. null bila penyedia aktif tidak punya
+   * endpoint embedding (Anthropic). Pemanggil wajib menyaring data pribadi lebih dulu.
+   */
+  async embed(texts: string[], model: string, signal?: AbortSignal): Promise<number[][] | null> {
+    const resolved = resolveProviderConfig(this.settings());
+    if (resolved.adapter !== 'openai-compatible') return null;
+    this.embedder ??= new OpenAiCompatibleProvider({ baseUrl: resolved.baseUrl, apiKey: resolved.apiKey });
+    const timeout = AbortSignal.timeout(this.settings().aiTimeoutMs);
+    return this.embedder.embed(texts, model, signal ? AbortSignal.any([timeout, signal]) : timeout);
+  }
+
   private buildRequest(options: GatewayChatOptions): ChatRequestOptions {
     const tools = [...(options.documents ? [CREATE_DOCUMENT_TOOL] : []), ...(options.tools ?? [])];
     validateChatMessages(
@@ -166,9 +183,12 @@ export class AiGatewayService {
         options.extraContext,
         options.documents === true,
       );
+    const systemPrompt = [basePrompt, options.memoryContext, options.toolRules]
+      .filter((part): part is string => Boolean(part?.trim()))
+      .join('\n\n');
     return {
-      model: this.settings().aiModel,
-      systemPrompt: options.toolRules ? `${basePrompt}\n\n${options.toolRules}` : basePrompt,
+      model: options.model || this.settings().aiModel,
+      systemPrompt,
       messages: options.messages,
       maxTokens:
         options.documents || (options.tools?.length ?? 0) > 0

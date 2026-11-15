@@ -1,6 +1,7 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { ConnectorsModule } from '../connectors/connectors.module';
 import { DocumentsModule } from '../documents/documents.module';
+import { MemoryModule } from '../memory/memory.module';
 import { ChatToolsService } from './chat-tools.service';
 import { ToolApprovalsService } from './tool-approvals.service';
 import { AiController } from './ai.controller';
@@ -18,7 +19,7 @@ import { WebSearchAdminController } from './web-search/web-search-admin.controll
 import { WebSearchService } from './web-search/web-search.service';
 
 @Module({
-  imports: [DocumentsModule, ConnectorsModule],
+  imports: [DocumentsModule, ConnectorsModule, forwardRef(() => MemoryModule)],
   controllers: [AiController, WorkspaceAgentsController, WebSearchAdminController, GuardrailsAdminController],
   providers: [
     AiGatewayService,

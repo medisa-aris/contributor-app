@@ -1,4 +1,4 @@
-import type { AiTaskStatus, ConversationMode } from '@bara/shared';
+import type { AiTaskStatus, ConversationMode, MemoryRefDto } from '@bara/shared';
 import type { UserDocument } from '@/api/documents/types';
 
 export type ConversationSummary = {
@@ -26,6 +26,8 @@ export type ConversationMessage = {
   tool_trace?: ToolTrace | null;
   /** Jumlah data pribadi yang dimasking per kategori pada jawaban ini. */
   guardrails?: Record<string, number> | null;
+  /** Catatan memori yang dipakai untuk jawaban ini. */
+  memory_refs?: MemoryRefDto[] | null;
 };
 
 export type ToolTraceStatus = 'running' | 'ok' | 'error' | 'pending_approval' | 'approved' | 'rejected';

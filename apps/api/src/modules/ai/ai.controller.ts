@@ -54,6 +54,8 @@ import {
 } from './chat-tools.service';
 import { ToolApprovalsService } from './tool-approvals.service';
 import { WebSearchService } from './web-search/web-search.service';
+import { MemoryExtractionService } from '../memory/memory-extraction.service';
+import { MemoryService, type MemoryRetrieval } from '../memory/memory.service';
 import { DecideToolApprovalDto, SetConversationConnectorsDto } from './dto/ai.dto';
 
 /** Isi jawaban saat giliran berhenti menunggu persetujuan tanpa teks dari model. */
@@ -75,7 +77,26 @@ export class AiController {
     private readonly chatTools: ChatToolsService,
     private readonly toolApprovals: ToolApprovalsService,
     private readonly webSearch: WebSearchService,
+    private readonly memory: MemoryService,
+    private readonly memoryNotes: MemoryExtractionService,
   ) {}
+
+  /** Memori relevan untuk giliran ini (buku sendiri + pintu yang dibuka di percakapan). */
+  private memoryFor(auth: AuthContext, conversationId: string, query: string): Promise<MemoryRetrieval> {
+    return this.memory.retrieve(
+      auth.user.id,
+      auth.effective.allowed,
+      { kind: 'conversation', id: conversationId },
+      query,
+    );
+  }
+
+  /** Jadwalkan pencatatan memori di belakang layar setelah giliran tersimpan. */
+  private afterTurn(auth: AuthContext, conversationId: string): void {
+    if (auth.effective.allowed.has(PERMISSIONS.memorySelfManage)) {
+      this.memoryNotes.scheduleConversation(conversationId);
+    }
+  }
 
   /** Ketersediaan pencarian web untuk menampilkan opsinya; nama penyedia tidak dibuka. */
   @RequirePermission(PERMISSIONS.webSearchUse)
@@ -92,6 +113,7 @@ export class AiController {
     this.webSearch.assertAllowed(auth, dto.webSearch);
     const prepared = await this.conversations.prepareTurn(auth, dto);
     const context = await this.attachments.chatContext(prepared.id);
+    const memory = await this.memoryFor(auth, prepared.id, dto.prompt);
     const pendingApprovals: string[] = [];
     const handlers = await this.chatTools.handlersFor(auth, prepared.id, pendingApprovals);
     if (handlers.length > 0) {
@@ -101,7 +123,9 @@ export class AiController {
         messages: this.conversations.toChatMessages(prepared.history),
         extraContext: context.text ?? undefined,
         images: context.images.length > 0 ? context.images : undefined,
+        memory,
       });
+      this.afterTurn(auth, prepared.id);
       const conversation = await this.conversations.detail(auth, prepared.id);
       return { conversation, assistant: turn };
     }
@@ -113,6 +137,7 @@ export class AiController {
       extraContext: context.text ?? undefined,
       images: context.images.length > 0 ? context.images : undefined,
       documents: true,
+      memoryContext: memory.block || undefined,
     });
     const created = await this.runDocumentTools(auth, prepared.id, result);
     const assistant = await this.conversations.completeTurn(prepared.id, {
@@ -121,12 +146,14 @@ export class AiController {
       tokensIn: result.tokensIn,
       tokensOut: result.tokensOut,
       ...(result.guardrails ? { guardrails: result.guardrails } : {}),
+      memoryRefs: memory.refs,
     });
     await this.documents.attachToMessage(
       auth.user.id,
       created.documents.map((doc) => doc.id),
       String(assistant.id),
     );
+    this.afterTurn(auth, prepared.id);
     const conversation = await this.conversations.detail(auth, prepared.id);
     return { conversation, assistant: { ...assistant, documents: created.documents } };
   }
@@ -157,6 +184,7 @@ export class AiController {
     try {
       const prepared = await this.conversations.prepareTurn(auth, dto);
       const context = await this.attachments.chatContext(prepared.id);
+      const memory = await this.memoryFor(auth, prepared.id, dto.prompt);
       sseWrite(res, 'ready', { conversationId: prepared.id });
       const pendingApprovals: string[] = [];
       const handlers = await this.chatTools.handlersFor(
@@ -178,9 +206,11 @@ export class AiController {
             extraContext: context.text ?? undefined,
             images: context.images.length > 0 ? context.images : undefined,
             signal: abort.signal,
+            memory,
           },
           (event, payload) => sseWrite(res, event, payload),
         );
+        this.afterTurn(auth, prepared.id);
         sseWrite(res, 'done', { conversationId: prepared.id, message });
         res.end();
         return;
@@ -194,6 +224,7 @@ export class AiController {
         extraContext: context.text ?? undefined,
         images: context.images.length > 0 ? context.images : undefined,
         documents: true,
+        memoryContext: memory.block || undefined,
       });
       let final: ChatResult | null = null;
       for (;;) {
@@ -218,12 +249,14 @@ export class AiController {
         tokensIn: final.tokensIn,
         tokensOut: final.tokensOut,
         ...(final.guardrails ? { guardrails: final.guardrails } : {}),
+        memoryRefs: memory.refs,
       });
       await this.documents.attachToMessage(
         auth.user.id,
         created.documents.map((doc) => doc.id),
         String(assistant.id),
       );
+      this.afterTurn(auth, prepared.id);
       sseWrite(res, 'done', {
         conversationId: prepared.id,
         message: { ...assistant, documents: created.documents },
@@ -361,6 +394,8 @@ export class AiController {
     const prepared = await this.conversations.prepareRegenerate(auth, id);
     this.assertModePermission(auth, prepared.mode);
     const context = await this.attachments.chatContext(prepared.id);
+    const lastPrompt = [...prepared.history].reverse().find((m) => m.role === 'user')?.content ?? '';
+    const memory = await this.memoryFor(auth, prepared.id, lastPrompt);
     const webHandlers = await this.chatTools.webHandlers(auth, prepared.id);
     if (webHandlers.length > 0) {
       const handlerMap = new Map(webHandlers.map((h) => [h.tool.name, h]));
@@ -375,6 +410,7 @@ export class AiController {
           images: context.images.length > 0 ? context.images : undefined,
           handlers: webHandlers,
           toolRules: this.chatTools.toolRules(webHandlers),
+          memoryContext: memory.block || undefined,
         },
         (event) => {
           applyLoopEvent(steps, event, handlerMap);
@@ -389,6 +425,7 @@ export class AiController {
           tokensIn: loop.tokensIn,
           tokensOut: loop.tokensOut,
           ...(loop.guardrails ? { guardrails: loop.guardrails } : {}),
+          memoryRefs: memory.refs,
         },
       );
       if (steps.length > 0) {
@@ -408,6 +445,7 @@ export class AiController {
       messages: this.conversations.toChatMessages(prepared.history),
       extraContext: context.text ?? undefined,
       images: context.images.length > 0 ? context.images : undefined,
+      memoryContext: memory.block || undefined,
     });
     const assistant = await this.conversations.replaceAssistant(
       prepared.id,
@@ -418,6 +456,7 @@ export class AiController {
         tokensIn: result.tokensIn,
         tokensOut: result.tokensOut,
         ...(result.guardrails ? { guardrails: result.guardrails } : {}),
+        memoryRefs: memory.refs,
       },
     );
     const conversation = await this.conversations.detail(auth, prepared.id);
@@ -605,14 +644,17 @@ export class AiController {
       extraContext?: string;
       images?: { name: string; mimeType: string; dataBase64: string }[];
       signal?: AbortSignal;
+      memory?: MemoryRetrieval;
     },
     emit?: (event: string, payload: unknown) => void,
   ) {
+    const { memory, ...loopOptions } = options;
     const handlerMap = new Map(handlers.map((h) => [h.tool.name, h]));
     const steps: ToolTraceStep[] = [];
     const result = await this.gateway.drainToolLoop(
       {
-        ...options,
+        ...loopOptions,
+        memoryContext: memory?.block || undefined,
         guard: { userId: auth.user.id, conversationId },
         documents: true,
         handlers,
@@ -647,6 +689,7 @@ export class AiController {
       tokensIn: result.tokensIn,
       tokensOut: result.tokensOut,
       ...(result.guardrails ? { guardrails: result.guardrails } : {}),
+      memoryRefs: memory?.refs ?? [],
     });
     const trace: ToolTrace = {
       steps,

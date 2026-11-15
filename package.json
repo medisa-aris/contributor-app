@@ -23,6 +23,7 @@
     "test:integration": "npm run test:integration -w @bara/api",
     "db:migrate": "npm run migration:run -w @bara/api",
     "db:revert": "npm run migration:revert -w @bara/api",
+    "db:memory-vector": "npm run db:memory-vector -w @bara/api",
     "db:seed": "npm run seed -w @bara/api",
     "db:create-admin": "npm run create-admin -w @bara/api",
     "infra:up": "bash scripts/infra.sh up",

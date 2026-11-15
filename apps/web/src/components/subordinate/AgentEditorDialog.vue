@@ -11,6 +11,8 @@ import {
   type Skill,
 } from '@/api/subordinate';
 import { CaButton, CaCheckbox, CaDialog, CaField, CaInput, CaSwitch, CaTextarea } from '@/components/ui';
+import { useAuthStore } from '@/stores/auth.store';
+import AgentMemoryPanel from './AgentMemoryPanel.vue';
 
 const props = defineProps<{
   agent: PersonalAgent | null;
@@ -21,6 +23,8 @@ const open = defineModel<boolean>('open', { default: false });
 const emit = defineEmits<{ saved: [agent: PersonalAgent] }>();
 
 const { t } = useI18n();
+const auth = useAuthStore();
+const canMemory = computed(() => auth.can('ai.memory.self.manage'));
 
 const COLORS = ['#0f766e', '#2563eb', '#7c3aed', '#c2410c', '#be123c', '#15803d', '#a16207', '#0e7490'];
 
@@ -173,6 +177,7 @@ async function submit(): Promise<void> {
           <CaTextarea :id="id" v-model="form.memory" :aria-describedby="describedBy" :rows="3" />
         </template>
       </CaField>
+      <AgentMemoryPanel v-if="agent && canMemory" :key="agent.id" :agent-id="agent.id" />
 
       <fieldset class="ae__group">
         <legend>{{ t('subordinate.agents.skills') }}</legend>

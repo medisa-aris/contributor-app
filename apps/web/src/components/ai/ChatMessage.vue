@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { GUARDRAIL_CATEGORIES } from '@bara/shared';
+import { GUARDRAIL_CATEGORIES, type MemoryRefDto } from '@bara/shared';
 import type { ToolTraceStep } from '@/api/ai';
 import ToolTraceList from './ToolTraceList.vue';
 import { computed, onBeforeUnmount, ref } from 'vue';
@@ -27,6 +27,7 @@ const props = withDefaults(
     toolSteps?: ToolTraceStep[];
     busyApprovalId?: string | null;
     guardrails?: Record<string, number> | null;
+    memoryRefs?: MemoryRefDto[];
   }>(),
   {
     model: null,
@@ -41,6 +42,7 @@ const props = withDefaults(
     toolSteps: () => [],
     busyApprovalId: null,
     guardrails: null,
+    memoryRefs: () => [],
   },
 );
 
@@ -151,6 +153,21 @@ onBeforeUnmount(() => {
       <CaIcon name="shield" :size="12" />
       <span>{{ guardInfo }}</span>
     </p>
+    <details v-if="role === 'assistant' && !pending && memoryRefs.length > 0" class="msg__memory">
+      <summary class="msg__web">
+        <CaIcon name="book" :size="12" />
+        <span>{{ t('memory.citations.title', { n: memoryRefs.length }) }}</span>
+      </summary>
+      <ul class="msg__memory-list">
+        <li v-for="note in memoryRefs" :key="note.entryId">
+          <span class="msg__memory-owner">
+            {{ note.own ? t('memory.citations.own') : t('memory.citations.from', { name: note.subjectName }) }}
+            · {{ t(`memory.types.${note.type}`) }}
+          </span>
+          {{ note.content }}
+        </li>
+      </ul>
+    </details>
     <footer class="msg__footer">
       <div v-if="role === 'assistant'" class="msg__meta">
         <span v-if="model" class="msg__model">{{ model }}</span>
@@ -225,6 +242,34 @@ onBeforeUnmount(() => {
   margin: var(--ca-space-3) 0 0;
   font-size: var(--ca-text-100);
   color: var(--ca-fg-2);
+}
+
+.msg__memory > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.msg__memory > summary::-webkit-details-marker {
+  display: none;
+}
+
+.msg__memory-list {
+  margin: var(--ca-space-2) 0 0;
+  padding: var(--ca-space-3) var(--ca-space-4) var(--ca-space-3) var(--ca-space-8);
+  border-left: 2px solid var(--ca-color-brand);
+  background: var(--ca-bg-surface-2);
+  border-radius: 0 var(--ca-radius-medium, 4px) var(--ca-radius-medium, 4px) 0;
+  font-size: var(--ca-text-200);
+  color: var(--ca-fg-1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ca-space-2);
+}
+
+.msg__memory-owner {
+  display: block;
+  font-size: var(--ca-text-100);
+  color: var(--ca-fg-3);
 }
 
 .msg__footer {

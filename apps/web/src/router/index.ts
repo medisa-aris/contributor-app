@@ -89,6 +89,7 @@ export const router = createRouter({
         admin('workspace/history', 'workspace-history', () => import('@/views/WorkspaceHistoryView.vue'), 'ai.workspace.history.read'),
         admin('workspace/documents', 'workspace-documents', () => import('@/views/MyDocumentsView.vue'), 'ai.documents.manage'),
         admin('workspace/mind-map', 'workspace-mind-map', () => import('@/views/MindMapView.vue'), 'ai.mindmap.team.read'),
+        admin('workspace/memory', 'workspace-memory', () => import('@/views/MemoryView.vue'), 'ai.memory.self.manage'),
         admin('knowledge/documents', 'knowledge-documents', () => import('@/views/knowledge/KnowledgeDocumentsView.vue'), 'knowledge.documents.read'),
         admin('knowledge/collections', 'knowledge-collections', () => import('@/views/knowledge/KnowledgeCollectionsView.vue'), 'knowledge.collections.read'),
         admin('knowledge/search', 'knowledge-search', () => import('@/views/knowledge/KnowledgeSearchView.vue'), 'knowledge.search.use'),

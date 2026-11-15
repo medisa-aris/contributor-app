@@ -16,6 +16,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { ConnectorAttachmentDto } from '../../../connectors/dto/connectors.dto';
+import { MEMORY_LIMITS } from '@bara/shared';
 import { AI_LIMITS } from '../../limits';
 
 export class PersonalAgentDto {
@@ -227,6 +228,13 @@ export class AgentTaskDto {
   @IsOptional()
   @IsBoolean()
   webSearch?: boolean;
+
+  /** Pintu memori (subjek bawahan) yang dibuka untuk tugas ini. */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MEMORY_LIMITS.maxOpenDoors)
+  @IsUUID('4', { each: true })
+  memorySubjectIds?: string[];
 }
 
 export class TaskReplyDto {

@@ -5,6 +5,13 @@ import { ALL_PERMISSION_IDS, PERMISSION_CATALOG, SYSTEM_ROLES } from '@bara/shar
 export const TEST_PASSWORD = 'Test123456!';
 
 const TRUNCATE_TABLES = [
+  'memory_extraction_runs',
+  'memory_access_log',
+  'task_memory_doors',
+  'conversation_memory_doors',
+  'memory_doors',
+  'memory_entries',
+  'memory_subjects',
   'guardrail_terms',
   'connector_tool_calls',
   'connector_grants',
@@ -74,6 +81,8 @@ export const MANAGER_PERMISSIONS = [
   'ai.mindmap.team.read',
   'ai.documents.manage',
   'ai.agents.manage',
+  'ai.memory.self.manage',
+  'ai.memory.doors.open',
   'connectors.use',
   'knowledge.documents.read',
   'knowledge.search.use',
@@ -88,6 +97,7 @@ export const MANAGER_PERMISSIONS = [
 
 export const STAF_PERMISSIONS = [
   'ai.workspace.access',
+  'ai.memory.self.manage',
   'knowledge.documents.read',
   'knowledge.search.use',
   'agents.view',

@@ -101,6 +101,11 @@ export class CreateDepartmentDto {
   @IsOptional()
   @IsUUID('4')
   parentId?: string | null;
+
+  /** Kepala departemen: dasar jangkauan pintu memori atasan. */
+  @IsOptional()
+  @IsUUID('4')
+  headUserId?: string | null;
 }
 
 export class UpdateDepartmentDto {
@@ -118,6 +123,10 @@ export class UpdateDepartmentDto {
   @IsOptional()
   @IsUUID('4')
   parentId?: string | null;
+
+  @IsOptional()
+  @IsUUID('4')
+  headUserId?: string | null;
 }
 
 export class CreatePolicyDto {

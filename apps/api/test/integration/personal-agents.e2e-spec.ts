@@ -91,6 +91,10 @@ describe('Agent pribadi, skill, grup (e2e)', () => {
     runner = app.get(TaskRunnerService);
     await resetDatabase(dataSource);
     fixtures = await seedTestFixtures(dataSource);
+    // Memori diuji di memory.e2e-spec; di sini ekstraksi latar belakang akan mengacak urutan permintaan.
+    await dataSource.query(
+      `INSERT INTO app_config (key, value, description, is_public) VALUES ('ai.memory_enabled', 'false', 'uji', true)`,
+    );
     await dataSource.query(`DROP TABLE IF EXISTS agent_demo_findings`);
     await dataSource.query(
       `CREATE TABLE agent_demo_findings (id int PRIMARY KEY, title text NOT NULL, status text NOT NULL)`,

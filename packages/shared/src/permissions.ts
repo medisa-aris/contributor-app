@@ -14,6 +14,8 @@ export const PERMISSIONS = {
   agentsManagePersonal: 'ai.agents.manage',
   connectorsUse: 'connectors.use',
   webSearchUse: 'ai.websearch.use',
+  memorySelfManage: 'ai.memory.self.manage',
+  memoryDoorsOpen: 'ai.memory.doors.open',
 
   // Knowledge Center
   knowledgeDocumentsRead: 'knowledge.documents.read',
@@ -82,6 +84,8 @@ export const PERMISSION_CATALOG: readonly PermissionDefinition[] = [
   { id: PERMISSIONS.agentsManagePersonal, name: 'Mengelola Agent Pribadi', description: 'Membuat agent, skill, dan grup agent pribadi di mode Subordinate', application: 'ai-workspace', module: 'modes' },
   { id: PERMISSIONS.connectorsUse, name: 'Memakai Konektor Data', description: 'Memasang konektor data yang di-grant admin ke agent dan percakapan', application: 'ai-workspace', module: 'modes' },
   { id: PERMISSIONS.webSearchUse, name: 'Mencari di Internet', description: 'Mengaktifkan pencarian web pada percakapan dan tugas AI (pertanyaan dikirim ke penyedia pencarian pihak ketiga)', application: 'ai-workspace', module: 'modes' },
+  { id: PERMISSIONS.memorySelfManage, name: 'Mengelola Memori Saya', description: 'Melihat, mengubah, dan menghapus catatan memori milik sendiri serta mengatur pintu memori', application: 'ai-workspace', module: 'workspace' },
+  { id: PERMISSIONS.memoryDoorsOpen, name: 'Membuka Pintu Memori Tim', description: 'Membuka pintu memori bawahan (orang atau agent) yang sudah diizinkan pemiliknya, untuk memperluas memori AI', application: 'ai-workspace', module: 'workspace' },
   { id: PERMISSIONS.knowledgeDocumentsRead, name: 'Melihat Dokumen Pengetahuan', description: 'Daftar dan detail dokumen pengetahuan', application: 'knowledge-center', module: 'content' },
   { id: PERMISSIONS.knowledgeCollectionsRead, name: 'Melihat Koleksi Pengetahuan', description: 'Koleksi sumber pengetahuan', application: 'knowledge-center', module: 'content' },
   { id: PERMISSIONS.knowledgeCollectionsManage, name: 'Mengelola Koleksi Pengetahuan', description: 'Membuat dan mengubah koleksi sumber pengetahuan', application: 'knowledge-center', module: 'content' },

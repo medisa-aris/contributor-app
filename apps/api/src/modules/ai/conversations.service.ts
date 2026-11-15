@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { AUDIT_EVENTS, type ConversationMode } from '@bara/shared';
+import { AUDIT_EVENTS, type ConversationMode, type MemoryRefDto } from '@bara/shared';
 import { DataSource } from 'typeorm';
 import type { AuthContext } from '../../common/types/auth-context';
 import { AppError, ERROR_CODES } from '../../common/errors/app-error';
@@ -35,6 +35,17 @@ export interface ConversationMessageRow {
   guardrails?: Record<string, number> | null;
   /** Dokumen yang dibuat AI pada pesan ini (hanya terisi di detail / respons chat). */
   documents?: UserDocument[];
+  /** Catatan memori yang disisipkan ke prompt saat jawaban ini dibuat (sitasi). */
+  memory_refs?: MemoryRefDto[] | null;
+}
+
+interface AssistantReply {
+  content: string;
+  model: string | null;
+  tokensIn: number | null;
+  tokensOut: number | null;
+  guardrails?: Record<string, number>;
+  memoryRefs?: MemoryRefDto[];
 }
 
 export interface ConversationDetail extends ConversationSummary {
@@ -129,7 +140,7 @@ export class ConversationsService {
       throw new AppError(ERROR_CODES.notFound, 'Percakapan tidak ditemukan.', 404);
     }
     const messages = (await this.dataSource.query(
-      `SELECT id, role, content, model, tokens_in, tokens_out, created_at, guardrails,
+      `SELECT id, role, content, model, tokens_in, tokens_out, created_at, guardrails, memory_refs,
               CASE WHEN tool_trace IS NULL THEN NULL ELSE tool_trace - 'transcript' END AS tool_trace
          FROM conversation_messages WHERE conversation_id = $1
         ORDER BY id`,
@@ -230,20 +241,12 @@ export class ConversationsService {
   }
 
   /** Simpan jawaban asisten di akhir giliran, lalu kembalikan percakapan lengkap. */
-  async completeTurn(
-    conversationId: string,
-    reply: {
-      content: string;
-      model: string | null;
-      tokensIn: number | null;
-      tokensOut: number | null;
-      guardrails?: Record<string, number>;
-    },
-  ): Promise<ConversationMessageRow> {
+  async completeTurn(conversationId: string, reply: AssistantReply): Promise<ConversationMessageRow> {
     const inserted = (await this.dataSource.query(
-      `INSERT INTO conversation_messages (conversation_id, role, content, model, tokens_in, tokens_out, guardrails)
-       VALUES ($1, 'assistant', $2, $3, $4, $5, $6)
-       RETURNING id, role, content, model, tokens_in, tokens_out, created_at, guardrails`,
+      `INSERT INTO conversation_messages
+         (conversation_id, role, content, model, tokens_in, tokens_out, guardrails, memory_refs)
+       VALUES ($1, 'assistant', $2, $3, $4, $5, $6, $7)
+       RETURNING id, role, content, model, tokens_in, tokens_out, created_at, guardrails, memory_refs`,
       [
         conversationId,
         reply.content,
@@ -251,6 +254,7 @@ export class ConversationsService {
         reply.tokensIn,
         reply.tokensOut,
         reply.guardrails ? JSON.stringify(reply.guardrails) : null,
+        reply.memoryRefs?.length ? JSON.stringify(reply.memoryRefs) : null,
       ],
     )) as ConversationMessageRow[];
     await this.dataSource.query(`UPDATE conversations SET updated_at = now() WHERE id = $1`, [
@@ -359,29 +363,25 @@ export class ConversationsService {
   async replaceAssistant(
     conversationId: string,
     previousAssistantId: string,
-    reply: {
-      content: string;
-      model: string | null;
-      tokensIn: number | null;
-      tokensOut: number | null;
-      guardrails?: Record<string, number>;
-    },
+    reply: AssistantReply,
   ): Promise<ConversationMessageRow> {
     return this.dataSource.transaction(async (manager) => {
       await manager.query(`DELETE FROM conversation_messages WHERE id = $1`, [previousAssistantId]);
       const inserted = updatedRows<ConversationMessageRow>(
         await manager.query(
-          `INSERT INTO conversation_messages (conversation_id, role, content, model, tokens_in, tokens_out, guardrails)
-           VALUES ($1, 'assistant', $2, $3, $4, $5, $6)
-           RETURNING id, role, content, model, tokens_in, tokens_out, created_at, guardrails`,
+          `INSERT INTO conversation_messages
+             (conversation_id, role, content, model, tokens_in, tokens_out, guardrails, memory_refs)
+           VALUES ($1, 'assistant', $2, $3, $4, $5, $6, $7)
+           RETURNING id, role, content, model, tokens_in, tokens_out, created_at, guardrails, memory_refs`,
           [
-        conversationId,
-        reply.content,
-        reply.model,
-        reply.tokensIn,
-        reply.tokensOut,
-        reply.guardrails ? JSON.stringify(reply.guardrails) : null,
-      ],
+            conversationId,
+            reply.content,
+            reply.model,
+            reply.tokensIn,
+            reply.tokensOut,
+            reply.guardrails ? JSON.stringify(reply.guardrails) : null,
+            reply.memoryRefs?.length ? JSON.stringify(reply.memoryRefs) : null,
+          ],
         ),
       );
       await manager.query(`UPDATE conversations SET updated_at = now() WHERE id = $1`, [
