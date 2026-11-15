@@ -30,6 +30,9 @@ const MAX_OPERATIONS = 5;
 const MIN_CONFIDENCE = 0.5;
 const MAX_ENTRY_CHARS = 300;
 const RETENTION_INTERVAL_MS = 60 * 60_000;
+const QUEUE_LOG_INTERVAL_MS = 5 * 60_000;
+const MAX_MEMBER_AGENTS = 5;
+const MAX_MEMBER_CHARS = 1200;
 
 export const EXTRACTOR_PROMPT = `Anda adalah pencatat klinis untuk memori terpusat ContributorAI.
 Dari transkrip, catat hal yang tahan lama tentang SUBJEK (bukan pengetahuan umum dan bukan tentang AI):
@@ -50,14 +53,15 @@ Aturan:
   - selain itu → op "add".
 
 Jawab HANYA JSON tanpa teks lain:
-{"operations":[{"op":"add|update|supersede","targetId":"<id catatan lama atau null>","about":"user|agent",
+{"operations":[{"op":"add|update|supersede","targetId":"<id catatan lama atau null>","about":"user|agent|agent2|…",
 "type":"profile|preference|fact|decision|episode|skill","content":"...","importance":1-5,
 "confidence":0-1,"sensitivity":"shareable|private"}]}`;
 
 export interface ExtractionOperation {
   op: 'add' | 'update' | 'supersede';
   targetId: string | null;
-  about: 'user' | 'agent';
+  /** "user", "agent" (agent utama/Leader), atau "agent2", "agent3", … untuk anggota grup. */
+  about: string;
   type: MemoryEntryType;
   content: string;
   importance: number;
@@ -111,7 +115,7 @@ export function parseOperations(raw: string): ExtractionOperation[] {
     operations.push({
       op,
       targetId: typeof item.targetId === 'string' && item.targetId ? item.targetId : null,
-      about: item.about === 'agent' ? 'agent' : 'user',
+      about: typeof item.about === 'string' && /^agent\d*$/.test(item.about.trim()) ? item.about.trim() : 'user',
       type,
       content: content.slice(0, MAX_ENTRY_CHARS),
       importance: Math.min(5, Math.max(1, Math.round(Number(item.importance) || 3))),
@@ -131,7 +135,7 @@ interface ExistingEntry {
 }
 
 interface ExtractionSubject {
-  about: 'user' | 'agent';
+  about: string;
   subjectId: string;
   name: string;
 }
@@ -146,6 +150,7 @@ export class MemoryExtractionService implements OnApplicationBootstrap, OnModule
   private readonly pending = new Map<string, NodeJS.Timeout>();
   private readonly inflight = new Set<Promise<unknown>>();
   private retentionTimer: NodeJS.Timeout | null = null;
+  private queueTimer: NodeJS.Timeout | null = null;
 
   constructor(
     @Inject(DATA_SOURCE) private readonly dataSource: DataSource,
@@ -160,7 +165,34 @@ export class MemoryExtractionService implements OnApplicationBootstrap, OnModule
     if (process.env.NODE_ENV === 'test') return;
     this.retentionTimer = setInterval(() => void this.applyRetention(), RETENTION_INTERVAL_MS);
     this.retentionTimer.unref();
+    this.queueTimer = setInterval(() => void this.logQueue(), QUEUE_LOG_INTERVAL_MS);
+    this.queueTimer.unref();
     this.track(this.resumePending());
+  }
+
+  /** Kedalaman antrean pencatatan dan embedding, untuk observabilitas. */
+  async queueStats(): Promise<{ scheduled: number; running: number; embeddingBacklog: number | null }> {
+    let embeddingBacklog: number | null = null;
+    if (await this.embedding.vectorAvailable()) {
+      const rows = (await this.dataSource.query(
+        `SELECT count(*)::int AS n FROM memory_entries WHERE status = 'active' AND embedding IS NULL`,
+      )) as { n: number }[];
+      embeddingBacklog = rows[0]?.n ?? 0;
+    }
+    return { scheduled: this.pending.size, running: this.inflight.size, embeddingBacklog };
+  }
+
+  private async logQueue(): Promise<void> {
+    try {
+      const stats = await this.queueStats();
+      if (stats.scheduled + stats.running + (stats.embeddingBacklog ?? 0) === 0) return;
+      this.logger.log(
+        `Antrean memori: ${stats.scheduled} terjadwal, ${stats.running} berjalan` +
+          (stats.embeddingBacklog === null ? '' : `, ${stats.embeddingBacklog} catatan menunggu embedding`),
+      );
+    } catch (error) {
+      this.logger.warn(`Statistik antrean memori gagal: ${(error as Error).message}`);
+    }
   }
 
   /**
@@ -201,6 +233,7 @@ export class MemoryExtractionService implements OnApplicationBootstrap, OnModule
     for (const timer of this.pending.values()) clearTimeout(timer);
     this.pending.clear();
     if (this.retentionTimer) clearInterval(this.retentionTimer);
+    if (this.queueTimer) clearInterval(this.queueTimer);
   }
 
   /** Jadwalkan pencatatan percakapan; giliran beruntun digabung (debounce). */
@@ -322,6 +355,12 @@ export class MemoryExtractionService implements OnApplicationBootstrap, OnModule
         }[])[0]?.name ?? null;
       if (agentSubject && agentName) subjects.push({ about: 'agent', subjectId: agentSubject, name: agentName });
     }
+    const members = await this.groupContributions(taskId, task.working_agent_id);
+    for (const [index, member] of members.entries()) {
+      const subjectId = await this.scope.ensureAgentSubject(member.agentId);
+      if (subjectId) subjects.push({ about: `agent${index + 2}`, subjectId, name: member.name });
+    }
+    const memberSubjects = subjects.filter((s) => /^agent\d+$/.test(s.about));
     const replies = (await this.dataSource.query(
       `SELECT message->>'content' AS content FROM ai_task_messages
         WHERE task_id = $1 AND message->>'role' = 'user' ORDER BY id LIMIT 6`,
@@ -334,20 +373,61 @@ export class MemoryExtractionService implements OnApplicationBootstrap, OnModule
         .slice(1)
         .filter((r) => r.content)
         .map((r) => `${task.display_name} menambahkan: ${r.content!.slice(0, MAX_MESSAGE_CHARS)}`),
+      ...members
+        .filter((m) => memberSubjects.some((s) => s.name === m.name))
+        .map((m) => `Kontribusi anggota grup ${m.name}:\n${m.text}`),
       `Hasil kerja ${agentName ?? 'agent'}:`,
       (task.result ?? '').slice(0, MAX_MESSAGE_CHARS * 2),
     ].join('\n\n');
+    const memberNote =
+      memberSubjects.length > 0
+        ? ' Anggota grup: ' +
+          memberSubjects.map((s) => `"${s.name}" (about="${s.about}")`).join(', ') +
+          '. Catat untuk anggota hanya hal yang tampak dari kontribusinya sendiri.'
+        : '';
     await this.run(
       task.user_id,
       { kind: 'task', id: taskId, messageId: null },
       transcript,
       subjects,
-      agentName
+      (agentName
         ? `Subjek: ${task.display_name} (pengguna, about="user") dan agent "${agentName}" (about="agent"). ` +
-            'Untuk agent, catat cara kerja, prosedur, dan preferensi pemilik yang perlu diingat agent pada tugas berikutnya.'
-        : `Subjek: ${task.display_name} (pengguna).`,
+          'Untuk agent, catat cara kerja, prosedur, dan preferensi pemilik yang perlu diingat agent pada tugas berikutnya.'
+        : `Subjek: ${task.display_name} (pengguna).`) + memberNote,
     );
     await this.dataSource.query(`UPDATE ai_tasks SET memory_extracted_at = now() WHERE id = $1`, [taskId]);
+  }
+
+  /**
+   * Kontribusi agent anggota grup selain agent utama: hasil sub-tugas delegasi dan giliran diskusi.
+   * Hanya agent aktif milik pemilik tugas yang ikut dicatat.
+   */
+  private async groupContributions(
+    taskId: string,
+    leaderAgentId: string | null,
+  ): Promise<{ agentId: string; name: string; text: string }[]> {
+    const rows = (await this.dataSource.query(
+      `SELECT a.id AS agent_id, a.name, string_agg(x.text, E'\n\n' ORDER BY x.at) AS text
+         FROM (
+           SELECT c.agent_id, c.result AS text, c.finished_at AS at
+             FROM ai_tasks c WHERE c.parent_task_id = $1 AND c.status = 'completed' AND c.result IS NOT NULL
+           UNION ALL
+           SELECT (e.payload->>'agentId')::uuid, e.payload->>'content', e.created_at
+             FROM ai_task_events e
+            WHERE e.task_id = $1 AND e.event_type = 'discussion' AND e.payload ? 'agentId'
+         ) x
+         JOIN agents a ON a.id = x.agent_id
+         JOIN ai_tasks t ON t.id = $1
+        WHERE a.owner_user_id = t.user_id AND a.status = 'active'
+          AND ($2::uuid IS NULL OR a.id <> $2::uuid)
+        GROUP BY a.id, a.name
+        ORDER BY min(x.at)
+        LIMIT $3`,
+      [taskId, leaderAgentId, MAX_MEMBER_AGENTS],
+    )) as { agent_id: string; name: string; text: string | null }[];
+    return rows
+      .filter((r) => r.text)
+      .map((r) => ({ agentId: r.agent_id, name: r.name, text: r.text!.slice(-MAX_MEMBER_CHARS) }));
   }
 
   /** Catatan aktif yang paling mungkin bersinggungan dengan transkrip, untuk rekonsiliasi. */
@@ -389,6 +469,13 @@ export class MemoryExtractionService implements OnApplicationBootstrap, OnModule
         ? existing.map((e) => `- id=${e.id} about=${aboutOf.get(e.subject_id)} (${e.type}) ${e.content}`).join('\n')
         : '(belum ada)';
     const { extractorModel } = await this.settings.get();
+    // Kotak tinjauan (P2): catatan baru/berubah ditahan bila pemilik buku mewajibkan tinjauan.
+    const reviewed = new Set(
+      ((await this.dataSource.query(
+        `SELECT subject_id FROM memory_doors WHERE subject_id = ANY($1::uuid[]) AND review_required`,
+        [subjects.map((s) => s.subjectId)],
+      )) as { subject_id: string }[]).map((r) => r.subject_id),
+    );
     const counts = { added: 0, updated: 0, superseded: 0 };
     let tokensIn: number | null = null;
     let tokensOut: number | null = null;
@@ -419,9 +506,20 @@ export class MemoryExtractionService implements OnApplicationBootstrap, OnModule
           await this.dataSource.query(
             `UPDATE memory_entries
                 SET content = $2, type = $3, importance = $4, confidence = $5, embedding_model = NULL,
-                    source_kind = $6, source_id = $7, source_message_id = $8, updated_at = now()
+                    source_kind = $6, source_id = $7, source_message_id = $8, updated_at = now(),
+                    needs_review = needs_review OR $9
               WHERE id = $1 AND status = 'active' AND NOT edited_by_owner`,
-            [target.id, content, operation.type, operation.importance, operation.confidence, source.kind, source.id, source.messageId],
+            [
+              target.id,
+              content,
+              operation.type,
+              operation.importance,
+              operation.confidence,
+              source.kind,
+              source.id,
+              source.messageId,
+              reviewed.has(subject.subjectId),
+            ],
           );
           touched.push({ id: target.id, content });
           counts.updated += 1;
@@ -430,8 +528,8 @@ export class MemoryExtractionService implements OnApplicationBootstrap, OnModule
         const inserted = (await this.dataSource.query(
           `INSERT INTO memory_entries
              (subject_id, type, content, importance, confidence, sensitivity, source_kind, source_id,
-              source_message_id, supersedes_id)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+              source_message_id, supersedes_id, needs_review)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
           [
             subject.subjectId,
             operation.type,
@@ -443,6 +541,7 @@ export class MemoryExtractionService implements OnApplicationBootstrap, OnModule
             source.id,
             source.messageId,
             operation.op === 'supersede' && targetUsable ? target.id : null,
+            reviewed.has(subject.subjectId),
           ],
         )) as { id: string }[];
         touched.push({ id: inserted[0]!.id, content });

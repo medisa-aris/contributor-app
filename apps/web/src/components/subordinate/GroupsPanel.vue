@@ -10,6 +10,7 @@ import {
   type GroupMode,
   type PersonalAgent,
 } from '@/api/subordinate';
+import { useAuthStore } from '@/stores/auth.store';
 import { useToastStore } from '@/stores/toast.store';
 import {
   CaBadge,
@@ -22,6 +23,7 @@ import {
   CaRadioGroup,
   CaSelect,
   CaSpinner,
+  CaSwitch,
   CaTextarea,
   type CaSelectOption,
 } from '@/components/ui';
@@ -33,6 +35,8 @@ const emit = defineEmits<{ changed: []; assign: [groupId: string] }>();
 
 const { t } = useI18n();
 const toast = useToastStore();
+const auth = useAuthStore();
+const canUseMemory = computed(() => auth.can('ai.memory.self.manage'));
 
 const open = ref(false);
 const editing = ref<AgentGroup | null>(null);
@@ -45,6 +49,7 @@ const form = reactive({
   leaderAgentId: '',
   memberAgentIds: [] as string[],
   maxRounds: '3',
+  shareMemory: false,
 });
 
 const modeOptions = computed<CaRadioOption[]>(() => [
@@ -71,6 +76,7 @@ function openEditor(group: AgentGroup | null): void {
     leaderAgentId: group?.leader_agent_id ?? props.agents[0]?.id ?? '',
     memberAgentIds: group?.members.map((m) => m.id).filter((id) => id !== group.leader_agent_id) ?? [],
     maxRounds: String(group?.max_rounds ?? 3),
+    shareMemory: group?.share_memory ?? false,
   });
   error.value = '';
   open.value = true;
@@ -101,6 +107,7 @@ async function submit(): Promise<void> {
     leaderAgentId: form.leaderAgentId,
     memberAgentIds: form.memberAgentIds.filter((id) => id !== form.leaderAgentId),
     maxRounds: Number(form.maxRounds) || 3,
+    shareMemory: form.shareMemory,
   };
   try {
     if (editing.value) await updateGroup(editing.value.id, payload);
@@ -208,6 +215,10 @@ async function remove(group: AgentGroup): Promise<void> {
             <CaInput :id="id" v-model="form.maxRounds" inputmode="numeric" :aria-describedby="describedBy" />
           </template>
         </CaField>
+        <div v-if="canUseMemory" class="gp__share">
+          <CaSwitch v-model="form.shareMemory" :label="t('subordinate.groups.shareMemory')" />
+          <p class="gp__muted">{{ t('subordinate.groups.shareMemoryHint') }}</p>
+        </div>
         <p v-if="agentById(form.leaderAgentId)" class="gp__muted">
           {{ form.mode === 'delegate' ? t('subordinate.groups.delegatePreview', { leader: agentById(form.leaderAgentId)!.name }) : t('subordinate.groups.discussionPreview') }}
         </p>
@@ -230,6 +241,12 @@ async function remove(group: AgentGroup): Promise<void> {
 }
 
 .gp__intro,
+.gp__share {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ca-space-1);
+}
+
 .gp__muted {
   margin: 0;
   font-size: var(--ca-text-200);

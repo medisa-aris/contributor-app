@@ -1394,6 +1394,9 @@ export const id = {
       members: 'Anggota',
       maxRounds: 'Jumlah ronde maksimal',
       maxRoundsHint: '1–6 ronde; berhenti lebih awal bila semua sepakat.',
+      shareMemory: 'Memori bersama antar-anggota',
+      shareMemoryHint:
+        'Setiap agent anggota ikut membaca catatan agent lain di grup ini (sesuai pintu masing-masing agent).',
       modeDelegate: 'Delegasi Leader',
       modeDelegateHint: 'Leader membagi tugas ke anggota lalu menggabungkan hasil.',
       modeDiscussion: 'Diskusi bergiliran',
@@ -1574,7 +1577,13 @@ export const id = {
     title: 'Memori Saya',
     description:
       'Catatan ringkas yang diingat AI tentang Anda dari percakapan dan tugas. Anda yang memutuskan apa yang boleh dilihat atasan.',
-    tabs: { entries: 'Catatan', door: 'Pintu saya', log: 'Siapa yang membuka pintu saya' },
+    tabs: {
+      entries: 'Catatan',
+      review: 'Kotak tinjauan',
+      door: 'Pintu saya',
+      log: 'Siapa yang membuka pintu saya',
+      team: 'Ringkasan tim',
+    },
     stats: {
       total: 'Total catatan',
       shareable: 'Terlihat lewat pintu',
@@ -1584,6 +1593,39 @@ export const id = {
       semantic: 'Pencarian semantik',
       semanticOn: 'Aktif',
       semanticOff: 'Teks penuh',
+      pending: 'Menunggu tinjauan',
+    },
+    profile: {
+      title: 'Ringkasan profil',
+      description:
+        'Ringkasan yang disusun AI dari catatan Anda dan dipakai di setiap jawaban untuk Anda sendiri. Ringkasan ini tidak pernah terlihat lewat pintu.',
+      empty: 'Ringkasan dibuat setelah buku Anda berisi setidaknya 5 catatan.',
+      refresh: 'Perbarui ringkasan',
+      refreshed: 'Ringkasan profil diperbarui',
+      meta: 'Dari {n} catatan · {at}',
+    },
+    review: {
+      description:
+        'Catatan baru dari percakapan dan tugas ditahan di sini. Setujui agar dapat terlihat lewat pintu, jadikan pribadi, atau hapus.',
+      empty: 'Tidak ada catatan yang menunggu tinjauan.',
+      offHint: 'Kotak tinjauan tidak aktif: catatan baru langsung dapat dibagikan. Aktifkan di tab Pintu saya.',
+      approve: 'Setujui',
+      approveAll: 'Setujui semua',
+      makePrivate: 'Jadikan pribadi',
+      delete: 'Hapus',
+      done: '{n} catatan ditinjau',
+      pending: 'Menunggu tinjauan',
+    },
+    team: {
+      description:
+        'Ringkasan dari catatan bawahan yang pintunya diizinkan. Disusun saat diminta, tidak disimpan, dan setiap pemakaian tercatat di log akses pemiliknya.',
+      subjects: 'Anggota',
+      period: 'Periode',
+      days: '{n} hari',
+      generate: 'Susun ringkasan',
+      empty: 'Belum ada bawahan yang mengizinkan pintu memorinya.',
+      pickOne: 'Pilih setidaknya satu anggota.',
+      sources: 'Sumber: {n} catatan dari {people}',
     },
     types: {
       all: 'Semua',
@@ -1649,6 +1691,11 @@ export const id = {
       saved: 'Pengaturan pintu disimpan',
       noHead:
         'Departemen Anda belum memiliki kepala, sehingga belum ada yang dapat membuka pintu ini.',
+      exposeAgents: 'Atasan juga dapat membuka pintu agent pribadi saya',
+      exposeAgentsHint: 'Agent tetap memakai pengaturan pintunya masing-masing di editor agent.',
+      reviewRequired: 'Tinjau catatan baru sebelum dapat dibagikan',
+      reviewRequiredHint:
+        'Catatan hasil percakapan dan tugas masuk Kotak tinjauan dulu; atasan baru dapat memakainya setelah Anda setujui.',
     },
     log: {
       empty: 'Belum ada yang membuka pintu memori Anda.',
@@ -1661,8 +1708,10 @@ export const id = {
         door_opened: 'Membuka pintu',
         door_closed: 'Menutup pintu',
         entries_read: 'Memakai catatan dalam jawaban',
+        digest_read: 'Menyusun ringkasan tim',
+        themes_read: 'Melihat tema di Peta Pikiran',
       },
-      contexts: { conversation: 'Percakapan', task: 'Tugas' },
+      contexts: { conversation: 'Percakapan', task: 'Tugas', digest: 'Ringkasan tim', mind_map: 'Peta Pikiran' },
     },
     bar: {
       label: 'Pintu memori',
@@ -1675,6 +1724,7 @@ export const id = {
       revoked: 'Pintu ditutup oleh pemilik',
       person: 'Orang',
       agent: 'Agent',
+      ownedBy: 'Agent milik {name}',
       entries: '{n} catatan',
       none: 'Tidak ada bawahan dalam jangkauan Anda.',
       close: 'Tutup pintu {name}',
@@ -1690,6 +1740,16 @@ export const id = {
         'Catatan yang diingat agent ini dari tugas sebelumnya. Atasan yang membuka pintu agent ini ikut memakai catatan yang dapat dibagikan.',
       doorEnable: 'Izinkan pintu memori agent ini dibuka',
       saveFirst: 'Simpan agent lebih dulu untuk mulai mengelola memorinya.',
+    },
+    themes: {
+      tab: 'Tema memori',
+      description:
+        'Kata kunci yang paling sering muncul di buku memori Anda dan bawahan yang mengizinkan pintunya. Isi catatan tidak ditampilkan; setiap tampilan tercatat di log akses pemiliknya.',
+      empty: 'Belum ada tema. Tema muncul setelah buku memori terisi dan bawahan mengizinkan pintunya.',
+      you: 'Anda',
+      entries: '{n} catatan',
+      noThemes: 'Belum ada kata kunci yang menonjol.',
+      needsPermission: 'Butuh izin membuka pintu memori untuk melihat tema.',
     },
   },
   runs: {
@@ -1813,6 +1873,8 @@ export const id = {
         running: 'Menguji…',
         probe: { basic: 'Jawaban & streaming', tools: 'Pemanggilan tools', vision: 'Pemahaman gambar' },
         enableNow: 'Aktifkan sekarang',
+        passed: 'lulus',
+        failed: 'gagal',
       },
       enableNeedsTest: 'Uji model ini dulu sebelum diaktifkan.',
       defaultConfirm:

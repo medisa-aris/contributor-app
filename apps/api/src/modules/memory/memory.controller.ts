@@ -21,11 +21,14 @@ import type { AuthContext } from '../../common/types/auth-context';
 import { paginated } from '../admin/common/pagination';
 import {
   CreateMemoryEntryDto,
+  MemoryDigestRequestDto,
   MemoryEntryListQueryDto,
+  ReviewMemoryEntriesDto,
   SetContextDoorsDto,
   SetMemoryDoorDto,
   UpdateMemoryEntryDto,
 } from './dto/memory.dto';
+import { MemoryInsightsService } from './memory-insights.service';
 import { MemoryScopeService } from './memory-scope.service';
 import { MemoryService } from './memory.service';
 
@@ -46,7 +49,18 @@ export class MemoryController {
   constructor(
     private readonly memory: MemoryService,
     private readonly scope: MemoryScopeService,
+    private readonly insights: MemoryInsightsService,
   ) {}
+
+  /** Kotak tinjauan sebuah buku (P2). */
+  private async reviewList(subjectId: string, query: PaginationQueryDto) {
+    const { items, total } = await this.memory.listEntries(subjectId, {
+      review: true,
+      skip: query.skip,
+      take: query.pageSize,
+    });
+    return paginated(items, { page: query.page, limit: query.pageSize, offset: query.skip }, total);
+  }
 
   @Get('status')
   status() {
@@ -94,6 +108,27 @@ export class MemoryController {
   async deleteMyEntry(@CurrentAuth() auth: AuthContext, @Param('id', uuid) id: string) {
     await this.memory.deleteEntry(auth, await this.memory.bookSubject(auth), id);
     return { deleted: true };
+  }
+
+  @RequirePermission(PERMISSIONS.memorySelfManage)
+  @Get('me/review')
+  async myReview(@CurrentAuth() auth: AuthContext, @Query() query: PaginationQueryDto) {
+    return this.reviewList(await this.memory.bookSubject(auth), query);
+  }
+
+  @RequirePermission(PERMISSIONS.memorySelfManage)
+  @HttpCode(200)
+  @Post('me/review')
+  async reviewMine(@CurrentAuth() auth: AuthContext, @Body() dto: ReviewMemoryEntriesDto) {
+    return this.memory.reviewEntries(auth, await this.memory.bookSubject(auth), dto.entryIds ?? [], dto.decision);
+  }
+
+  @RequirePermission(PERMISSIONS.memorySelfManage)
+  @HttpCode(200)
+  @Post('me/summary/refresh')
+  async refreshMySummary(@CurrentAuth() auth: AuthContext) {
+    await this.insights.consolidate(await this.memory.bookSubject(auth));
+    return this.memory.summary(await this.memory.bookSubject(auth));
   }
 
   @RequirePermission(PERMISSIONS.memorySelfManage)
@@ -175,6 +210,37 @@ export class MemoryController {
   }
 
   @RequirePermission(PERMISSIONS.memorySelfManage, PERMISSIONS.agentsManagePersonal)
+  @Get('agents/:agentId/review')
+  async agentReview(
+    @CurrentAuth() auth: AuthContext,
+    @Param('agentId', uuid) agentId: string,
+    @Query() query: PaginationQueryDto,
+  ) {
+    return this.reviewList(await this.memory.bookSubject(auth, agentId), query);
+  }
+
+  @RequirePermission(PERMISSIONS.memorySelfManage, PERMISSIONS.agentsManagePersonal)
+  @HttpCode(200)
+  @Post('agents/:agentId/review')
+  async reviewAgent(
+    @CurrentAuth() auth: AuthContext,
+    @Param('agentId', uuid) agentId: string,
+    @Body() dto: ReviewMemoryEntriesDto,
+  ) {
+    const subject = await this.memory.bookSubject(auth, agentId);
+    return this.memory.reviewEntries(auth, subject, dto.entryIds ?? [], dto.decision);
+  }
+
+  @RequirePermission(PERMISSIONS.memorySelfManage, PERMISSIONS.agentsManagePersonal)
+  @HttpCode(200)
+  @Post('agents/:agentId/summary/refresh')
+  async refreshAgentSummary(@CurrentAuth() auth: AuthContext, @Param('agentId', uuid) agentId: string) {
+    const subject = await this.memory.bookSubject(auth, agentId);
+    await this.insights.consolidate(subject);
+    return this.memory.summary(subject);
+  }
+
+  @RequirePermission(PERMISSIONS.memorySelfManage, PERMISSIONS.agentsManagePersonal)
   @Put('agents/:agentId/door')
   async setAgentDoor(
     @CurrentAuth() auth: AuthContext,
@@ -190,6 +256,21 @@ export class MemoryController {
   @Get('reach')
   reach(@CurrentAuth() auth: AuthContext) {
     return this.scope.reach(auth.user.id);
+  }
+
+  /** Ringkasan tim (P3) dari pintu yang diizinkan; tidak disimpan, tercatat di log akses. */
+  @RequirePermission(PERMISSIONS.memoryDoorsOpen)
+  @HttpCode(200)
+  @Post('digest')
+  digest(@CurrentAuth() auth: AuthContext, @Body() dto: MemoryDigestRequestDto) {
+    return this.insights.digest(auth, dto.subjectIds, dto.days ?? 30);
+  }
+
+  /** Tema memori untuk Peta Pikiran (P3): kata kunci dan jumlah, tanpa isi catatan. */
+  @RequirePermission(PERMISSIONS.memoryDoorsOpen, PERMISSIONS.mindMapTeamRead)
+  @Get('themes')
+  themes(@CurrentAuth() auth: AuthContext) {
+    return this.insights.themes(auth);
   }
 
   @RequirePermission(PERMISSIONS.memorySelfManage)

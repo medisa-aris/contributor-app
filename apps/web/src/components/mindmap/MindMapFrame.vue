@@ -4,15 +4,21 @@ import { useI18n } from 'vue-i18n';
 import { CaIcon, CaTabs } from '@/components/ui';
 import type { MindMapMode, MindMapQuery } from '@/api/mindmap/types';
 import { useFullscreen } from '@/composables/useFullscreen';
+import { useAuthStore } from '@/stores/auth.store';
 import MappingTab from './MappingTab.vue';
+import MemoryThemesTab from './MemoryThemesTab.vue';
 import ThoughtStructureTab from './ThoughtStructureTab.vue';
 import { MODE_COLORS, MODE_DASH, MODE_ORDER } from './mode-colors';
 
 const { t } = useI18n();
-const tab = ref<'mapping' | 'thinking'>('mapping');
+const auth = useAuthStore();
+// Tema memori (P3) butuh izin membuka pintu memori selain izin Peta Pikiran.
+const canSeeThemes = computed(() => auth.can('ai.memory.doors.open'));
+const tab = ref<'mapping' | 'thinking' | 'themes'>('mapping');
 const tabs = computed(() => [
   { key: 'mapping', label: t('workspace.mindMap.tabs.mapping') },
   { key: 'thinking', label: t('workspace.mindMap.tabs.thinking') },
+  ...(canSeeThemes.value ? [{ key: 'themes', label: t('memory.themes.tab') }] : []),
 ]);
 
 const RANGES = [7, 30, 90] as const;
@@ -58,7 +64,7 @@ const { ui, setFullscreen } = useFullscreen();
       />
 
       <div class="mm__filters">
-        <div class="mm__seg" role="group" :aria-label="t('workspace.mindMap.range.label')">
+        <div v-if="tab !== 'themes'" class="mm__seg" role="group" :aria-label="t('workspace.mindMap.range.label')">
           <button
             v-for="r in RANGES"
             :key="r"
@@ -71,7 +77,7 @@ const { ui, setFullscreen } = useFullscreen();
             {{ t(`workspace.mindMap.range.d${r}`) }}
           </button>
         </div>
-        <div class="mm__modes">
+        <div v-if="tab !== 'themes'" class="mm__modes">
           <button
             v-for="mode in MODE_ORDER"
             :key="mode"
@@ -102,6 +108,7 @@ const { ui, setFullscreen } = useFullscreen();
 
     <div class="mm__stage">
       <MappingTab v-if="tab === 'mapping'" :query="query" />
+      <MemoryThemesTab v-else-if="tab === 'themes'" />
       <ThoughtStructureTab v-else :query="query" />
     </div>
 

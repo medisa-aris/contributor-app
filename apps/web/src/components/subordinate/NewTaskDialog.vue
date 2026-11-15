@@ -56,7 +56,12 @@ async function submit(): Promise<void> {
   const web = auth.can('ai.websearch.use') && webSearch.value ? { webSearch: true } : {};
   try {
     if (target.value === 'general') {
-      const task = await createTask({ title: title.value.trim() || text.slice(0, 80), instruction: text, ...web });
+      const task = await createTask({
+        title: title.value.trim() || text.slice(0, 80),
+        instruction: text,
+        ...web,
+        ...(memoryDoors.value.length > 0 ? { memorySubjectIds: memoryDoors.value } : {}),
+      });
       open.value = false;
       emit('created', task.id, false);
       void runTask(task.id).catch(() => undefined);
@@ -100,7 +105,7 @@ async function submit(): Promise<void> {
         </template>
       </CaField>
       <WebSearchToggle v-model="webSearch" :disabled="saving" />
-      <MemoryDoorsBar v-if="target !== 'general'" v-model="memoryDoors" class="task-doors" :disabled="saving" />
+      <MemoryDoorsBar v-model="memoryDoors" class="task-doors" :disabled="saving" />
     </form>
     <template #footer>
       <CaButton variant="secondary" @click="open = false">{{ t('common.cancel') }}</CaButton>

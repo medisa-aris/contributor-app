@@ -215,6 +215,10 @@ describe('Agent Center (e2e)', () => {
     dataSource = ctx.dataSource;
     await resetDatabase(dataSource);
     await seedTestFixtures(dataSource);
+    // Memori diuji di memory.e2e-spec; ekstraksi latar belakang akan menambah panggilan ke mock AI.
+    await dataSource.query(
+      `INSERT INTO app_config (key, value, description, is_public) VALUES ('ai.memory_enabled', 'false', 'uji', true)`,
+    );
     admin = await loginAs(app, 'admin@test.local');
     manager = await loginAs(app, 'manager@test.local');
     staf = await loginAs(app, 'staf@test.local');

@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   AUDIT_EVENTS,
+  DEFAULT_EXPOSED_MEMORY_TYPES,
   MEMORY_ENTRY_TYPES,
   MEMORY_LIMITS,
   PERMISSIONS,
@@ -12,6 +13,7 @@ import {
   type MemoryEntryStatus,
   type MemoryEntryType,
   type MemoryRefDto,
+  type MemoryReviewDecision,
   type MemorySensitivity,
   type MemoryStatusDto,
 } from '@bara/shared';
@@ -21,6 +23,7 @@ import type { AuthContext } from '../../common/types/auth-context';
 import { DATA_SOURCE } from '../../database/database.module';
 import { updatedRows } from '../../database/query-result';
 import { AuditService } from '../audit/audit.service';
+import { EffectivePermissionsService } from '../rbac/effective-permissions.service';
 import { MemoryEmbeddingService, toVectorLiteral } from './memory-embedding.service';
 import { buildMemoryBlock, rankCandidates, type RankCandidate } from './memory-ranking';
 import { redactForMemory } from './memory-redactor';
@@ -44,13 +47,14 @@ const STOPWORDS = new Set(
   ).split(' '),
 );
 
+/** Kata bermakna (huruf kecil, tanpa kata umum) dari sebuah teks. */
+export function memoryKeywords(text: string): string[] {
+  return (text.toLowerCase().match(/[\p{L}\p{N}]{2,}/gu) ?? []).filter((w) => !STOPWORDS.has(w));
+}
+
 /** Kata kunci aman untuk to_tsquery: hanya huruf/angka, digabung OR, awalan untuk imbuhan. */
 export function toTsQuery(text: string): string | null {
-  const words = [
-    ...new Set(
-      (text.toLowerCase().match(/[\p{L}\p{N}]{2,}/gu) ?? []).filter((w) => !STOPWORDS.has(w)),
-    ),
-  ].slice(0, 24);
+  const words = [...new Set(memoryKeywords(text))].slice(0, 24);
   if (words.length === 0) return null;
   return words.map((w) => (w.length >= 4 ? `${w}:*` : w)).join(' | ');
 }
@@ -67,6 +71,7 @@ interface EntryRow {
   source_kind: MemoryEntryDto['sourceKind'];
   source_id: string | null;
   edited_by_owner: boolean;
+  needs_review: boolean;
   use_count: number;
   last_used_at: string | null;
   created_at: string;
@@ -85,6 +90,7 @@ function toEntryDto(row: EntryRow): MemoryEntryDto {
     sourceKind: row.source_kind,
     sourceId: row.source_id,
     editedByOwner: row.edited_by_owner,
+    needsReview: row.needs_review,
     useCount: row.use_count,
     lastUsedAt: row.last_used_at,
     createdAt: row.created_at,
@@ -93,7 +99,7 @@ function toEntryDto(row: EntryRow): MemoryEntryDto {
 }
 
 const ENTRY_COLUMNS = `id, subject_id, type, content, importance, confidence, sensitivity, status,
-  source_kind, source_id, edited_by_owner, use_count, last_used_at, created_at, updated_at`;
+  source_kind, source_id, edited_by_owner, needs_review, use_count, last_used_at, created_at, updated_at`;
 
 export interface MemoryRetrieval {
   block: string;
@@ -110,7 +116,38 @@ export class MemoryService {
     private readonly embedding: MemoryEmbeddingService,
     private readonly settings: MemorySettingsService,
     private readonly audit: AuditService,
+    private readonly effective: EffectivePermissionsService,
   ) {}
+
+  /** Izin memori seorang pengguna di luar konteks permintaan HTTP (runner tugas, worker). */
+  async permissionsOf(userId: string): Promise<Set<string>> {
+    const allowed = new Set<string>();
+    for (const permission of [PERMISSIONS.memorySelfManage, PERMISSIONS.memoryDoorsOpen]) {
+      if ((await this.effective.can(userId, permission)).allowed) allowed.add(permission);
+    }
+    return allowed;
+  }
+
+  /**
+   * Simpan catatan memori yang dipakai sebuah tugas untuk sitasi di hasilnya. Tugas agent memanggil
+   * model beberapa kali (sub-tugas, diskusi), jadi rujukan digabung per catatan.
+   */
+  async attachTaskRefs(taskId: string, refs: MemoryRefDto[]): Promise<void> {
+    if (refs.length === 0) return;
+    try {
+      const rows = (await this.dataSource.query(`SELECT memory_refs FROM ai_tasks WHERE id = $1`, [taskId])) as {
+        memory_refs: MemoryRefDto[] | null;
+      }[];
+      const merged = new Map((rows[0]?.memory_refs ?? []).map((ref) => [ref.entryId, ref]));
+      for (const ref of refs) if (!merged.has(ref.entryId)) merged.set(ref.entryId, ref);
+      await this.dataSource.query(`UPDATE ai_tasks SET memory_refs = $2::jsonb WHERE id = $1`, [
+        taskId,
+        JSON.stringify([...merged.values()].slice(0, 40)),
+      ]);
+    } catch (error) {
+      this.logger.warn(`Rujukan memori tugas gagal disimpan: ${(error as Error).message}`);
+    }
+  }
 
   async status(): Promise<MemoryStatusDto> {
     const settings = await this.settings.get();
@@ -134,10 +171,19 @@ export class MemoryService {
 
   async listEntries(
     subjectId: string,
-    filter: { type?: MemoryEntryType; status?: MemoryEntryStatus; search?: string; skip: number; take: number },
+    filter: {
+      type?: MemoryEntryType;
+      status?: MemoryEntryStatus;
+      search?: string;
+      /** true = hanya kotak tinjauan; false = hanya yang sudah ditinjau. */
+      review?: boolean;
+      skip: number;
+      take: number;
+    },
   ): Promise<{ items: MemoryEntryDto[]; total: number }> {
     const params: unknown[] = [subjectId, filter.status ?? 'active'];
     let where = 'subject_id = $1 AND status = $2';
+    if (filter.review !== undefined) where += filter.review ? ' AND needs_review' : ' AND NOT needs_review';
     if (filter.type) {
       params.push(filter.type);
       where += ` AND type = $${params.length}`;
@@ -154,7 +200,7 @@ export class MemoryService {
     params.push(filter.take, filter.skip);
     const rows = (await this.dataSource.query(
       `SELECT ${ENTRY_COLUMNS} FROM memory_entries WHERE ${where}
-        ORDER BY importance DESC, updated_at DESC
+        ORDER BY ${filter.review ? 'created_at DESC' : 'importance DESC, updated_at DESC'}
         LIMIT $${params.length - 1} OFFSET $${params.length}`,
       params,
     )) as EntryRow[];
@@ -169,10 +215,23 @@ export class MemoryService {
     )) as { type: MemoryEntryType; n: number }[];
     const counts = Object.fromEntries(MEMORY_ENTRY_TYPES.map((t) => [t, 0])) as Record<MemoryEntryType, number>;
     for (const row of rows) counts[row.type] = row.n;
+    const extra = (await this.dataSource.query(
+      `SELECT s.summary, s.summary_at, s.summary_entries,
+              (SELECT count(*)::int FROM memory_entries e
+                WHERE e.subject_id = s.id AND e.status = 'active' AND e.needs_review) AS pending
+         FROM memory_subjects s WHERE s.id = $1`,
+      [subjectId],
+    )) as { summary: string | null; summary_at: string | null; summary_entries: number; pending: number }[];
+    const meta = extra[0];
     return {
       door: await this.door(subjectId),
       counts,
       total: rows.reduce((sum, r) => sum + r.n, 0),
+      pendingReview: meta?.pending ?? 0,
+      profile:
+        meta?.summary && meta.summary_at
+          ? { content: meta.summary, generatedAt: meta.summary_at, entryCount: meta.summary_entries }
+          : null,
     };
   }
 
@@ -199,7 +258,8 @@ export class MemoryService {
     entryId: string,
     patch: { type?: MemoryEntryType; content?: string; sensitivity?: MemorySensitivity; importance?: number },
   ): Promise<MemoryEntryDto> {
-    const sets = ['edited_by_owner = true', 'updated_at = now()'];
+    // Mengubah catatan berarti pemilik sudah meninjaunya.
+    const sets = ['edited_by_owner = true', 'needs_review = false', 'updated_at = now()'];
     const params: unknown[] = [entryId, subjectId];
     if (patch.type !== undefined) {
       params.push(patch.type);
@@ -254,30 +314,95 @@ export class MemoryService {
     });
   }
 
+  /**
+   * Kotak tinjauan (P2): setujui (dapat dibagikan lewat pintu), jadikan pribadi, atau hapus catatan
+   * yang ditahan. `entryIds` kosong = semua catatan di kotak tinjauan.
+   */
+  async reviewEntries(
+    auth: AuthContext,
+    subjectId: string,
+    entryIds: string[],
+    decision: MemoryReviewDecision,
+  ): Promise<{ affected: number }> {
+    const params: unknown[] = [subjectId];
+    let where = 'subject_id = $1 AND needs_review';
+    if (entryIds.length > 0) {
+      params.push(entryIds);
+      where += ' AND id = ANY($2::uuid[])';
+    }
+    const sql =
+      decision === 'delete'
+        ? `DELETE FROM memory_entries WHERE ${where} RETURNING id`
+        : `UPDATE memory_entries
+              SET needs_review = false, updated_at = now()${decision === 'private' ? ", sensitivity = 'private'" : ''}
+            WHERE ${where} RETURNING id`;
+    const rows = updatedRows<{ id: string }>(await this.dataSource.query(sql, params));
+    if (rows.length > 0) {
+      await this.audit.record({
+        eventKey: AUDIT_EVENTS.memoryEntriesReviewed,
+        severity: 'info',
+        summary: `Meninjau ${rows.length} catatan memori (${decision})`,
+        actorUserId: auth.user.id,
+        actorLabel: auth.user.email,
+        actorIp: auth.session.ip,
+        entityType: 'memory_subject',
+        entityId: subjectId,
+        payload: { decision, count: rows.length },
+      });
+    }
+    return { affected: rows.length };
+  }
+
   // ───────────────────────── Pintu (izin pemilik) ─────────────────────────
 
   async door(subjectId: string): Promise<MemoryDoorDto> {
     const rows = (await this.dataSource.query(
-      `SELECT enabled, exposed_types, updated_at FROM memory_doors WHERE subject_id = $1`,
+      `SELECT enabled, exposed_types, expose_agents, review_required, updated_at
+         FROM memory_doors WHERE subject_id = $1`,
       [subjectId],
-    )) as { enabled: boolean; exposed_types: MemoryEntryType[] | string; updated_at: string }[];
+    )) as {
+      enabled: boolean;
+      exposed_types: MemoryEntryType[] | string;
+      expose_agents: boolean;
+      review_required: boolean;
+      updated_at: string;
+    }[];
     const row = rows[0];
-    if (!row) return { enabled: false, exposedTypes: ['profile', 'fact', 'decision', 'skill'], updatedAt: null };
-    return { enabled: row.enabled, exposedTypes: parsePgArray(row.exposed_types), updatedAt: row.updated_at };
+    if (!row) {
+      return {
+        enabled: false,
+        exposedTypes: [...DEFAULT_EXPOSED_MEMORY_TYPES],
+        exposeAgents: false,
+        reviewRequired: false,
+        updatedAt: null,
+      };
+    }
+    return {
+      enabled: row.enabled,
+      exposedTypes: parsePgArray(row.exposed_types),
+      exposeAgents: row.expose_agents,
+      reviewRequired: row.review_required,
+      updatedAt: row.updated_at,
+    };
   }
 
   async setDoor(
     auth: AuthContext,
     subjectId: string,
-    input: { enabled: boolean; exposedTypes: MemoryEntryType[] },
+    input: { enabled: boolean; exposedTypes: MemoryEntryType[]; exposeAgents?: boolean; reviewRequired?: boolean },
   ): Promise<MemoryDoorDto> {
     const types = [...new Set(input.exposedTypes)];
+    const current = await this.door(subjectId);
+    const exposeAgents = input.exposeAgents ?? current.exposeAgents;
+    const reviewRequired = input.reviewRequired ?? current.reviewRequired;
     await this.dataSource.query(
-      `INSERT INTO memory_doors (subject_id, enabled, exposed_types, updated_by, updated_at)
-       VALUES ($1, $2, $3::memory_entry_type[], $4, now())
+      `INSERT INTO memory_doors
+         (subject_id, enabled, exposed_types, expose_agents, review_required, updated_by, updated_at)
+       VALUES ($1, $2, $3::memory_entry_type[], $5, $6, $4, now())
        ON CONFLICT (subject_id) DO UPDATE
-         SET enabled = $2, exposed_types = $3::memory_entry_type[], updated_by = $4, updated_at = now()`,
-      [subjectId, input.enabled, types, auth.user.id],
+         SET enabled = $2, exposed_types = $3::memory_entry_type[], expose_agents = $5,
+             review_required = $6, updated_by = $4, updated_at = now()`,
+      [subjectId, input.enabled, types, auth.user.id, exposeAgents, reviewRequired],
     );
     await this.audit.record({
       eventKey: AUDIT_EVENTS.memoryDoorSettingsUpdated,
@@ -288,7 +413,7 @@ export class MemoryService {
       actorIp: auth.session.ip,
       entityType: 'memory_subject',
       entityId: subjectId,
-      payload: { enabled: input.enabled, exposedTypes: types },
+      payload: { enabled: input.enabled, exposedTypes: types, exposeAgents, reviewRequired },
     });
     return this.door(subjectId);
   }
@@ -381,6 +506,7 @@ export class MemoryService {
         name: meta[0].name,
         caption: null,
         departmentName: null,
+        ownerName: null,
         granted: false,
         visibleEntries: 0,
         effective: false,
@@ -493,7 +619,7 @@ export class MemoryService {
     permissions: ReadonlySet<string>,
     context: MemoryContextRef | null,
     query: string,
-    options: { agentId?: string | null } = {},
+    options: { agentId?: string | null; peerAgentIds?: string[] } = {},
   ): Promise<MemoryRetrieval> {
     const empty: MemoryRetrieval = { block: '', refs: [] };
     if (!permissions.has(PERMISSIONS.memorySelfManage)) return empty;
@@ -503,17 +629,34 @@ export class MemoryService {
       const subjects = await this.scope.resolve(userId, context, {
         canOpenDoors: permissions.has(PERMISSIONS.memoryDoorsOpen),
         agentId: options.agentId ?? null,
+        ...(options.peerAgentIds?.length ? { peerAgentIds: options.peerAgentIds } : {}),
       });
       const candidates = await this.search(subjects, query);
-      if (candidates.length === 0) return empty;
+      const summaries = await this.ownSummaries(subjects);
+      if (candidates.length === 0 && summaries.length === 0) return empty;
       const ranked = rankCandidates(candidates);
-      const result = buildMemoryBlock(ranked, settings.maxContextTokens);
+      const result = buildMemoryBlock(ranked, settings.maxContextTokens, summaries);
       if (result.refs.length > 0) await this.recordUse(userId, context, subjects, result.refs);
       return result;
     } catch (error) {
       this.logger.warn(`Pengambilan memori gagal: ${(error as Error).message}`);
       return empty;
     }
+  }
+
+  /** Ringkasan profil (P3) hanya dari buku milik penanya: ringkasan memuat catatan pribadi. */
+  private async ownSummaries(subjects: ScopeSubject[]): Promise<{ name: string; content: string }[]> {
+    const own = subjects.filter((s) => s.own);
+    if (own.length === 0) return [];
+    const rows = (await this.dataSource.query(
+      `SELECT id, summary FROM memory_subjects WHERE id = ANY($1::uuid[]) AND summary IS NOT NULL`,
+      [own.map((s) => s.subjectId)],
+    )) as { id: string; summary: string }[];
+    return own.flatMap((subject, index) => {
+      const row = rows.find((r) => r.id === subject.subjectId);
+      if (!row) return [];
+      return [{ name: index === 0 ? 'Anda' : subject.name, content: row.summary }];
+    });
   }
 
   /** Filter cakupan dalam SQL: subjek sendiri semua catatan aktif; subjek lain sesuai pintunya. */
@@ -530,7 +673,7 @@ export class MemoryService {
     for (const subject of subjects.filter((s) => !s.own)) {
       params.push(subject.subjectId, subject.exposedTypes);
       clauses.push(
-        `(e.subject_id = $${params.length - 1} AND e.sensitivity = 'shareable'
+        `(e.subject_id = $${params.length - 1} AND e.sensitivity = 'shareable' AND NOT e.needs_review
           AND e.type = ANY($${params.length}::memory_entry_type[]))`,
       );
     }

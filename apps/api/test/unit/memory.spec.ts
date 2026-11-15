@@ -7,6 +7,7 @@ import {
   type RankCandidate,
 } from '../../src/modules/memory/memory-ranking';
 import { parseOperations } from '../../src/modules/memory/memory-extraction.service';
+import { cleanSummary, themeOf } from '../../src/modules/memory/memory-insights.service';
 import { redactForMemory } from '../../src/modules/memory/memory-redactor';
 import { toTsQuery } from '../../src/modules/memory/memory.service';
 
@@ -88,6 +89,16 @@ describe('toTsQuery', () => {
 });
 
 describe('parseOperations', () => {
+  it('menerima label agent anggota grup dan menolak label lain', () => {
+    const ops = parseOperations(
+      JSON.stringify([
+        { about: 'agent2', type: 'skill', content: 'Agent K3 memeriksa APAR per lantai', confidence: 0.8 },
+        { about: 'admin', type: 'fact', content: 'Label asing', confidence: 0.8 },
+      ]),
+    );
+    expect(ops.map((o) => o.about)).toEqual(['agent2', 'user']);
+  });
+
   it('membaca JSON di dalam teks dan membuang operasi tidak valid', () => {
     const raw = `Berikut hasilnya:\n\`\`\`json\n${JSON.stringify({
       operations: [
@@ -136,5 +147,28 @@ describe('redactForMemory', () => {
     expect(redactForMemory('Dina Lestari menyetujui', { names: true, directory: ['Dina Lestari'] })).toBe(
       '[nama] menyetujui',
     );
+  });
+});
+
+describe('ringkasan profil dan tema (P3)', () => {
+  it('membuang awalan "Subjek:" dan judul yang ditulis model', () => {
+    const raw = 'Subjek: Ratna (pengguna).\n\nRingkasan Profil:\nRatna bertanggung jawab atas inspeksi APAR.';
+    expect(cleanSummary(raw)).toBe('Ratna bertanggung jawab atas inspeksi APAR.');
+    expect(cleanSummary('## Ringkasan\n**Dina** memimpin tim klaim.')).toBe('Dina memimpin tim klaim.');
+    expect(cleanSummary('Ringkasan profil: Dina memimpin tim klaim santunan sejak 2025.')).toBe(
+      'Dina memimpin tim klaim santunan sejak 2025.',
+    );
+  });
+
+  it('tema dihitung per catatan, tanpa nama subjek dan kata umum', () => {
+    const theme = themeOf({ id: 's', kind: 'user', name: 'Dimas Aryo', department_name: 'HIRA' }, false, [
+      { type: 'decision', content: 'Dimas menyepakati inspeksi APAR setiap 2 minggu.' },
+      { type: 'fact', content: 'Inspeksi APAR dicatat di formulir IK-HSE-07 oleh Dimas.' },
+      { type: 'fact', content: 'Formulir inspeksi disimpan di gudang.' },
+    ]);
+    expect(theme.counts).toEqual({ decision: 1, fact: 2 });
+    expect(theme.themes[0]).toEqual({ term: 'inspeksi', weight: 3 });
+    expect(theme.themes.map((t) => t.term)).not.toContain('dimas');
+    expect(theme.themes.map((t) => t.term)).not.toContain('yang');
   });
 });

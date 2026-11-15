@@ -16,7 +16,6 @@ import { updatedRows } from '../../../database/query-result';
 import { AuditService } from '../../audit/audit.service';
 import { MemoryExtractionService } from '../../memory/memory-extraction.service';
 import { MemoryService } from '../../memory/memory.service';
-import { EffectivePermissionsService } from '../../rbac/effective-permissions.service';
 import {
   ConnectorToolsService,
   type ConnectorAttachment,
@@ -62,6 +61,7 @@ interface GroupRecord {
   mode: 'delegate' | 'discussion';
   leader_agent_id: string;
   max_rounds: number;
+  share_memory: boolean;
   members: { id: string; name: string; position: number }[];
 }
 
@@ -96,18 +96,13 @@ export class TaskRunnerService implements OnApplicationBootstrap, OnModuleDestro
     private readonly approvals: ToolApprovalsService,
     private readonly audit: AuditService,
     private readonly webSearch: WebSearchService,
-    private readonly effective: EffectivePermissionsService,
     private readonly memory: MemoryService,
     private readonly memoryNotes: MemoryExtractionService,
   ) {}
 
   /** Izin memori pemilik tugas; runner berjalan di luar konteks permintaan HTTP. */
-  private async memoryPermissions(userId: string): Promise<Set<string>> {
-    const allowed = new Set<string>();
-    for (const permission of [PERMISSIONS.memorySelfManage, PERMISSIONS.memoryDoorsOpen]) {
-      if ((await this.effective.can(userId, permission)).allowed) allowed.add(permission);
-    }
-    return allowed;
+  private memoryPermissions(userId: string): Promise<Set<string>> {
+    return this.memory.permissionsOf(userId);
   }
 
   async onApplicationBootstrap(): Promise<void> {
@@ -671,14 +666,17 @@ export class TaskRunnerService implements OnApplicationBootstrap, OnModuleDestro
       }),
       ...(options.groupNote ? { groupNote: options.groupNote } : {}),
     });
-    // Sub-tugas delegasi memakai pintu memori yang dibuka pada tugas induknya.
+    // Sub-tugas delegasi memakai pintu memori yang dibuka pada tugas induknya. Grup dengan memori
+    // bersama (P2): agent anggota lain ikut dibaca lewat pintu masing-masing.
+    const peerAgentIds = await this.groupPeers(task, agent.id);
     const memory = await this.memory.retrieve(
       task.user_id,
       await this.memoryPermissions(task.user_id),
       { kind: 'task', id: task.parent_task_id ?? task.id },
       task.instruction,
-      { agentId: agent.id },
+      { agentId: agent.id, ...(peerAgentIds.length > 0 ? { peerAgentIds } : {}) },
     );
+    await this.memory.attachTaskRefs(task.parent_task_id ?? task.id, memory.refs);
     const handlerMap = new Map(handlers.map((h) => [h.tool.name, h]));
     const steps: ToolTraceStep[] = [];
     return this.gateway.drainToolLoop(
@@ -1049,9 +1047,17 @@ export class TaskRunnerService implements OnApplicationBootstrap, OnModuleDestro
     return rows[0];
   }
 
+  /** Anggota lain dari grup tugas ini bila grup memakai memori bersama. */
+  private async groupPeers(task: RunnerTask, agentId: string): Promise<string[]> {
+    if (!task.group_id) return [];
+    const group = await this.loadGroup(task.group_id, task.user_id).catch(() => null);
+    if (!group?.share_memory) return [];
+    return group.members.map((m) => m.id).filter((id) => id !== agentId);
+  }
+
   private async loadGroup(groupId: string, userId: string): Promise<GroupRecord> {
     const rows = (await this.dataSource.query(
-      `SELECT g.id, g.name, g.mode, g.leader_agent_id, g.max_rounds,
+      `SELECT g.id, g.name, g.mode, g.leader_agent_id, g.max_rounds, g.share_memory,
               COALESCE((SELECT json_agg(json_build_object('id', a.id, 'name', a.name, 'position', m.position)
                                         ORDER BY m.position)
                           FROM agent_group_members m JOIN agents a ON a.id = m.agent_id

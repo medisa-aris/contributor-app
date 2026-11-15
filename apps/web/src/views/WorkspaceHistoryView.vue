@@ -32,6 +32,7 @@ import {
   type CaTableColumn,
 } from '@/components/ui';
 import MarkdownContent from '@/components/ai/MarkdownContent.vue';
+import MemoryCitations from '@/components/ai/MemoryCitations.vue';
 import { formatDateTime } from '@/utils/format';
 
 const { t } = useI18n();
@@ -405,7 +406,10 @@ onMounted(() => {
         </dl>
         <template v-if="taskSelected.status === 'completed' && taskSelected.result">
           <h3 class="history__section">{{ t('workspace.subordinate.resultTitle') }}</h3>
-          <div class="history__result"><MarkdownContent :content="taskSelected.result" /></div>
+          <div class="history__result">
+            <MarkdownContent :content="taskSelected.result" />
+            <MemoryCitations :refs="taskSelected.memory_refs ?? []" />
+          </div>
         </template>
         <template v-if="taskSelected.status === 'failed' && taskSelected.error_message">
           <h3 class="history__section">{{ t('workspace.subordinate.errorTitle') }}</h3>

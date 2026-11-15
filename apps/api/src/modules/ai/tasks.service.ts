@@ -1,11 +1,13 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { AUDIT_EVENTS, type AiTaskStatus } from '@bara/shared';
+import { AUDIT_EVENTS, PERMISSIONS, type AiTaskStatus, type MemoryRefDto } from '@bara/shared';
 import { DataSource } from 'typeorm';
 import type { AuthContext } from '../../common/types/auth-context';
 import { AppError, ERROR_CODES } from '../../common/errors/app-error';
 import { DATA_SOURCE } from '../../database/database.module';
 import { updatedRows } from '../../database/query-result';
 import { AuditService } from '../audit/audit.service';
+import { MemoryExtractionService } from '../memory/memory-extraction.service';
+import { MemoryService, type MemoryRetrieval } from '../memory/memory.service';
 import { applyLoopEvent, loopContent, type ToolTraceStep } from './chat-tools.service';
 import { AiGatewayService, type ToolHandler } from './gateway.service';
 import { WebSearchService } from './web-search/web-search.service';
@@ -33,6 +35,7 @@ export interface TaskRow {
   group_name?: string | null;
   group_mode?: 'delegate' | 'discussion' | null;
   web_search?: boolean;
+  memory_refs?: MemoryRefDto[] | null;
 }
 
 const TASK_SELECT = `
@@ -67,17 +70,24 @@ export class TasksService {
     private readonly gateway: AiGatewayService,
     private readonly audit: AuditService,
     private readonly webSearch: WebSearchService,
+    private readonly memory: MemoryService,
+    private readonly memoryNotes: MemoryExtractionService,
   ) {}
 
   async create(
     auth: AuthContext,
-    input: { title: string; instruction: string; webSearch?: boolean },
+    input: { title: string; instruction: string; webSearch?: boolean; memorySubjectIds?: string[] },
   ): Promise<TaskRow> {
+    // Pintu diperiksa sebelum tugas dibuat agar permintaan ditolak utuh, bukan setengah jadi.
+    const memoryDoors = await this.memory.assertOpenable(auth, input.memorySubjectIds ?? []);
     const rows = (await this.dataSource.query(
       `INSERT INTO ai_tasks (user_id, title, instruction, web_search) VALUES ($1, $2, $3, $4) RETURNING *`,
       [auth.user.id, input.title, input.instruction, input.webSearch === true],
     )) as TaskRow[];
     const task = rows[0]!;
+    if (memoryDoors.length > 0) {
+      await this.memory.setContextDoors(auth, { kind: 'task', id: task.id }, memoryDoors);
+    }
     await this.recordEvent(task.id, 'created', 'Tugas dibuat dan menunggu dijalankan.');
     await this.audit.record({
       eventKey: AUDIT_EVENTS.aiTaskCreated,
@@ -202,12 +212,20 @@ export class TasksService {
         userId: task.user_id,
         taskId,
       });
+      const memoryPermissions = await this.memory.permissionsOf(task.user_id);
+      const memory = await this.memory.retrieve(
+        task.user_id,
+        memoryPermissions,
+        { kind: 'task', id: taskId },
+        task.instruction,
+      );
       const result =
         webHandlers.length > 0
-          ? await this.runWithWeb(taskId, task, webHandlers)
+          ? await this.runWithWeb(taskId, task, webHandlers, memory)
           : await this.gateway.chat({
               guard: { userId: task.user_id, taskId },
               mode: 'subordinate',
+              memoryContext: memory.block || undefined,
               messages: [{ role: 'user', content: task.instruction }],
             });
       const durationMs = Date.now() - startedAt;
@@ -215,11 +233,21 @@ export class TasksService {
         await this.dataSource.query(
           `UPDATE ai_tasks
               SET status = 'completed', result = $2, model = $3, tokens_in = $4, tokens_out = $5,
-                  duration_ms = $6, finished_at = now(), updated_at = now()
+                  duration_ms = $6, finished_at = now(), updated_at = now(),
+                  memory_refs = $7::jsonb, memory_extracted_at = NULL
             WHERE id = $1 RETURNING *`,
-          [taskId, result.content, result.model, result.tokensIn, result.tokensOut, durationMs],
+          [
+            taskId,
+            result.content,
+            result.model,
+            result.tokensIn,
+            result.tokensOut,
+            durationMs,
+            memory.refs.length > 0 ? JSON.stringify(memory.refs) : null,
+          ],
         ),
       );
+      if (memoryPermissions.has(PERMISSIONS.memorySelfManage)) this.memoryNotes.scheduleTask(taskId);
       await this.recordEvent(taskId, 'completed', 'Tugas selesai.', {
         tokensIn: result.tokensIn,
         tokensOut: result.tokensOut,
@@ -299,13 +327,14 @@ export class TasksService {
   }
 
   /** Tugas umum dengan pencarian web: loop tool, tiap langkah dicatat sebagai event. */
-  private async runWithWeb(taskId: string, task: TaskRow, handlers: ToolHandler[]) {
+  private async runWithWeb(taskId: string, task: TaskRow, handlers: ToolHandler[], memory: MemoryRetrieval) {
     const handlerMap = new Map(handlers.map((h) => [h.tool.name, h]));
     const steps: ToolTraceStep[] = [];
     const loop = await this.gateway.drainToolLoop(
       {
         guard: { userId: task.user_id, taskId },
         mode: 'subordinate',
+        memoryContext: memory.block || undefined,
         messages: [{ role: 'user', content: task.instruction }],
         handlers,
         toolRules: this.webSearch.toolRules(handlers),

@@ -497,9 +497,9 @@ All strings go in `apps/web/src/i18n/locales/id.ts` under a new `memory` block.
 
 | Phase | Scope |
 |---|---|
-| **P1** | Migration (pgvector, subjects, entries, doors, context doors, access log, `head_user_id`); Memory Service with write path (conversations + tasks); hybrid retrieval; "Memori Saya" + "Pintu saya"; "Pintu memori" bar in Multi Brain/Partner/Subordinate; citations; department head picker; permissions; agent memory migration |
-| **P2** | Subordinates' agents in reach (R6); agent-to-agent doors inside agent groups (`agent_groups`); "Kotak tinjauan memori" inbox where users approve new entries before they become shareable |
-| **P3** | Consolidation: periodic per-subject summary entries ("ringkasan profil"); team-level digest for leaders built only from open doors; Mind Map (`ai.mindmap.team.read`) integration showing memory themes |
+| **P1** ✅ | Migration (pgvector, subjects, entries, doors, context doors, access log, `head_user_id`); Memory Service with write path (conversations + tasks); hybrid retrieval; "Memori Saya" + "Pintu saya"; "Pintu memori" bar in Multi Brain/Partner/Subordinate; citations; department head picker; permissions; agent memory migration |
+| **P2** ✅ | Subordinates' agents in reach (R6); agent-to-agent doors inside agent groups (`agent_groups`); "Kotak tinjauan memori" inbox where users approve new entries before they become shareable |
+| **P3** ✅ | Consolidation: periodic per-subject summary entries ("ringkasan profil"); team-level digest for leaders built only from open doors; Mind Map (`ai.mindmap.team.read`) integration showing memory themes |
 
 ---
 
@@ -552,9 +552,18 @@ Where the build differs from or adds to the sections above:
   - When Guardrails is on, names are also masked before embedding.
   - Chat prompts go through Guardrails as usual: the memory block is part of the system prompt.
 - **Working agent.** In a task, the working agent reads its own book automatically. Entries imported from `agents.memory` are skipped there, since that text is already in the agent prompt.
+- **Group members.**
+  - A group task's extraction also covers the other active member agents, using their own delegate results and discussion turns.
+  - They are labelled `about="agent2"`, `"agent3"`, … (at most 5 members) and are only noted from their own contribution.
+- **Tool-approval continuation.** When a chat turn resumes after a tool approval, memory is retrieved again for the same prompt (doors are re-checked), and extraction is re-scheduled.
+- **Cost and observability.**
+  - Extraction calls are written to `ai_usage_ledger` with source `memory`. Embedding calls are written there too, with token counts estimated from characters. Neither counts toward user quotas.
+  - `GET /api/health` reports `memorySemantic: on|off`.
+  - Every 5 minutes the API logs the extraction queue (scheduled/running) and the embedding backlog, but only when they are non-empty.
 - **UI.**
   - The agent editor has a "Memori" section, not a tab.
-  - The "Pintu memori" selector appears in the New Task dialog for agent and group tasks only. The general-assistant task path does not use memory yet.
+  - The "Pintu memori" selector appears in the New Task dialog for every target, including the general assistant. General tasks retrieve memory, store citations and are extracted like agent tasks.
+  - Citations ("Memori yang digunakan") use one component (`MemoryCitations.vue`). It appears on chat answers, task results (`ai_tasks.memory_refs`, migration `1700000029000`) and the history view. Agent tasks merge the refs of every model call (sub-tasks, discussion turns) per entry.
   - The Docs chapter (§9.7) is not written yet.
 - **Configuration.** `app_config` keys:
   - `ai.memory_enabled`
@@ -565,9 +574,57 @@ Where the build differs from or adds to the sections above:
   - `ai.memory_retention_days`
 - **Tests.**
   - `apps/api/test/integration/memory.e2e-spec.ts` covers AC1–AC13 and AC16, plus task doors.
+  - The same e2e spec also covers general tasks (doors, prompt, citations, extraction), group-member extraction, and task citations.
   - `apps/api/test/unit/memory.spec.ts` covers ranking, prompt block, tsquery, parsing and redaction.
+  - `apps/api/test/unit/memory-isolation.spec.ts` covers isolation:
+    - Only allow-listed files may reference `memory_entries`.
+    - Every retrieval query carries the scope filter, with the shareable and exposed-type conditions for other subjects.
+    - No query runs without the memory permission.
   - `apps/web/src/components/ai/MemoryDoorsBar.spec.ts` covers the chip states.
   - AC14 (embedding provider down) and AC15 (parent-department head) are exercised only manually.
+
+## 12b. Implementation notes (P2 + P3, as built)
+
+Migration `1700000030000-memory-phase2-3.ts` adds everything below.
+
+**P2: wider reach, shared group memory, review inbox**
+
+- **Subordinates' agents (R6).**
+  - New column `memory_doors.expose_agents`. In "Pintu saya" the owner can turn on "Atasan juga dapat membuka pintu agent pribadi saya".
+  - A subordinate's personal agents appear in the leader's reach only when the subordinate's own door is enabled **and** exposes agents. The agent's own door still decides whether it is granted.
+  - The reach DTO carries `ownerName`, shown as "Agent milik …".
+- **Agent-to-agent doors in groups.**
+  - New column `agent_groups.share_memory`, set with the "Memori bersama antar-anggota" switch in the group editor.
+  - When it is on, each member agent's retrieval includes the other members' books as peers (`ScopeSubject.peer`), filtered the same way as doors: shareable, exposed types, reviewed.
+  - This needs no `ai.memory.doors.open`, because all members belong to the task owner.
+- **Review inbox ("Kotak tinjauan").**
+  - The `memory_doors.review_required` setting puts extracted entries in `needs_review = true`. An extraction that updates an existing entry also sets the flag.
+  - Entries that need review are excluded from every door read: retrieval, reach counts, digest and themes. The owner still uses them.
+  - The owner approves, makes private, or deletes them, one at a time or all at once (`GET/POST /api/memory/me/review`, plus agent variants).
+  - Editing an entry counts as reviewing it.
+  - Manual entries never need review.
+
+**P3: consolidation, team digest, memory themes** (`MemoryInsightsService`)
+
+- **Profile summary ("Ringkasan profil").**
+  - Stored on `memory_subjects.summary` and `summary_at`, with `summary_entries` holding the source entry count.
+  - Regenerated every 6 h for books with at least 5 active entries that changed since the last summary, or on demand (`POST …/summary/refresh`).
+  - It is built from **all** active entries, including private ones, so it is injected only for the book's owner, at the top of the memory block ("### Ringkasan profil Anda"), and never through a door.
+  - `cleanSummary` strips the "Subjek:" and "Ringkasan:" preambles that small models add.
+- **Team digest ("Ringkasan tim").**
+  - `POST /api/memory/digest {subjectIds, days: 7|30|90}` requires `ai.memory.doors.open`, and every subject must pass `assertOpenable`, which checks reach and grant.
+  - Input is limited to door material: at most 10 entries per subject from the period.
+  - The digest is generated on demand and not stored. Each subject gets a `digest_read` row in `memory_access_log` (`context_kind = 'digest'`, no context id), and the run is audited as `ai.memory.digest_generated`.
+  - Internal ref codes are stripped from the text, and citations are returned separately.
+- **Memory themes in Mind Map.**
+  - `GET /api/memory/themes` requires both `ai.memory.doors.open` and `ai.mindmap.team.read`. It powers the "Tema memori" tab.
+  - It returns keyword counts per entry and counts per type, never entry content. Your own book uses all active entries; subordinates use door material only.
+  - Each subordinate read is logged as `themes_read` (`context_kind = 'mind_map'`).
+- **Provider timeouts.** `AiGatewayService.chat` now maps the provider timeout (`TimeoutError`) to a 504 `AI_UPSTREAM_ERROR` with a readable message, instead of an internal error. This applies to every caller.
+- **Tests.**
+  - `memory.e2e-spec.ts` adds P2 (R6 reach, review inbox, group sharing on and off) and P3 (summary only for the owner, digest scope and logging, themes without content).
+  - `memory.spec.ts` covers `cleanSummary` and `themeOf`.
+  - `memory-isolation.spec.ts` allow-lists the insights service and the new migration.
 
 ## 13. Open questions
 

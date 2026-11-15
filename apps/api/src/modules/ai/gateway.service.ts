@@ -1,3 +1,4 @@
+import { AppError, ERROR_CODES } from '../../common/errors/app-error';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CREATE_DOCUMENT_TOOL } from '../documents/document-spec';
@@ -191,7 +192,19 @@ export class AiGatewayService {
       this.embedders.set(settings.code, embedder);
     }
     const timeout = AbortSignal.timeout(this.registry.timeoutMs());
-    return embedder.embed(texts, model, signal ? AbortSignal.any([timeout, signal]) : timeout);
+    const vectors = await embedder.embed(texts, model, signal ? AbortSignal.any([timeout, signal]) : timeout);
+    // Biaya embedding masuk buku besar sebagai pemakaian sistem memori (tidak memotong kuota).
+    await this.ledger.record({
+      userId: null,
+      modelId: null,
+      provider: defaultModel.provider,
+      modelKey: model,
+      source: 'memory',
+      tokensIn: Math.ceil(texts.reduce((sum, text) => sum + text.length, 0) / 4),
+      tokensOut: 0,
+      estimated: true,
+    });
+    return vectors;
   }
 
   private usageSource(options: GatewayChatOptions): AiUsageSource {
@@ -373,6 +386,17 @@ export class AiGatewayService {
       const result = await call.adapter.chat(request);
       await this.record(call, request, result);
       return { ...result, modelId: call.model.id };
+    } catch (error) {
+      // Batas waktu penyedia (AbortSignal.timeout) muncul sebagai TimeoutError mentah; jadikan 504
+      // yang dapat dibaca pengguna, bukan "kesalahan internal".
+      if (error instanceof Error && error.name === 'TimeoutError') {
+        throw new AppError(
+          ERROR_CODES.aiUpstreamError,
+          `Penyedia AI tidak menjawab dalam ${Math.round(this.registry.timeoutMs() / 1000)} detik. Coba lagi.`,
+          504,
+        );
+      }
+      throw error;
     } finally {
       await this.access.release(call.reservationId);
     }

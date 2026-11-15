@@ -3,12 +3,16 @@ import type {
   MemoryBookSummaryDto,
   MemoryContextDoorDto,
   MemoryContextKind,
+  MemoryDigestDto,
+  MemoryDigestPeriod,
   MemoryDoorDto,
   MemoryEntryDto as SharedEntry,
   MemoryEntryType,
   MemoryReachSubjectDto,
+  MemoryReviewDecision,
   MemorySensitivity,
   MemoryStatusDto,
+  MemoryThemeSubjectDto,
 } from '@bara/shared';
 import { apiDelete, apiGet, apiGetPaged, apiPatch, apiPost, apiPut } from '@/api/http';
 
@@ -19,6 +23,10 @@ export type MemoryAccessLogDto = Flat<SharedAccessLog>;
 
 export type {
   MemoryBookSummaryDto,
+  MemoryDigestDto,
+  MemoryDigestPeriod,
+  MemoryReviewDecision,
+  MemoryThemeSubjectDto,
   MemoryContextDoorDto,
   MemoryDoorDto,
   MemoryEntryType,
@@ -74,7 +82,7 @@ export function getMyDoor(): Promise<MemoryDoorDto> {
 }
 
 export function setMemoryDoor(
-  input: { enabled: boolean; exposedTypes: MemoryEntryType[] },
+  input: { enabled: boolean; exposedTypes: MemoryEntryType[]; exposeAgents?: boolean; reviewRequired?: boolean },
   agentId?: string | null,
 ): Promise<MemoryDoorDto> {
   return apiPut<MemoryDoorDto>(`${base(agentId)}/door`, input);
@@ -98,4 +106,35 @@ export function setContextDoors(
   subjectIds: string[],
 ): Promise<MemoryContextDoorDto[]> {
   return apiPut<MemoryContextDoorDto[]>(`/memory/contexts/${kind}/${id}/doors`, { subjectIds });
+}
+
+/** Kotak tinjauan (P2): catatan baru yang menunggu persetujuan pemilik. */
+export function listMemoryReview(query: { page: number; pageSize: number }, agentId?: string | null) {
+  return apiGetPaged<MemoryEntryDto>(`${base(agentId)}/review`, query);
+}
+
+export function reviewMemoryEntries(
+  decision: MemoryReviewDecision,
+  entryIds: string[] = [],
+  agentId?: string | null,
+): Promise<{ affected: number }> {
+  return apiPost<{ affected: number }>(`${base(agentId)}/review`, {
+    decision,
+    ...(entryIds.length > 0 ? { entryIds } : {}),
+  });
+}
+
+/** Susun ulang ringkasan profil (P3) sekarang. */
+export function refreshMemorySummary(agentId?: string | null): Promise<MemoryBookSummaryDto> {
+  return apiPost<MemoryBookSummaryDto>(`${base(agentId)}/summary/refresh`);
+}
+
+/** Ringkasan tim dari pintu yang diizinkan (P3). */
+export function memoryDigest(subjectIds: string[], days: MemoryDigestPeriod): Promise<MemoryDigestDto> {
+  return apiPost<MemoryDigestDto>('/memory/digest', { subjectIds, days });
+}
+
+/** Tema memori untuk Peta Pikiran (P3). */
+export function memoryThemes(): Promise<MemoryThemeSubjectDto[]> {
+  return apiGet<MemoryThemeSubjectDto[]>('/memory/themes');
 }

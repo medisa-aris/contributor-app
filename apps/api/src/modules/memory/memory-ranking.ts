@@ -59,6 +59,9 @@ export function rankCandidates(candidates: RankCandidate[], now: Date = new Date
   return picked;
 }
 
+/** Batas panjang ringkasan profil yang disisipkan ke prompt. */
+export const MAX_SUMMARY_CHARS = 700;
+
 /** Perkiraan token kasar (≈4 karakter per token) untuk menjaga anggaran konteks. */
 export function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
@@ -80,6 +83,8 @@ const TYPE_LABEL: Record<MemoryEntryType, string> = {
 export function buildMemoryBlock(
   ranked: RankedEntry[],
   maxTokens: number,
+  /** Ringkasan profil subjek milik penanya (P3); diletakkan paling atas dan dihitung lebih dulu. */
+  summaries: { name: string; content: string }[] = [],
 ): { block: string; refs: MemoryRefDto[] } {
   const header = [
     '## Memori yang relevan',
@@ -91,6 +96,15 @@ export function buildMemoryBlock(
     'kode [m1], [m2] kepada pengguna.',
   ].join(' ');
   let budget = maxTokens - estimateTokens(header) - estimateTokens(footer);
+  const summaryLines: string[] = [];
+  for (const summary of summaries) {
+    const line = `### Ringkasan profil ${summary.name}\n${summary.content.slice(0, MAX_SUMMARY_CHARS)}`;
+    const cost = estimateTokens(line);
+    // Ringkasan tidak boleh menghabiskan lebih dari separuh anggaran memori.
+    if (cost > budget / 2) continue;
+    budget -= cost;
+    summaryLines.push(line);
+  }
   const kept: RankedEntry[] = [];
   for (const entry of ranked) {
     const cost = estimateTokens(entry.content) + 8;
@@ -98,7 +112,7 @@ export function buildMemoryBlock(
     budget -= cost;
     kept.push(entry);
   }
-  if (kept.length === 0) return { block: '', refs: [] };
+  if (kept.length === 0 && summaryLines.length === 0) return { block: '', refs: [] };
 
   const refs: MemoryRefDto[] = kept.map((entry, index) => ({
     ref: `m${index + 1}`,
@@ -120,6 +134,6 @@ export function buildMemoryBlock(
   const ordered = [...groups.values()].sort((a, b) =>
     a.title === '### Dari memori Anda' ? -1 : b.title === '### Dari memori Anda' ? 1 : 0,
   );
-  const body = ordered.map((g) => `${g.title}\n${g.lines.join('\n')}`).join('\n');
+  const body = [...summaryLines, ...ordered.map((g) => `${g.title}\n${g.lines.join('\n')}`)].join('\n');
   return { block: `${header}\n${body}\n\n${footer}`, refs };
 }

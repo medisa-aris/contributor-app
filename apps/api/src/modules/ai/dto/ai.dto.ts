@@ -1,5 +1,7 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsIn,
   IsInt,
@@ -12,7 +14,7 @@ import {
   MinLength,
   ValidateIf,
 } from 'class-validator';
-import { COUNTERPART_STYLES, type ConversationMode } from '@bara/shared';
+import { COUNTERPART_STYLES, MEMORY_LIMITS, type ConversationMode } from '@bara/shared';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
 import { AI_LIMITS } from '../limits';
 
@@ -114,6 +116,13 @@ export class CreateTaskDto {
   @IsOptional()
   @IsBoolean()
   webSearch?: boolean;
+
+  /** Pintu memori (subjek bawahan) yang dibuka untuk tugas ini. */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MEMORY_LIMITS.maxOpenDoors)
+  @IsUUID('4', { each: true })
+  memorySubjectIds?: string[];
 }
 
 export class TaskListQueryDto {

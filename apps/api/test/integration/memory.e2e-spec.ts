@@ -15,6 +15,7 @@ import {
   EXTRACTOR_PROMPT,
   MemoryExtractionService,
 } from '../../src/modules/memory/memory-extraction.service';
+import { CONSOLIDATION_PROMPT, DIGEST_PROMPT } from '../../src/modules/memory/memory-insights.service';
 import { asClient, loginAs, type AuthedClient } from './helpers/auth-as';
 import { resetDatabase, seedTestFixtures, type TestFixtures } from './helpers/reset-db';
 
@@ -44,7 +45,13 @@ describe('Memori terpusat & pintu memori (e2e)', () => {
     id: 'tiruan',
     chat: (options) => {
       requests.push({ ...options, messages: [...options.messages] });
-      const content = options.systemPrompt.startsWith(EXTRACTOR_PROMPT) ? extraction() : 'Jawaban uji.';
+      const content = options.systemPrompt.startsWith(EXTRACTOR_PROMPT)
+        ? extraction()
+        : options.systemPrompt.startsWith(CONSOLIDATION_PROMPT)
+          ? 'Manajer memimpin tim klaim IT dan menyukai jawaban berupa poin singkat.'
+          : options.systemPrompt.startsWith(DIGEST_PROMPT)
+            ? '## Tema utama\n- Verifikasi klaim santunan menurut Staf.'
+            : 'Jawaban uji.';
       return Promise.resolve({ content, model: 'model-uji', tokensIn: 3, tokensOut: 4 } satisfies ChatResult);
     },
     // eslint-disable-next-line require-yield
@@ -55,7 +62,14 @@ describe('Memori terpusat & pintu memori (e2e)', () => {
 
   /** System prompt permintaan chat terakhir (bukan ekstraksi). */
   function lastChatPrompt(): string {
-    const chat = [...requests].reverse().find((r) => !r.systemPrompt.startsWith(EXTRACTOR_PROMPT));
+    const chat = [...requests]
+      .reverse()
+      .find(
+        (r) =>
+          !r.systemPrompt.startsWith(EXTRACTOR_PROMPT) &&
+          !r.systemPrompt.startsWith(CONSOLIDATION_PROMPT) &&
+          !r.systemPrompt.startsWith(DIGEST_PROMPT),
+      );
     return chat?.systemPrompt ?? '';
   }
 
@@ -404,9 +418,108 @@ describe('Memori terpusat & pintu memori (e2e)', () => {
       expect.objectContaining({ source_kind: 'task', content: expect.stringContaining('3 hari kerja') }),
     ]);
 
+    // Sitasi: catatan yang dipakai agent tersimpan pada tugasnya.
+    const taskRefs = (await dataSource.query(`SELECT memory_refs FROM ai_tasks WHERE id = $1`, [taskId])) as {
+      memory_refs: { subjectName: string; own: boolean }[] | null;
+    }[];
+    expect(taskRefs[0]!.memory_refs).toEqual(
+      expect.arrayContaining([expect.objectContaining({ subjectName: 'Staf', own: false })]),
+    );
+
     // Pemilik agent mengelola buku agent; pengguna lain tidak.
     await asClient(app, manager).get(`/api/memory/agents/${agentId}/entries`).expect(200);
     await asClient(app, admin).get(`/api/memory/agents/${agentId}/entries`).expect(404);
+  });
+
+  it('tugas umum Subordinate: pintu, memori di prompt, sitasi, lalu pencatatan', async () => {
+    await asClient(app, manager)
+      .post('/api/ai/tasks', {
+        title: 'Ringkas aturan klaim',
+        instruction: 'Ringkas batas verifikasi klaim santunan.',
+        memorySubjectIds: [fx.users.managerHr],
+      })
+      .expect(403);
+
+    extraction = () => '{"operations":[]}';
+    const created = await asClient(app, manager)
+      .post('/api/ai/tasks', {
+        title: 'Ringkas aturan klaim',
+        instruction: 'Ringkas batas verifikasi klaim santunan.',
+        memorySubjectIds: [stafSubject],
+      })
+      .expect(201);
+    const taskId = created.body.data.id as string;
+    const before = requests.length;
+    const run = await asClient(app, manager).post(`/api/ai/tasks/${taskId}/run`).expect(200);
+    expect(run.body.data.status).toBe('completed');
+
+    const taskPrompt = requests.slice(before).find((r) => !r.systemPrompt.startsWith(EXTRACTOR_PROMPT))!;
+    expect(taskPrompt.systemPrompt).toContain('Dari memori Staf (dibuka melalui pintu)');
+    expect(run.body.data.memory_refs).toEqual(
+      expect.arrayContaining([expect.objectContaining({ subjectName: 'Staf', own: false })]),
+    );
+
+    await notes.flush();
+    const runs = (await dataSource.query(
+      `SELECT source_kind FROM memory_extraction_runs WHERE source_id = $1`,
+      [taskId],
+    )) as { source_kind: string }[];
+    expect(runs).toEqual([{ source_kind: 'task' }]);
+  });
+
+  it('diskusi grup: agent anggota ikut dicatat dari kontribusinya sendiri', async () => {
+    const members = (await dataSource.query(
+      `INSERT INTO agents (code, name, description, instruction, owner_user_id)
+       VALUES ('uji-k3', 'Agen K3', 'Pemeriksa keselamatan', 'Periksa aspek keselamatan.', $1) RETURNING id`,
+      [fx.users.manager],
+    )) as { id: string }[];
+    const memberId = members[0]!.id;
+    const group = await asClient(app, manager)
+      .post('/api/ai/agent-groups', {
+        name: 'Grup Klaim',
+        mode: 'discussion',
+        leaderAgentId: agentId,
+        memberAgentIds: [agentId, memberId],
+        maxRounds: 1,
+      })
+      .expect(201);
+
+    extraction = () =>
+      JSON.stringify({
+        operations: [
+          {
+            op: 'add',
+            about: 'agent2',
+            type: 'skill',
+            content: 'Agen K3 mengecek jalur evakuasi sebelum memberi rekomendasi.',
+            importance: 3,
+            confidence: 0.9,
+            sensitivity: 'shareable',
+          },
+        ],
+      });
+    const created = await asClient(app, manager)
+      .post('/api/ai/agent-tasks', {
+        groupId: group.body.data.id,
+        instruction: 'Diskusikan kesiapan evakuasi gedung klaim.',
+      })
+      .expect(201);
+    await runner.idle();
+    await notes.flush();
+
+    const extractorCall = [...requests].reverse().find((r) => r.systemPrompt.startsWith(EXTRACTOR_PROMPT))!;
+    const extractorInput = extractorCall.messages[0]!.content;
+    expect(extractorInput).toContain('"Agen K3" (about="agent2")');
+    expect(extractorInput).toContain('Kontribusi anggota grup Agen K3');
+
+    const memberEntries = (await dataSource.query(
+      `SELECT e.content, e.source_id FROM memory_entries e
+         JOIN memory_subjects s ON s.id = e.subject_id WHERE s.agent_id = $1`,
+      [memberId],
+    )) as { content: string; source_id: string }[];
+    expect(memberEntries).toEqual([
+      { content: 'Agen K3 mengecek jalur evakuasi sebelum memberi rekomendasi.', source_id: created.body.data.id },
+    ]);
   });
 
   it('pintu agent milik sendiri dapat dibuka di percakapan (AC3)', async () => {
@@ -417,5 +530,206 @@ describe('Memori terpusat & pintu memori (e2e)', () => {
     const prompt = lastChatPrompt();
     expect(prompt).toContain('Dari memori Staf (dibuka melalui pintu)');
     expect(prompt).toContain('Dari memori Agen Notifikasi (dibuka melalui pintu)');
+  });
+  // ───────────────────────── Fase 2 ─────────────────────────
+
+  async function openStafDoor(extra: Record<string, unknown> = {}) {
+    await asClient(app, staf)
+      .put('/api/memory/me/door', { enabled: true, exposedTypes: ['fact', 'decision'], ...extra })
+      .expect(200);
+  }
+
+  it('P2 R6: agent milik bawahan masuk jangkauan hanya bila bawahan mengizinkan', async () => {
+    await dataSource.query(
+      `INSERT INTO agents (code, name, description, instruction, owner_user_id)
+       VALUES ('uji-staf', 'Agen Staf', 'Asisten klaim staf', 'Bantu klaim.', $1)`,
+      [fx.users.staf],
+    );
+    await openStafDoor({ exposeAgents: false });
+    let reach = await asClient(app, manager).get('/api/memory/reach').expect(200);
+    expect(reach.body.data.map((s: { name: string }) => s.name)).not.toContain('Agen Staf');
+
+    await openStafDoor({ exposeAgents: true });
+    reach = await asClient(app, manager).get('/api/memory/reach').expect(200);
+    const agent = (reach.body.data as { name: string; ownerName: string | null; granted: boolean; kind: string }[]).find(
+      (s) => s.name === 'Agen Staf',
+    );
+    expect(agent).toEqual(expect.objectContaining({ kind: 'agent', ownerName: 'Staf', granted: true }));
+    // Agent milik manajer sendiri tidak diberi nama pemilik.
+    expect(
+      (reach.body.data as { name: string; ownerName: string | null }[]).find((s) => s.name === 'Agen Notifikasi')!
+        .ownerName,
+    ).toBeNull();
+
+    await openStafDoor({ exposeAgents: false });
+    reach = await asClient(app, manager).get('/api/memory/reach').expect(200);
+    expect(reach.body.data.map((s: { name: string }) => s.name)).not.toContain('Agen Staf');
+  });
+
+  it('P2 kotak tinjauan: catatan baru ditahan sampai disetujui pemilik', async () => {
+    await openStafDoor({ reviewRequired: true });
+    const conv = (await dataSource.query(
+      `INSERT INTO conversations (user_id, mode, title) VALUES ($1, 'second_brain', 'Klaim banjir') RETURNING id`,
+      [fx.users.staf],
+    )) as { id: string }[];
+    await dataSource.query(
+      `INSERT INTO conversation_messages (conversation_id, role, content) VALUES
+         ($1, 'user', 'Saya sedang memeriksa klaim banjir gudang timur.'),
+         ($1, 'assistant', 'Baik, saya bantu.')`,
+      [conv[0]!.id],
+    );
+    extraction = () =>
+      JSON.stringify([
+        {
+          op: 'add',
+          about: 'user',
+          type: 'fact',
+          content: 'Staf memeriksa klaim banjir gudang timur.',
+          importance: 3,
+          confidence: 0.9,
+          sensitivity: 'shareable',
+        },
+      ]);
+    await notes.extractConversation(conv[0]!.id);
+
+    await asClient(app, manager)
+      .put(`/api/memory/contexts/conversation/${conversationId}/doors`, { subjectIds: [stafSubject] })
+      .expect(200);
+    await ask('Siapa yang memeriksa klaim banjir gudang timur?');
+    expect(lastChatPrompt()).not.toContain('klaim banjir gudang timur.');
+
+    const inbox = await asClient(app, staf).get('/api/memory/me/review').expect(200);
+    expect(inbox.body.data.map((e: { content: string }) => e.content)).toEqual([
+      'Staf memeriksa klaim banjir gudang timur.',
+    ]);
+    const summary = await asClient(app, staf).get('/api/memory/me/summary').expect(200);
+    expect(summary.body.data.pendingReview).toBe(1);
+
+    const approved = await asClient(app, staf).post('/api/memory/me/review', { decision: 'approve' }).expect(200);
+    expect(approved.body.data).toEqual({ affected: 1 });
+    await ask('Siapa yang memeriksa klaim banjir gudang timur?');
+    expect(lastChatPrompt()).toContain('Staf memeriksa klaim banjir gudang timur.');
+    await openStafDoor({ reviewRequired: false });
+  });
+
+  it('P2 memori bersama grup: anggota membaca buku agent lain hanya bila grup mengizinkan', async () => {
+    const k3 = (await dataSource.query(`SELECT id FROM agents WHERE code = 'uji-k3'`)) as { id: string }[];
+    const k3Id = k3[0]!.id;
+    await asClient(app, manager)
+      .post(`/api/memory/agents/${k3Id}/entries`, {
+        type: 'skill',
+        content: 'Agen K3 selalu memeriksa jalur evakuasi gedung sebelum rekomendasi.',
+      })
+      .expect(201);
+
+    const runGroup = async (shareMemory: boolean) => {
+      const group = await asClient(app, manager)
+        .post('/api/ai/agent-groups', {
+          name: shareMemory ? 'Grup Berbagi' : 'Grup Tertutup',
+          mode: 'discussion',
+          leaderAgentId: agentId,
+          memberAgentIds: [agentId, k3Id],
+          maxRounds: 1,
+          shareMemory,
+        })
+        .expect(201);
+      expect(group.body.data.share_memory).toBe(shareMemory);
+      const before = requests.length;
+      await asClient(app, manager)
+        .post('/api/ai/agent-tasks', {
+          groupId: group.body.data.id,
+          instruction: 'Diskusikan jalur evakuasi gedung klaim.',
+        })
+        .expect(201);
+      await runner.idle();
+      await notes.flush();
+      return requests
+        .slice(before)
+        .filter((r) => r.systemPrompt.includes('Anda adalah "Agen Notifikasi"'))
+        .map((r) => r.systemPrompt);
+    };
+
+    const closed = await runGroup(false);
+    expect(closed.length).toBeGreaterThan(0);
+    expect(closed.join('\n')).not.toContain('Dari memori Agen K3');
+
+    const shared = await runGroup(true);
+    expect(shared.join('\n')).toContain('Dari memori Agen K3 (dibuka melalui pintu)');
+    expect(shared.join('\n')).toContain('jalur evakuasi gedung sebelum rekomendasi');
+  });
+
+  // ───────────────────────── Fase 3 ─────────────────────────
+
+  it('P3 ringkasan profil: dibuat dari buku sendiri dan hanya dipakai pemiliknya', async () => {
+    const refreshed = await asClient(app, manager).post('/api/memory/me/summary/refresh').expect(200);
+    expect(refreshed.body.data.profile).toEqual(
+      expect.objectContaining({ content: 'Manajer memimpin tim klaim IT dan menyukai jawaban berupa poin singkat.' }),
+    );
+    await dataSource.query(
+      `UPDATE memory_subjects SET summary = 'Ringkasan rahasia Staf yang memuat catatan pribadi.', summary_at = now()
+        WHERE id = $1`,
+      [stafSubject],
+    );
+    await openStafDoor();
+    await asClient(app, manager)
+      .put(`/api/memory/contexts/conversation/${conversationId}/doors`, { subjectIds: [stafSubject] })
+      .expect(200);
+    await ask('Berapa batas verifikasi klaim santunan?');
+    const prompt = lastChatPrompt();
+    expect(prompt).toContain('### Ringkasan profil Anda');
+    expect(prompt).toContain('Manajer memimpin tim klaim IT');
+    expect(prompt).not.toContain('Ringkasan rahasia Staf');
+  });
+
+  it('P3 ringkasan tim: hanya dari pintu yang diizinkan dan tercatat di log akses', async () => {
+    await openStafDoor();
+    const res = await asClient(app, manager)
+      .post('/api/memory/digest', { subjectIds: [stafSubject], days: 30 })
+      .expect(200);
+    expect(res.body.data.content).toContain('Tema utama');
+    const contents = (res.body.data.refs as { content: string; subjectName: string }[]).map((r) => r.content);
+    expect(contents).toContain('Batas verifikasi klaim santunan adalah 3 hari kerja.');
+    expect(contents.join(' ')).not.toContain('pindah ke tim klaim lain'); // pribadi
+    expect(res.body.data.subjects).toEqual([expect.objectContaining({ subjectId: stafSubject, name: 'Staf' })]);
+
+    const digestPrompt = [...requests].reverse().find((r) => r.systemPrompt.startsWith(DIGEST_PROMPT))!;
+    expect(digestPrompt.messages[0]!.content).not.toContain('pindah ke tim klaim lain');
+
+    const log = (await dataSource.query(
+      `SELECT action, context_kind FROM memory_access_log WHERE subject_id = $1 AND action = 'digest_read'`,
+      [stafSubject],
+    )) as { action: string; context_kind: string }[];
+    expect(log).toEqual([{ action: 'digest_read', context_kind: 'digest' }]);
+    const stafLog = await asClient(app, staf).get('/api/memory/me/access-log').expect(200);
+    expect(stafLog.body.data.map((l: { action: string }) => l.action)).toContain('digest_read');
+
+    await asClient(app, staf).post('/api/memory/digest', { subjectIds: [stafSubject] }).expect(403);
+    const hr = (await dataSource.query(`SELECT id FROM memory_subjects WHERE user_id = $1`, [
+      fx.users.managerHr,
+    ])) as { id: string }[];
+    await asClient(app, manager).post('/api/memory/digest', { subjectIds: [hr[0]!.id] }).expect(403);
+  });
+
+  it('P3 tema memori: kata kunci tanpa isi catatan, dari pintu yang diizinkan saja', async () => {
+    await openStafDoor();
+    const res = await asClient(app, manager).get('/api/memory/themes').expect(200);
+    const subjects = res.body.data as {
+      name: string;
+      own: boolean;
+      themes: { term: string }[];
+      counts: Record<string, number>;
+    }[];
+    expect(subjects[0]).toEqual(expect.objectContaining({ name: 'Manajer', own: true }));
+    const stafThemes = subjects.find((s) => s.name === 'Staf')!;
+    const terms = stafThemes.themes.map((t) => t.term);
+    expect(terms).toEqual(expect.arrayContaining(['verifikasi']));
+    expect(terms).not.toContain('pindah'); // catatan pribadi
+    expect(JSON.stringify(res.body.data)).not.toContain('3 hari kerja');
+    const log = (await dataSource.query(
+      `SELECT count(*)::int AS n FROM memory_access_log WHERE subject_id = $1 AND action = 'themes_read'`,
+      [stafSubject],
+    )) as { n: number }[];
+    expect(log[0]!.n).toBe(1);
+    await asClient(app, staf).get('/api/memory/themes').expect(403);
   });
 });

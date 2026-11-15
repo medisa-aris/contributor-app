@@ -91,6 +91,8 @@ export type TaskRow = {
   started_at: string | null;
   finished_at: string | null;
   updated_at: string;
+  /** Catatan memori yang dipakai saat mengerjakan tugas. */
+  memory_refs?: MemoryRefDto[] | null;
 };
 
 export type TaskEventRow = {

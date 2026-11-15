@@ -21,6 +21,8 @@ export interface ScopeSubject {
   exposedTypes: MemoryEntryType[];
   /** Agent yang sedang bekerja: profil hasil migrasi `agents.memory` sudah ada di system prompt. */
   skipAgentProfile?: boolean;
+  /** Rekan satu grup agent (P2): dibaca seperti pintu, tetapi tidak perlu dibuka atasan. */
+  peer?: boolean;
 }
 
 /**
@@ -68,10 +70,23 @@ export class MemoryScopeService {
     return subject.id;
   }
 
-  /** Subjek dalam jangkauan beserta status izin pintunya (tanpa isi memori). */
+  /**
+   * Subjek dalam jangkauan beserta status izin pintunya (tanpa isi memori). Agent milik bawahan
+   * ikut hanya bila bawahan itu mengizinkan pintunya dan mencentang "agent saya" (R6, P2).
+   */
   async reach(leaderUserId: string): Promise<MemoryReachSubjectDto[]> {
-    // Jangkauan bersama (OrgReachService); agent milik bawahan belum masuk jangkauan memori (R6).
-    const { userIds, agentIds } = await this.orgReach.reach(leaderUserId);
+    const org = await this.orgReach.reach(leaderUserId, { includeSubordinateAgents: true });
+    const userIds = org.userIds;
+    const agentIds = org.agentIds.length
+      ? ((await this.dataSource.query(
+          `SELECT a.id FROM agents a
+             LEFT JOIN memory_subjects os ON os.user_id = a.owner_user_id
+             LEFT JOIN memory_doors od ON od.subject_id = os.id
+            WHERE a.id = ANY($1::uuid[])
+              AND (a.owner_user_id = $2 OR (od.enabled AND od.expose_agents))`,
+          [org.agentIds, leaderUserId],
+        )) as { id: string }[]).map((r) => r.id)
+      : [];
     if (userIds.length === 0 && agentIds.length === 0) return [];
     await this.dataSource.query(
       `INSERT INTO memory_subjects (kind, user_id, owner_user_id)
@@ -86,19 +101,21 @@ export class MemoryScopeService {
               COALESCE(u.display_name, a.name) AS name,
               CASE WHEN s.kind = 'user' THEN u.job_title ELSE a.description END AS caption,
               d.name AS department_name,
+              CASE WHEN s.kind = 'agent' AND a.owner_user_id <> $3 THEN ou.display_name END AS owner_name,
               COALESCE(md.enabled, false) AS granted,
               (SELECT count(*)::int FROM memory_entries e
                 WHERE e.subject_id = s.id AND e.status = 'active' AND e.sensitivity = 'shareable'
-                  AND md.enabled
+                  AND NOT e.needs_review AND md.enabled
                   AND e.type = ANY(md.exposed_types)) AS visible_entries
          FROM memory_subjects s
          LEFT JOIN users u ON u.id = s.user_id
          LEFT JOIN departments d ON d.id = u.department_id
          LEFT JOIN agents a ON a.id = s.agent_id
+         LEFT JOIN users ou ON ou.id = a.owner_user_id
          LEFT JOIN memory_doors md ON md.subject_id = s.id
         WHERE s.user_id = ANY($1::uuid[]) OR s.agent_id = ANY($2::uuid[])
         ORDER BY s.kind DESC, name`,
-      [userIds, agentIds],
+      [userIds, agentIds, leaderUserId],
     )) as {
       subject_id: string;
       kind: 'user' | 'agent';
@@ -106,6 +123,7 @@ export class MemoryScopeService {
       name: string;
       caption: string | null;
       department_name: string | null;
+      owner_name: string | null;
       granted: boolean;
       visible_entries: number;
     }[];
@@ -116,6 +134,7 @@ export class MemoryScopeService {
       name: r.name,
       caption: r.caption,
       departmentName: r.department_name,
+      ownerName: r.owner_name,
       granted: r.granted,
       visibleEntries: r.visible_entries,
     }));
@@ -135,7 +154,7 @@ export class MemoryScopeService {
   async resolve(
     userId: string,
     context: MemoryContextRef | null,
-    options: { canOpenDoors: boolean; agentId?: string | null },
+    options: { canOpenDoors: boolean; agentId?: string | null; peerAgentIds?: string[] },
   ): Promise<ScopeSubject[]> {
     const selfId = await this.ensureUserSubject(userId);
     const selfName = ((await this.dataSource.query(`SELECT display_name FROM users WHERE id = $1`, [
@@ -156,6 +175,29 @@ export class MemoryScopeService {
           own: true,
           exposedTypes: [],
           skipAgentProfile: true,
+        });
+      }
+    }
+
+    // Memori bersama dalam grup (P2): agent anggota lain milik pemilik tugas ikut dibaca lewat
+    // pintunya sendiri (jenis yang dibuka, shareable, sudah ditinjau) — tanpa izin membuka pintu.
+    if (options.peerAgentIds?.length) {
+      const peers = (await this.dataSource.query(
+        `SELECT s.id AS subject_id, a.name, md.exposed_types
+           FROM agents a
+           JOIN memory_subjects s ON s.agent_id = a.id
+           JOIN memory_doors md ON md.subject_id = s.id AND md.enabled
+          WHERE a.id = ANY($1::uuid[]) AND a.owner_user_id = $2 AND a.status = 'active'`,
+        [options.peerAgentIds, userId],
+      )) as { subject_id: string; name: string; exposed_types: MemoryEntryType[] | string }[];
+      for (const peer of peers) {
+        if (scope.some((s) => s.subjectId === peer.subject_id)) continue;
+        scope.push({
+          subjectId: peer.subject_id,
+          name: peer.name,
+          own: false,
+          exposedTypes: parsePgArray(peer.exposed_types),
+          peer: true,
         });
       }
     }

@@ -68,6 +68,8 @@ export interface AgentGroup {
   mode: GroupMode;
   leader_agent_id: string;
   max_rounds: number;
+  /** Anggota saling membaca memori agent lain dalam grup. */
+  share_memory: boolean;
   members: { id: string; name: string; avatar_color: string | null; position: number }[];
   task_count: number;
   created_at: string;
@@ -81,6 +83,7 @@ export interface AgentGroupInput {
   leaderAgentId: string;
   memberAgentIds: string[];
   maxRounds?: number;
+  shareMemory?: boolean;
 }
 
 export type AgentTaskRow = TaskRow & {

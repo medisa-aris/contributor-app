@@ -67,6 +67,8 @@ export interface AgentGroupRow {
   mode: 'delegate' | 'discussion';
   leader_agent_id: string;
   max_rounds: number;
+  /** Anggota saling membaca buku memori agent lain dalam grup (P2). */
+  share_memory: boolean;
   members: { id: string; name: string; avatar_color: string | null; position: number }[];
   task_count: number;
   created_at: string;
@@ -97,7 +99,8 @@ const AGENT_SELECT = `
     LEFT JOIN agents t ON t.id = a.template_id`;
 
 const GROUP_SELECT = `
-  SELECT g.id, g.name, g.description, g.mode, g.leader_agent_id, g.max_rounds, g.created_at, g.updated_at,
+  SELECT g.id, g.name, g.description, g.mode, g.leader_agent_id, g.max_rounds, g.share_memory,
+         g.created_at, g.updated_at,
          (SELECT count(*)::int FROM ai_tasks k WHERE k.group_id = g.id AND k.parent_task_id IS NULL) AS task_count,
          COALESCE((SELECT json_agg(json_build_object('id', a.id, 'name', a.name, 'avatar_color', a.avatar_color,
                                                      'position', m.position) ORDER BY m.position)
@@ -500,8 +503,8 @@ export class AgentWorkspaceService {
     const members = await this.normalizeMembers(auth.user.id, dto);
     const id = await this.dataSource.transaction(async (manager) => {
       const rows = (await manager.query(
-        `INSERT INTO agent_groups (owner_user_id, name, description, mode, leader_agent_id, max_rounds)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+        `INSERT INTO agent_groups (owner_user_id, name, description, mode, leader_agent_id, max_rounds, share_memory)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
         [
           auth.user.id,
           dto.name.trim(),
@@ -509,6 +512,7 @@ export class AgentWorkspaceService {
           dto.mode,
           dto.leaderAgentId,
           dto.maxRounds ?? 3,
+          dto.shareMemory === true,
         ],
       )) as { id: string }[];
       for (const [position, agentId] of members.entries()) {
@@ -543,7 +547,7 @@ export class AgentWorkspaceService {
     await this.dataSource.transaction(async (manager) => {
       await manager.query(
         `UPDATE agent_groups SET name = $2, description = $3, mode = $4, leader_agent_id = $5, max_rounds = $6,
-                updated_at = now() WHERE id = $1`,
+                share_memory = $7, updated_at = now() WHERE id = $1`,
         [
           groupId,
           dto.name.trim(),
@@ -551,6 +555,7 @@ export class AgentWorkspaceService {
           dto.mode,
           dto.leaderAgentId,
           dto.maxRounds ?? 3,
+          dto.shareMemory === true,
         ],
       );
       await manager.query(`DELETE FROM agent_group_members WHERE group_id = $1`, [groupId]);

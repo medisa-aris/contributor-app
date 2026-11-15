@@ -2,6 +2,7 @@ import { forwardRef, Module } from '@nestjs/common';
 import { AiModule } from '../ai/ai.module';
 import { MemoryEmbeddingService } from './memory-embedding.service';
 import { MemoryExtractionService } from './memory-extraction.service';
+import { MemoryInsightsService } from './memory-insights.service';
 import { MemoryScopeService } from './memory-scope.service';
 import { MemorySettingsService } from './memory-settings.service';
 import { MemoryController } from './memory.controller';
@@ -17,7 +18,8 @@ import { MemoryService } from './memory.service';
     MemoryEmbeddingService,
     MemoryService,
     MemoryExtractionService,
+    MemoryInsightsService,
   ],
-  exports: [MemoryService, MemoryExtractionService, MemoryScopeService],
+  exports: [MemoryService, MemoryExtractionService, MemoryScopeService, MemoryInsightsService],
 })
 export class MemoryModule {}

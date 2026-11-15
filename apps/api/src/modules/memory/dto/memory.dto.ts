@@ -14,8 +14,11 @@ import {
   MinLength,
 } from 'class-validator';
 import {
+  MEMORY_DIGEST_PERIODS,
   MEMORY_ENTRY_TYPES,
   MEMORY_LIMITS,
+  type MemoryDigestPeriod,
+  type MemoryReviewDecision,
   type MemoryEntryStatus,
   type MemoryEntryType,
   type MemorySensitivity,
@@ -91,6 +94,40 @@ export class SetMemoryDoorDto {
   @ArrayMaxSize(MEMORY_ENTRY_TYPES.length)
   @IsIn(MEMORY_ENTRY_TYPES, { each: true })
   exposedTypes: MemoryEntryType[];
+
+  /** Atasan juga dapat membuka pintu agent pribadi saya (R6). */
+  @IsOptional()
+  @IsBoolean()
+  exposeAgents?: boolean;
+
+  /** Tahan catatan baru di kotak tinjauan sebelum dapat dibagikan. */
+  @IsOptional()
+  @IsBoolean()
+  reviewRequired?: boolean;
+}
+
+export class ReviewMemoryEntriesDto {
+  @IsIn(['approve', 'private', 'delete'])
+  decision: MemoryReviewDecision;
+
+  /** Kosong/tidak ada = semua catatan di kotak tinjauan. */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(200)
+  @IsUUID('4', { each: true })
+  entryIds?: string[];
+}
+
+export class MemoryDigestRequestDto {
+  @IsArray()
+  @ArrayMaxSize(MEMORY_LIMITS.maxOpenDoors)
+  @IsUUID('4', { each: true })
+  subjectIds: string[];
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsIn(MEMORY_DIGEST_PERIODS)
+  days?: MemoryDigestPeriod;
 }
 
 export class SetContextDoorsDto {

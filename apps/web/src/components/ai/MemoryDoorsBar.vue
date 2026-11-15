@@ -167,7 +167,13 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick));
               {{ subject.name }}
             </span>
             <span class="mbar__meta">
-              {{ subject.kind === 'agent' ? t('memory.bar.agent') : subject.departmentName || t('memory.bar.person') }}
+              {{
+                subject.kind === 'agent'
+                  ? subject.ownerName
+                    ? t('memory.bar.ownedBy', { name: subject.ownerName })
+                    : t('memory.bar.agent')
+                  : subject.departmentName || t('memory.bar.person')
+              }}
               <template v-if="subject.caption"> · {{ subject.caption }}</template>
               <template v-if="subject.granted"> · {{ t('memory.bar.entries', { n: subject.visibleEntries }) }}</template>
             </span>

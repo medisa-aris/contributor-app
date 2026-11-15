@@ -63,6 +63,8 @@ export const AUDIT_EVENTS = {
   memoryDoorClosed: 'ai.memory.door_closed',
   memoryDoorSettingsUpdated: 'ai.memory.door_settings_updated',
   memoryEntryDeleted: 'ai.memory.entry_deleted',
+  memoryEntriesReviewed: 'ai.memory.entries_reviewed',
+  memoryDigestGenerated: 'ai.memory.digest_generated',
 
   knowledgeSourceCreated: 'knowledge.source.created',
   knowledgeSourceUpdated: 'knowledge.source.updated',

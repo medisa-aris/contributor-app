@@ -216,6 +216,11 @@ export class AgentGroupDto {
   @Min(1)
   @Max(6)
   maxRounds?: number;
+
+  /** Anggota saling membaca buku memori agent lain dalam grup (P2). */
+  @IsOptional()
+  @IsBoolean()
+  shareMemory?: boolean;
 }
 
 export class AgentTaskDto {

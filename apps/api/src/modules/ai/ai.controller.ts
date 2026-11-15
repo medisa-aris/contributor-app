@@ -610,12 +610,17 @@ export class AiController {
     const pendingApprovals: string[] = [];
     const handlers = await this.chatTools.handlersFor(auth, id, pendingApprovals);
     const history = await this.chatTools.historyBefore(id, message.id);
+    // Lanjutan giliran memakai memori yang sama seperti giliran awalnya; pintu yang ditutup
+    // sementara itu tidak ikut lagi karena cakupan dihitung ulang.
+    const lastPrompt = [...history].reverse().find((m) => m.role === 'user')?.content ?? '';
+    const memory = await this.memoryFor(auth, id, lastPrompt);
     const handlerMap = new Map(handlers.map((h) => [h.tool.name, h]));
     const result = await this.gateway.drainToolLoop(
       {
         guard: { userId: auth.user.id, conversationId: id },
         mode: summary.mode as ConversationMode,
         counterpartStyle: summary.counterpart_style ?? undefined,
+        memoryContext: memory.block || undefined,
         messages: [...history, ...trace.transcript],
         handlers,
         toolRules: this.chatTools.toolRules(handlers),
@@ -636,9 +641,11 @@ export class AiController {
       tokensIn: (message.tokens_in ?? 0) + result.tokensIn,
       tokensOut: (message.tokens_out ?? 0) + result.tokensOut,
       ...(result.guardrails ? { guardrails: result.guardrails } : {}),
+      memoryRefs: memory.refs,
       trace,
     });
     await this.toolApprovals.attachMessage(pendingApprovals, message.id);
+    this.afterTurn(auth, id);
     return this.conversations.detail(auth, id);
   }
 
