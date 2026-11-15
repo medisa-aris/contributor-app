@@ -64,6 +64,15 @@ export class UpdateModelDto {
   @IsOptional() @ValidateIf((_, v) => v !== null) @IsInt() @Min(1) maxOutputTokens?: number | null;
   @IsOptional() @ValidateIf((_, v) => v !== null) @IsInt() @Min(1) @Max(3) costTier?: 1 | 2 | 3 | null;
   @IsOptional() @IsInt() sortOrder?: number;
+  @IsOptional() @IsBoolean() longRunAllowed?: boolean;
+  @IsOptional() @IsBoolean() supportsEffort?: boolean;
+  @IsOptional() @ValidateIf((_, v) => v !== null) @IsIn(['low', 'medium', 'high', 'xhigh', 'max']) defaultEffort?: string | null;
+  @IsOptional() @IsBoolean() supportsThinking?: boolean;
+  @IsOptional() @IsBoolean() supportsCompaction?: boolean;
+  @IsOptional() @IsBoolean() supportsContextEditing?: boolean;
+  @IsOptional() @IsBoolean() supportsTaskBudget?: boolean;
+  @IsOptional() @IsBoolean() supportsPromptCache?: boolean;
+  @IsOptional() @IsBoolean() acceptsSamplingParams?: boolean;
 }
 
 export class TestModelDto {

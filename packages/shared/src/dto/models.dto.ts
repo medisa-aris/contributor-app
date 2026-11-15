@@ -38,6 +38,17 @@ export interface AiModelDto {
   lastTestLatencyMs: number | null;
   lastTestError: string | null;
   providerConfigured: boolean;
+  /** Boleh dipakai untuk kerja panjang (§14). */
+  longRunAllowed: boolean;
+  supportsEffort: boolean;
+  defaultEffort: string | null;
+  supportsThinking: boolean;
+  supportsCompaction: boolean;
+  supportsContextEditing: boolean;
+  supportsTaskBudget: boolean;
+  supportsPromptCache: boolean;
+  /** false = jangan kirim temperature/top_p/top_k (model Claude terbaru menolaknya). */
+  acceptsSamplingParams: boolean;
 }
 
 export interface ModelTestProbeDto {
@@ -100,6 +111,7 @@ export interface UserModelDto {
   costTier: 1 | 2 | 3 | null;
   supportsTools: boolean;
   supportsVision: boolean;
+  longRunAllowed: boolean;
   isDefault: boolean;
   /** Model bawaan tanpa batas (tidak ada batas model bawaan yang diatur). */
   unlimited: boolean;

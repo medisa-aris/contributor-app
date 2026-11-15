@@ -73,6 +73,16 @@ export class ProviderRegistryService {
     return Number.isFinite(value) && value > 0 ? value : 60000;
   }
 
+  /** Batas waktu kerja panjang: diam stream dan total per panggilan. */
+  longRunTimeouts(): { idleMs: number; callMs: number } {
+    const idle = this.config.get<number>('app.aiStreamIdleTimeoutMs', 120000);
+    const call = this.config.get<number>('app.aiCallMaxMs', 900000);
+    return {
+      idleMs: Number.isFinite(idle) && idle > 0 ? idle : 120000,
+      callMs: Number.isFinite(call) && call > 0 ? call : 900000,
+    };
+  }
+
   settings(code: AiProviderCode): ProviderSettings {
     const legacy = this.legacyProvider() === code ? this.config.get<string>('app.aiBaseUrl', '') : '';
     if (legacy && !this.warnedLegacyBaseUrl) {

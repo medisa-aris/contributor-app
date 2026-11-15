@@ -463,6 +463,7 @@ export class ModelAccessService {
         costTier: model.costTier,
         supportsTools: model.supportsTools,
         supportsVision: model.supportsVision,
+        longRunAllowed: model.longRunAllowed,
         isDefault: model.isDefault,
         unlimited: quotas.length === 0,
         quotas,

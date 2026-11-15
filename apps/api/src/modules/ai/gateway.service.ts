@@ -1,6 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CREATE_DOCUMENT_TOOL } from '../documents/document-spec';
+import {
+  CONTEXT_LIMITS,
+  COMPACTION_PROMPT,
+  clearOldToolResults,
+  compactionCut,
+  estimateTokens,
+  transcriptText,
+  type ContextCache,
+} from './context-budget';
 import { AI_LIMITS, validateChatMessages } from './limits';
 import { buildSystemPrompt, type PromptMode } from './prompts';
 import { ModelAccessService, type AuthorizedCall } from './models/model-access.service';
@@ -51,6 +60,15 @@ export interface GatewayChatOptions {
   agentId?: string;
   /** Sumber pemakaian untuk buku besar; bawaan diturunkan dari `guard`. */
   usageSource?: AiUsageSource;
+  /**
+   * Kerja panjang (§14): batas diam stream + batas per panggilan menggantikan AI_TIMEOUT_MS,
+   * riwayat tidak dibatasi jumlah pesan, dan konteks dijaga lewat pembersihan/ringkasan.
+   */
+  longRun?: boolean;
+  /** Cache ringkasan konteks yang dipakai ulang antar-iterasi loop. */
+  contextCache?: ContextCache;
+  /** Dipanggil saat konteks diringkas (untuk event "Konteks diringkas"). */
+  onCompaction?: (info: { cut: number; tokensBefore: number }) => void;
 }
 
 /** Hasil eksekusi satu tool di dalam loop. */
@@ -160,11 +178,17 @@ export class AiGatewayService {
   }
 
   /** Tentukan model (dan periksa izin/kuota), lalu susun permintaan untuk adapter penyedianya. */
-  private async prepare(options: GatewayChatOptions): Promise<{ call: AuthorizedCall; request: ChatRequestOptions }> {
+  private async prepare(
+    options: GatewayChatOptions,
+  ): Promise<{ call: AuthorizedCall; request: ChatRequestOptions; idle: AbortController | null }> {
     const tools = [...(options.documents ? [CREATE_DOCUMENT_TOOL] : []), ...(options.tools ?? [])];
     validateChatMessages(
       options.messages,
-      tools.length > 0 ? AI_LIMITS.maxHistoryMessagesWithTools : AI_LIMITS.maxHistoryMessages,
+      options.longRun
+        ? Number.MAX_SAFE_INTEGER
+        : tools.length > 0
+          ? AI_LIMITS.maxHistoryMessagesWithTools
+          : AI_LIMITS.maxHistoryMessages,
     );
     const images = options.images && options.images.length > 0 ? options.images : undefined;
     const call = await this.access.authorize({
@@ -177,8 +201,10 @@ export class AiGatewayService {
       ...(options.model ? { modelKey: options.model } : {}),
       needs: { tools: tools.length > 0, vision: Boolean(images) },
     });
-    const timeout = AbortSignal.timeout(this.registry.timeoutMs());
-    const signal = options.signal ? AbortSignal.any([timeout, options.signal]) : timeout;
+    const longRun = options.longRun ? this.registry.longRunTimeouts() : null;
+    const idle = longRun ? new AbortController() : null;
+    const timeout = AbortSignal.timeout(longRun ? longRun.callMs : this.registry.timeoutMs());
+    const signal = AbortSignal.any([timeout, ...(options.signal ? [options.signal] : []), ...(idle ? [idle.signal] : [])]);
     const basePrompt =
       options.systemPrompt ??
       buildSystemPrompt(
@@ -198,20 +224,70 @@ export class AiGatewayService {
       options.documents || (options.tools?.length ?? 0) > 0
         ? AI_LIMITS.maxOutputTokensWithDocuments
         : AI_LIMITS.maxOutputTokens;
+    const messages =
+      options.longRun || options.contextCache
+        ? await this.fitContext(call, systemPrompt, options.messages, options, signal)
+        : options.messages;
     return {
       call,
+      idle,
       request: {
         model: call.model.modelKey,
         systemPrompt,
-        messages: options.messages,
+        messages,
         maxTokens: call.maxTokens === null ? baseMax : Math.max(1, Math.min(baseMax, call.maxTokens)),
-        temperature: MODE_TEMPERATURE[options.mode],
+        // Model Claude terbaru menolak parameter sampling (400); hanya dikirim bila diterima.
+        ...(call.model.acceptsSamplingParams ? { temperature: MODE_TEMPERATURE[options.mode] } : {}),
         signal,
         ...(images && !call.dropImages ? { images } : {}),
         ...(tools.length > 0 ? { tools } : {}),
         ...(options.guard ? { guard: options.guard } : {}),
       },
     };
+  }
+
+  /**
+   * Jaga permintaan di bawah jendela konteks model (§14.6): bersihkan hasil tool lama di atas
+   * 50%, ringkas bagian awal di atas 75%. Transkrip asli tidak berubah.
+   */
+  private async fitContext(
+    call: AuthorizedCall,
+    systemPrompt: string,
+    messages: ChatMessage[],
+    options: GatewayChatOptions,
+    signal: AbortSignal,
+  ): Promise<ChatMessage[]> {
+    const window = call.model.contextWindow ?? CONTEXT_LIMITS.defaultWindow;
+    const before = estimateTokens(messages, systemPrompt);
+    if (before <= window * CONTEXT_LIMITS.clearToolResultsAt) return messages;
+    let fitted = clearOldToolResults(messages);
+    if (estimateTokens(fitted, systemPrompt) <= window * CONTEXT_LIMITS.compactAt) return fitted;
+    const cut = compactionCut(fitted);
+    if (cut === 0) return fitted;
+    const cache = options.contextCache;
+    let summary = cache?.cut === cut ? cache.summary : undefined;
+    if (!summary) {
+      // Bagian yang diringkas dipotong dari belakang agar permintaan ringkasan sendiri muat.
+      const text = transcriptText(fitted.slice(0, cut)).slice(-Math.floor(window * 0.6 * 4));
+      const request: ChatRequestOptions = {
+        model: call.model.modelKey,
+        systemPrompt: COMPACTION_PROMPT,
+        messages: [{ role: 'user', content: text }],
+        maxTokens: 4000,
+        signal,
+      };
+      const result = await call.adapter.chat(request);
+      await this.record(call, request, result);
+      summary = result.content.trim();
+      if (cache) {
+        cache.cut = cut;
+        cache.summary = summary;
+        cache.compactions += 1;
+      }
+      options.onCompaction?.({ cut, tokensBefore: before });
+    }
+    fitted = [{ role: 'user', content: `Ringkasan kerja sejauh ini:\n${summary}` }, ...fitted.slice(cut)];
+    return fitted;
   }
 
   /** Satu baris buku besar per panggilan; token diestimasi bila penyedia tidak melaporkannya. */
@@ -241,10 +317,18 @@ export class AiGatewayService {
   }
 
   async *stream(options: GatewayChatOptions): AsyncGenerator<string, ChatResult> {
-    const { call, request } = await this.prepare(options);
+    const { call, request, idle } = await this.prepare(options);
     const inner = call.adapter.stream(request);
+    const idleMs = idle ? this.registry.longRunTimeouts().idleMs : 0;
     for (;;) {
-      const step = await inner.next();
+      // Kerja panjang: putus hanya bila penyedia diam terlalu lama, bukan karena total durasi.
+      const timer = idle ? setTimeout(() => idle.abort(new Error('Penyedia AI tidak mengirim data terlalu lama.')), idleMs) : null;
+      let step: IteratorResult<string, ChatResult>;
+      try {
+        step = await inner.next();
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
       if (step.done) {
         await this.record(call, request, step.value);
         return { ...step.value, modelId: call.model.id };
@@ -272,10 +356,12 @@ export class AiGatewayService {
     const guardrailsResult = () =>
       Object.keys(guardrails).length > 0 ? { guardrails: { ...guardrails } } : {};
 
+    const contextCache = options.contextCache ?? (options.longRun ? { compactions: 0 } : undefined);
     for (let iteration = 1; iteration <= maxIterations; iteration += 1) {
       options.signal?.throwIfAborted();
       const request: GatewayChatOptions = {
         ...options,
+        ...(contextCache ? { contextCache } : {}),
         tools,
         messages: [...options.messages, ...appended],
         // Gambar hanya relevan untuk giliran pertama.

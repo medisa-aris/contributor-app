@@ -36,6 +36,15 @@ export interface CatalogModel {
   lastTestLatencyMs: number | null;
   lastTestError: string | null;
   sortOrder: number;
+  longRunAllowed: boolean;
+  supportsEffort: boolean;
+  defaultEffort: string | null;
+  supportsThinking: boolean;
+  supportsCompaction: boolean;
+  supportsContextEditing: boolean;
+  supportsTaskBudget: boolean;
+  supportsPromptCache: boolean;
+  acceptsSamplingParams: boolean;
 }
 
 interface ModelRow {
@@ -58,9 +67,27 @@ interface ModelRow {
   last_test_latency_ms: number | null;
   last_test_error: string | null;
   sort_order: number;
+  long_run_allowed: boolean;
+  supports_effort: boolean;
+  default_effort: string | null;
+  supports_thinking: boolean;
+  supports_compaction: boolean;
+  supports_context_editing: boolean;
+  supports_task_budget: boolean;
+  supports_prompt_cache: boolean;
+  accepts_sampling_params: boolean;
 }
 
 export interface ModelPatch {
+  longRunAllowed?: boolean;
+  supportsEffort?: boolean;
+  defaultEffort?: string | null;
+  supportsThinking?: boolean;
+  supportsCompaction?: boolean;
+  supportsContextEditing?: boolean;
+  supportsTaskBudget?: boolean;
+  supportsPromptCache?: boolean;
+  acceptsSamplingParams?: boolean;
   displayName?: string;
   description?: string | null;
   leaderGrantable?: boolean;
@@ -132,6 +159,15 @@ function toModel(row: ModelRow): CatalogModel {
     lastTestLatencyMs: row.last_test_latency_ms,
     lastTestError: row.last_test_error,
     sortOrder: row.sort_order,
+    longRunAllowed: row.long_run_allowed ?? false,
+    supportsEffort: row.supports_effort ?? false,
+    defaultEffort: row.default_effort ?? null,
+    supportsThinking: row.supports_thinking ?? false,
+    supportsCompaction: row.supports_compaction ?? false,
+    supportsContextEditing: row.supports_context_editing ?? false,
+    supportsTaskBudget: row.supports_task_budget ?? false,
+    supportsPromptCache: row.supports_prompt_cache ?? false,
+    acceptsSamplingParams: row.accepts_sampling_params ?? true,
   };
 }
 
@@ -244,8 +280,9 @@ export class ModelCatalogService {
     try {
       await this.dataSource.query(
         `INSERT INTO ai_models (provider, model_key, display_name, status, is_default,
-                               supports_tools, supports_vision, cost_tier)
-         VALUES ($1, $2, $2, 'enabled', true, true, true, 1)
+                               supports_tools, supports_vision, cost_tier, long_run_allowed,
+                               accepts_sampling_params)
+         VALUES ($1::ai_provider_code, $2, $2, 'enabled', true, true, true, 1, true, $1::text <> 'anthropic')
          ON CONFLICT (provider, model_key)
            DO UPDATE SET status = 'enabled', is_default = true, updated_at = now()`,
         [provider, modelKey],
@@ -275,8 +312,9 @@ export class ModelCatalogService {
     for (const item of items) {
       const rows = (await this.dataSource.query(
         `INSERT INTO ai_models (provider, model_key, display_name, description, created_by,
-                               context_window, max_output_tokens, supports_tools, supports_vision)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                               context_window, max_output_tokens, supports_tools, supports_vision,
+                               accepts_sampling_params)
+         VALUES ($1::ai_provider_code, $2, $3, $4, $5, $6, $7, $8, $9, $1::text <> 'anthropic')
          ON CONFLICT (provider, model_key) DO NOTHING
          RETURNING id`,
         [
@@ -314,6 +352,15 @@ export class ModelCatalogService {
       maxOutputTokens: 'max_output_tokens',
       costTier: 'cost_tier',
       sortOrder: 'sort_order',
+      longRunAllowed: 'long_run_allowed',
+      supportsEffort: 'supports_effort',
+      defaultEffort: 'default_effort',
+      supportsThinking: 'supports_thinking',
+      supportsCompaction: 'supports_compaction',
+      supportsContextEditing: 'supports_context_editing',
+      supportsTaskBudget: 'supports_task_budget',
+      supportsPromptCache: 'supports_prompt_cache',
+      acceptsSamplingParams: 'accepts_sampling_params',
     };
     const sets: string[] = [];
     const params: unknown[] = [id];

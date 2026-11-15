@@ -17,6 +17,8 @@ export interface AppConfig {
   aiModel: string;
   aiBaseUrl: string;
   aiTimeoutMs: number;
+  aiStreamIdleTimeoutMs: number;
+  aiCallMaxMs: number;
   openrouterApiKey: string | null;
   openaiApiKey: string | null;
   anthropicApiKey: string | null;
@@ -74,6 +76,9 @@ export default (): { app: AppConfig } => ({
     // Usang: hanya berlaku untuk AI_PROVIDER bila base URL khusus penyedia tidak diatur.
     aiBaseUrl: process.env.AI_BASE_URL?.trim() ?? '',
     aiTimeoutMs: Number(process.env.AI_TIMEOUT_MS ?? 60000),
+    // Kerja panjang: batas diam stream dan batas total per panggilan (bukan AI_TIMEOUT_MS).
+    aiStreamIdleTimeoutMs: Number(process.env.AI_STREAM_IDLE_TIMEOUT_MS ?? 120000),
+    aiCallMaxMs: Number(process.env.AI_CALL_MAX_MS ?? 900000),
     openrouterApiKey: process.env.OPENROUTER_API_KEY ?? null,
     openaiApiKey: process.env.OPENAI_API_KEY ?? null,
     anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? null,

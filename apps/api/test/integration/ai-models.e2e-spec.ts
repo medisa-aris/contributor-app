@@ -236,6 +236,12 @@ describe('Katalog model, izin, dan kuota (e2e)', () => {
     expect(conv[0]!.model_id).toBe(sModelId);
   });
 
+  it('permintaan ke model Anthropic tidak membawa parameter sampling', async () => {
+    const toS = requests.filter((r) => r.model === 'claude-uji' && r.systemPrompt !== 'Anda sedang diuji. Jawab sesingkat mungkin.');
+    expect(toS.length).toBeGreaterThan(0);
+    expect(toS.every((r) => r.temperature === undefined)).toBe(true);
+  });
+
   it('izin pribadi mengalahkan izin departemen; setingkat, batas terendah menang', async () => {
     await grant(manager, { targetType: 'user', targetId: ids.b, modelId: sModelId, tokenLimit: 3000 }).then((r) =>
       expect(r.status).toBe(201),
